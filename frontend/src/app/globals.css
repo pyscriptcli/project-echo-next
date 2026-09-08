@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #f4f1ec;
+  --color-text-primary: #1b1d1e;
+  --color-brand-blue: #003366;
+  --color-brand-gold: #c9ab4c;
+  --color-brand-gold-hover: #d9bc5d;
+  --color-brand-blue-light: rgba(0, 51, 102, 0.12);
+  --color-gray-text: #69727d;
+  --color-panel-bg: #ffffff;
+  
+  --font-serif: var(--font-cormorant);
+  --font-sans: var(--font-montserrat);
+  --font-bebas: var(--font-bebas);
+}
+
+/* Sleek custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 171, 76, 0.6);
+}
+
+@layer base {
+  body {
+    @apply bg-bg-primary text-text-primary font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-brand-blue font-semibold italic tracking-wide;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-panel-bg rounded-none border border-brand-blue-light p-6 mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)];
+  }
+  
+  .btn-primary {
+    @apply bg-[#003366] text-white border border-[#003366] rounded-none font-sans font-bold text-xs tracking-widest uppercase px-6 py-3 transition-all duration-300 hover:bg-[#c9ab4c] hover:border-[#c9ab4c] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#003366] shadow-none;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent text-brand-blue border border-brand-blue rounded-none font-sans font-bold text-xs tracking-widest uppercase px-6 py-3 transition-all duration-300 hover:bg-[#003366] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-brand-blue;
+  }
+
+  .playfair-label {
+    @apply font-serif italic text-brand-blue text-2xl block mb-2 border-b border-brand-blue-light pb-3;
+  }
+  
+  .section-caption {
+    @apply text-gray-text text-sm mb-4;
+  }
+}

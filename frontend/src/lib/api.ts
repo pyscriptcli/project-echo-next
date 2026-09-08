@@ -1,0 +1,169 @@
+export function getStoredApiKey(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_api_key") || "";
+  }
+  return "";
+}
+
+export function setStoredApiKey(key: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_api_key", key.trim());
+  }
+}
+
+export async function processSource(fileOrText: { file?: File | null; text?: string }) {
+  const formData = new FormData();
+  if (fileOrText.file) {
+    formData.append("file", fileOrText.file);
+  }
+  if (fileOrText.text) {
+    formData.append("text", fileOrText.text);
+  }
+
+  const headers: Record<string, string> = {};
+  const storedKey = getStoredApiKey();
+  if (storedKey) {
+    headers["x-api-key"] = storedKey;
+  }
+
+  const res = await fetch("/api/process-audio", {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let errMsg = "Failed to process source.";
+    try {
+      const err = await res.json();
+      errMsg = err.error || errMsg;
+    } catch (e) {
+      errMsg = `Server error (${res.status} ${res.statusText})`;
+    }
+    throw new Error(errMsg);
+  }
+  return res.json();
+}
+
+export const processAudio = (file: File) => processSource({ file });
+
+export async function generateMinutes(transcript: string, user_topics: string, notes: string) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const storedKey = getStoredApiKey();
+  if (storedKey) {
+    headers["x-api-key"] = storedKey;
+  }
+
+  const res = await fetch("/api/generate-minutes", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ transcript, user_topics, notes }),
+  });
+
+  if (!res.ok) {
+    let errMsg = "Failed to generate minutes.";
+    try {
+      const err = await res.json();
+      errMsg = err.error || errMsg;
+    } catch (e) {
+      errMsg = `Server error (${res.status} ${res.statusText})`;
+    }
+    throw new Error(errMsg);
+  }
+  return res.json();
+}
+
+export async function askEcho(
+  items: any[], 
+  prompt?: string, 
+  action_type?: "actions" | "wording" | "responsibility",
+  transcript?: string
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const storedKey = getStoredApiKey();
+  if (storedKey) {
+    headers["x-api-key"] = storedKey;
+  }
+
+  const res = await fetch("/api/ask-echo", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ items, prompt, action_type, transcript }),
+  });
+
+  if (!res.ok) {
+    let errMsg = "Echo assistant request failed.";
+    try {
+      const err = await res.json();
+      errMsg = err.error || errMsg;
+    } catch (e) {
+      errMsg = `Server error (${res.status} ${res.statusText})`;
+    }
+    throw new Error(errMsg);
+  }
+  return res.json();
+}
+
+export async function saveMeeting(metadata: any, items: any[], other_discussions: string, transcript: string) {
+  const res = await fetch("/api/save-meeting", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meeting_details: metadata,
+      items,
+      other_discussions,
+      transcript,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to save meeting.");
+  }
+  return res.json();
+}
+
+export async function exportWord(metadata: any, items: any[], other_discussions: string) {
+  const res = await fetch("/api/export-word", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meeting_details: metadata,
+      items,
+      other_discussions,
+    }),
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `MoM_${metadata.client_name || "Meeting"}_${new Date().toISOString().split("T")[0]}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+export async function exportPdf(metadata: any, items: any[], other_discussions: string) {
+  const res = await fetch("/api/export-pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meeting_details: metadata,
+      items,
+      other_discussions,
+    }),
+  });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `MoM_${metadata.client_name || "Meeting"}_${new Date().toISOString().split("T")[0]}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}

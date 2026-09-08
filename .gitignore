@@ -1,0 +1,23 @@
+# Dependencies
+frontend/node_modules/
+node_modules/
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+
+# Environment files
+.env
+.env*.local
+frontend/.env
+frontend/.env*.local
+
+# Gemini / Antigravity metadata
+.gemini/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

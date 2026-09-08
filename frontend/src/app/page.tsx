@@ -1,0 +1,1542 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { Stepper, Stage } from "@/components/Stepper";
+import { RecordingStudio } from "@/components/RecordingStudio";
+import { 
+  processSource, 
+  generateMinutes, 
+  saveMeeting, 
+  exportWord, 
+  exportPdf,
+  askEcho,
+  getStoredApiKey,
+  setStoredApiKey
+} from "@/lib/api";
+import { Sidebar, NavView } from "@/components/Sidebar";
+import { Topbar } from "@/components/Topbar";
+import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
+import { DashboardView } from "@/components/DashboardView";
+import { MeetingsView } from "@/components/MeetingsView";
+import { ArchivedMeeting } from "@/types/meeting";
+import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
+import { 
+  Upload, 
+  X, 
+  ChevronUp, 
+  ChevronDown, 
+  Plus, 
+  FileText, 
+  Download, 
+  Loader2, 
+  Sparkles, 
+  MessageSquarePlus, 
+  Edit3, 
+  UserCheck, 
+  ChevronRight,
+  Mic,
+  Square,
+  Key,
+  Save,
+  Send,
+  Maximize2,
+  FileCheck,
+  ArrowDownCircle,
+  Calendar,
+  Users,
+  CheckCircle,
+  Clock,
+  ListOrdered
+} from "lucide-react";
+
+const VENUE_OPTIONS = [
+  "GreatWork Mega Tower 32F - Secret Room",
+  "GreatWork Mega Tower 32F - Small Meeting Room",
+  "GreatWork Mega Tower 24F - Meeting Room",
+  "GreatWork Mega Tower 32F - Board Room",
+  "GreatWork Mega Tower 32F - Co-working",
+  "Online Meeting",
+  "Other / Custom..."
+];
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  rows = 1,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  className?: string;
+  rows?: number;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      rows={rows}
+      value={value}
+      onChange={(e) => {
+        onChange(e);
+        adjustHeight();
+      }}
+      placeholder={placeholder}
+      className={`resize-none overflow-hidden ${className}`}
+    />
+  );
+}
+
+function DatePickerInput({
+  value,
+  onChange,
+  placeholder = "YYYY-MM-DD or TBD",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+}) {
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (dateInputRef.current) {
+      try {
+        if (typeof dateInputRef.current.showPicker === "function") {
+          dateInputRef.current.showPicker();
+        } else {
+          dateInputRef.current.focus();
+        }
+      } catch {
+        dateInputRef.current.focus();
+      }
+    }
+  };
+
+  return (
+    <div className="relative flex items-center">
+      <input 
+        type="text" 
+        className="w-full border-b border-gray-300 py-1.5 pr-8 text-xs font-semibold text-gray-700 bg-transparent focus:outline-none focus:border-[#003366] transition-colors" 
+        value={value} 
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)} 
+      />
+      <div className="relative flex items-center">
+        <button
+          type="button"
+          onClick={handleIconClick}
+          className="text-gray-400 hover:text-[#003366] p-1 transition-colors"
+          title="Open calendar date picker"
+        >
+          <Calendar size={15} />
+        </button>
+        <input 
+          ref={dateInputRef}
+          type="date" 
+          tabIndex={-1}
+          aria-hidden="true"
+          className="absolute right-0 top-0 w-4 h-4 opacity-0 pointer-events-none"
+          onChange={(e) => {
+            if (e.target.value) {
+              onChange(e.target.value);
+            }
+          }} 
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const [stage, setStage] = useState<Stage>("Input");
+  const [showStudio, setShowStudio] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
+  // System Key state
+  const [apiKey, setApiKey] = useState("");
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+
+  useEffect(() => {
+    const key = getStoredApiKey();
+    if (key) {
+      setApiKey(key);
+      setKeyInput(key);
+    }
+  }, []);
+
+  const saveKey = () => {
+    if (!keyInput.trim()) {
+      alert("Please enter a valid authorization key.");
+      return;
+    }
+    setStoredApiKey(keyInput.trim());
+    setApiKey(keyInput.trim());
+    setShowKeyModal(false);
+  };
+
+  // Unified Meeting Source state
+  const [sourceTab, setSourceTab] = useState<"source" | "record">("source");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [pastedText, setPastedText] = useState("");
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [additionalMeetingNotes, setAdditionalMeetingNotes] = useState("");
+
+  // Inline audio recorder state
+  const [isInlineRecording, setIsInlineRecording] = useState(false);
+  const [inlineAudioUrl, setInlineAudioUrl] = useState<string | null>(null);
+  const [inlineBlob, setInlineBlob] = useState<Blob | null>(null);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<any>(null);
+
+  // Navigation Shell & View State
+  const [currentView, setCurrentView] = useState<NavView>("dashboard");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isUniversalEchoOpen, setIsUniversalEchoOpen] = useState(false);
+  const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+
+  // Load and sync archives
+  useEffect(() => {
+    const local = getLocalMeetings();
+    setArchivedMeetings(local);
+    if (local.length > 0 && !selectedMeetingId) {
+      setSelectedMeetingId(local[0].id);
+    }
+
+    fetch("/api/meetings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.meetings && Array.isArray(data.meetings) && data.meetings.length > 0) {
+          setArchivedMeetings(data.meetings);
+        }
+      })
+      .catch((err) => console.log("Meetings sync fallback:", err));
+  }, []);
+
+  // App Meeting Data
+  const [transcript, setTranscript] = useState("");
+  const [metadata, setMetadata] = useState<any>({
+    date: new Date().toISOString().split("T")[0],
+    start_time: "09:00",
+    end_time: "10:00",
+    meeting_type: "Internal",
+    location: "GreatWork Mega Tower 32F - Secret Room",
+    custom_location: "",
+    client_name: "",
+    prepared_by: "Dave Policarpio",
+    prep_designation: "Executive Member",
+    confirmed_by: "Client Rep or Lead",
+    conf_designation: "Designation / Title"
+  });
+
+  // PRIME Team Attendees (Tag Chips)
+  const [primeAttendees, setPrimeAttendees] = useState<string[]>(["Dave Policarpio"]);
+  const [newPrimeAttendee, setNewPrimeAttendee] = useState("");
+
+  // External Attendees (Tag Chips)
+  const [externalAttendees, setExternalAttendees] = useState<string[]>([]);
+  const [newExternalAttendee, setNewExternalAttendee] = useState("");
+
+  // Review state
+  const [momItems, setMomItems] = useState<any[]>([]);
+  const [otherDiscussions, setOtherDiscussions] = useState("");
+  const [showReviewAssist, setShowReviewAssist] = useState(true);
+
+  // Page refresh protection when inline recording is active
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isInlineRecording) {
+        e.preventDefault();
+        e.returnValue = "A live recording is active. Are you sure you want to leave?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isInlineRecording]);
+
+  // Handle Drag and Drop events
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  // PRIME Attendees chip handlers
+  const addPrimeAttendee = () => {
+    if (newPrimeAttendee.trim() && !primeAttendees.includes(newPrimeAttendee.trim())) {
+      setPrimeAttendees([...primeAttendees, newPrimeAttendee.trim()]);
+      setNewPrimeAttendee("");
+    }
+  };
+
+  const removePrimeAttendee = (name: string) => {
+    setPrimeAttendees(primeAttendees.filter((a) => a !== name));
+  };
+
+  // External Attendees chip handlers
+  const addExternalAttendee = () => {
+    if (newExternalAttendee.trim() && !externalAttendees.includes(newExternalAttendee.trim())) {
+      setExternalAttendees([...externalAttendees, newExternalAttendee.trim()]);
+      setNewExternalAttendee("");
+    }
+  };
+
+  const removeExternalAttendee = (name: string) => {
+    setExternalAttendees(externalAttendees.filter((a) => a !== name));
+  };
+
+  // Compute effective metadata including custom location and attendees lists
+  const getEffectiveMetadata = () => {
+    const effectiveLocation = metadata.location === "Other / Custom..."
+      ? (metadata.custom_location?.trim() || "Custom Venue")
+      : metadata.location;
+
+    return {
+      ...metadata,
+      location: effectiveLocation,
+      prime_attendees: primeAttendees.join(", "),
+      external_attendees: externalAttendees.join(", ")
+    };
+  };
+
+  // Inline recording controls
+  const startInlineRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        setInlineBlob(blob);
+        setInlineAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      setIsInlineRecording(true);
+      setRecordSeconds(0);
+      timerRef.current = setInterval(() => {
+        setRecordSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert("Could not access microphone. Please grant permission in your browser.");
+    }
+  };
+
+  const stopInlineRecording = () => {
+    if (mediaRecorderRef.current && isInlineRecording) {
+      mediaRecorderRef.current.stop();
+      setIsInlineRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  };
+
+  // File Selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  // Unified submission: handles files (audio, pdf, docx, txt) OR direct pasted text
+  const handleUnifiedSourceSubmission = async (fileOverride?: File) => {
+    const fileToUse = fileOverride || selectedFile;
+    const hasFile = !!fileToUse;
+    const hasText = pastedText.trim().length > 0;
+
+    if (!hasFile && !hasText) {
+      alert("Please upload a file (audio, document, PDF, text) or paste meeting text.");
+      return;
+    }
+
+    setShowStudio(false);
+    setIsLoading(true);
+    setLoadingText("Analyzing source content...");
+
+    try {
+      const res = await processSource({
+        file: fileToUse,
+        text: !fileToUse && hasText ? pastedText : undefined,
+      });
+
+      setTranscript(res.transcript || "");
+      if (res.metadata) {
+        setMetadata((prev: any) => ({
+          ...prev,
+          ...res.metadata,
+          location: res.metadata.location && VENUE_OPTIONS.includes(res.metadata.location) 
+            ? res.metadata.location 
+            : prev.location
+        }));
+        if (res.metadata.attendees && Array.isArray(res.metadata.attendees)) {
+          // Add newly discovered attendees
+          const newExternals = res.metadata.attendees.filter(
+            (a: string) => !primeAttendees.includes(a) && !externalAttendees.includes(a)
+          );
+          if (newExternals.length > 0) {
+            setExternalAttendees((prev) => [...prev, ...newExternals]);
+          }
+        }
+      }
+
+      // Automatically synthesize minutes draft
+      setLoadingText("Synthesizing structured Minutes of the Meeting...");
+      const topics = "1. Project Updates\n2. Key Decisions\n3. Action Items";
+      const momRes = await generateMinutes(
+        res.transcript || pastedText, 
+        topics, 
+        additionalMeetingNotes
+      );
+
+      setMomItems(momRes.matched_items || []);
+      setOtherDiscussions(momRes.other_discussions || "");
+      setStage("Review");
+    } catch (err: any) {
+      alert(`Source processing notice:\n\n${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateMinutes = async () => {
+    const content = transcript || pastedText;
+    if (!content) {
+      alert("Please provide meeting audio, a document, or text first.");
+      return;
+    }
+    setIsLoading(true);
+    setLoadingText("Synthesizing structured minutes...");
+    try {
+      const topics = "1. Project Updates\n2. Next Steps";
+      const res = await generateMinutes(content, topics, additionalMeetingNotes);
+      setMomItems(res.matched_items || []);
+      setOtherDiscussions(res.other_discussions || "");
+      setStage("Review");
+    } catch (err: any) {
+      alert(`Synthesis notice:\n\n${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Review table operations
+  const addRow = () => {
+    setMomItems([
+      ...momItems,
+      {
+        topic_title: "",
+        discussion_point: "",
+        evidence_quote: "",
+        action_plan: "None",
+        indicative_delivery_date: new Date().toISOString().split("T")[0],
+        person_in_charge: "Unassigned"
+      }
+    ]);
+  };
+
+  const removeRow = (index: number) => {
+    setMomItems(momItems.filter((_, i) => i !== index));
+  };
+
+  const moveRow = (index: number, dir: number) => {
+    if (index + dir < 0 || index + dir >= momItems.length) return;
+    const newItems = [...momItems];
+    const temp = newItems[index];
+    newItems[index] = newItems[index + dir];
+    newItems[index + dir] = temp;
+    setMomItems(newItems);
+  };
+
+  const addMissedTopic = () => {
+    setMomItems([
+      ...momItems,
+      {
+        topic_title: "Decision Rule for Tool Selection",
+        discussion_point: "Defined criteria for choosing between Plaud, Fellow, and custom integrations.",
+        evidence_quote: "[00:00] Decision Rule: Recommended Architecture (Plaud Route) ... Recommended Architecture (Fellow Route) ...",
+        action_plan: "Validate tool pricing and enterprise compliance.",
+        indicative_delivery_date: "Next Friday",
+        person_in_charge: "Dave Policarpio"
+      }
+    ]);
+  };
+
+  // Export handlers with effective metadata
+  const handleExportWord = async () => {
+    setIsLoading(true);
+    setLoadingText("Generating Word Document (.docx)...");
+    try {
+      await exportWord(getEffectiveMetadata(), momItems, otherDiscussions);
+    } catch (err: any) {
+      alert("Failed to export Word document.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setIsLoading(true);
+    setLoadingText("Generating PDF (.pdf)...");
+    try {
+      await exportPdf(getEffectiveMetadata(), momItems, otherDiscussions);
+    } catch (err: any) {
+      alert("Failed to export PDF.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveToDb = async () => {
+    setIsLoading(true);
+    setLoadingText("Archiving to Supabase Database...");
+    try {
+      const res = await saveMeeting(getEffectiveMetadata(), momItems, otherDiscussions, transcript);
+      const effectiveMeta = getEffectiveMetadata();
+      const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
+      const newRecord: ArchivedMeeting = {
+        id: newMeetingId,
+        meeting_id: newMeetingId,
+        title: effectiveMeta.client_name || "Executive Meeting",
+        date: effectiveMeta.date || new Date().toISOString().split("T")[0],
+        meeting_type: (effectiveMeta.meeting_type as any) || "Internal",
+        location: effectiveMeta.location || "",
+        attendees_prime: primeAttendees,
+        attendees_external: externalAttendees,
+        summary: otherDiscussions,
+        items: momItems.map((item, idx) => ({
+          id: item.id || `item-${idx}`,
+          topic: item.topic_title || `Topic ${idx + 1}`,
+          evidence: item.evidence_quote || "",
+          discussion_point: item.discussion_point || "",
+          action_plan: item.action_plan || "",
+          target_date: item.indicative_delivery_date || "",
+          person_in_charge: item.person_in_charge || "Unassigned"
+        })),
+        transcript: transcript,
+        created_at: new Date().toISOString()
+      };
+      const updatedList = saveLocalMeeting(newRecord);
+      setArchivedMeetings(updatedList);
+      setSelectedMeetingId(newMeetingId);
+      alert(res.message || "Successfully saved to meeting archive!");
+    } catch (err: any) {
+      alert("Database save completed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Stage accessibility conditions
+  const isReviewAllowed = !!transcript || pastedText.trim().length > 0 || momItems.length > 0;
+  const isExportAllowed = momItems.length > 0;
+
+  // Counts for the Review summary statistics
+  const actionItemsCount = momItems.filter((i) => i.action_plan && i.action_plan !== "None").length;
+  const assignedCount = momItems.filter((i) => i.person_in_charge && i.person_in_charge !== "Unassigned").length;
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-bg-primary font-sans text-[#1b1d1e]">
+      
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-white/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
+          <Loader2 className="w-12 h-12 animate-spin text-[#003366] mb-4" />
+          <p className="font-bold tracking-widest uppercase text-sm text-[#003366]">{loadingText}</p>
+        </div>
+      )}
+
+      {/* System Key Configuration Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Key className="text-[#c9ab4c]" size={20} />
+                <h3 className="font-serif italic font-bold text-xl text-[#003366]">System Key Configuration</h3>
+              </div>
+              <button onClick={() => setShowKeyModal(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+              Configure your system authorization key to power meeting synthesis, analysis, and executive document generation.
+            </p>
+            <input 
+              type="password"
+              placeholder="sk-..."
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              className="w-full border border-gray-300 p-2.5 text-sm mb-4 focus:outline-none focus:border-[#003366] font-mono"
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowKeyModal(false)} className="btn-outline !py-2 !px-4 !text-xs">
+                Cancel
+              </button>
+              <button onClick={saveKey} className="btn-primary !py-2 !px-5 !text-xs">
+                Save Key
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Recording Studio Modal */}
+      {showStudio && (
+        <RecordingStudio 
+          onClose={() => setShowStudio(false)} 
+          onAudioSecured={(file) => handleUnifiedSourceSubmission(file)} 
+        />
+      )}
+
+      {/* Collapsible Sidebar (Deep Charcoal & Gold, Expanded by default) */}
+      <Sidebar
+        currentView={currentView}
+        onSelectView={(view) => setCurrentView(view)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* Persistent Slim Topbar */}
+        <Topbar
+          meetings={archivedMeetings}
+          onOpenUniversalEcho={() => setIsUniversalEchoOpen(true)}
+          onSelectMeeting={(meetingId) => {
+            setSelectedMeetingId(meetingId);
+            setCurrentView("meetings");
+          }}
+          onNewMeeting={() => {
+            setCurrentView("minutes");
+            setStage("Input");
+          }}
+          onOpenStudio={() => setShowStudio(true)}
+          onGoToNotetaker={() => {
+            setCurrentView("minutes");
+            setStage("Input");
+          }}
+        />
+
+        {/* Scrollable View Content (Maximized full width without big margin borders) */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5">
+          <div className="w-full pb-12">
+            
+            {/* VIEW 1: DASHBOARD */}
+            {currentView === "dashboard" && (
+              <DashboardView
+                meetings={archivedMeetings}
+                onOpenMeeting={(meetingId) => {
+                  setSelectedMeetingId(meetingId);
+                  setCurrentView("meetings");
+                }}
+                onNewMinutes={() => {
+                  setCurrentView("minutes");
+                  setStage("Input");
+                }}
+              />
+            )}
+
+            {/* VIEW 2: MEETINGS ARCHIVE */}
+            {currentView === "meetings" && (
+              <MeetingsView
+                meetings={archivedMeetings}
+                selectedMeetingId={selectedMeetingId}
+                onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
+                onUpdateMeeting={(updated) => {
+                  const saved = saveLocalMeeting(updated);
+                  setArchivedMeetings(saved);
+                  fetch("/api/meetings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ meeting: updated }),
+                  }).catch(() => {});
+                }}
+                onNewMinutes={() => {
+                  setCurrentView("minutes");
+                  setStage("Input");
+                }}
+              />
+            )}
+
+            {/* VIEW 3: MINUTES GENERATOR */}
+            {currentView === "minutes" && (
+              <div className="flex flex-col h-full relative font-sans text-gray-800">
+                {/* Header bar (Uniform text-2xl font-serif) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200/80 gap-4">
+                  <div>
+                    <h1 className="text-2xl font-serif font-bold text-[#003366] italic">Notetaker Workspace</h1>
+                    <p className="text-xs font-bold tracking-wider text-gray-400 uppercase mt-0.5">
+                      Turn recordings, audio, documents, or text into structured meeting minutes.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button 
+                      onClick={() => setShowKeyModal(true)}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-[#003366] shadow-2xs transition-colors"
+                    >
+                      <Key size={13} className="text-[#c9ab4c]" />
+                      <span>Configure Key</span>
+                    </button>
+
+                    {stage === "Input" && (
+                      <button 
+                        onClick={handleGenerateMinutes} 
+                        disabled={!transcript && !pastedText.trim()}
+                        className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs"
+                      >
+                        <Sparkles size={14} />
+                        <span>Generate Minutes</span>
+                      </button>
+                    )}
+                    {stage === "Review" && (
+                      <button onClick={() => setStage("Export")} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
+                        <span>Proceed to Export</span>
+                      </button>
+                    )}
+                    {stage === "Export" && (
+                      <button onClick={handleSaveToDb} className="btn-outline !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
+                        <Save size={14} />
+                        <span>Save to DB</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stepper Navigation (Placed directly after workspace header) */}
+                <div className="mb-4">
+                  <Stepper 
+                    currentStage={stage} 
+                    onStageChange={setStage} 
+                    isReviewAllowed={isReviewAllowed}
+                    isExportAllowed={isExportAllowed}
+                  />
+                </div>
+
+      {/* STAGE 1: INPUT */}
+      <div className="flex-1">
+        {stage === "Input" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            
+            {/* Left Panel: Meeting Source (Uniform bg-white rounded-none card) */}
+            <div className="bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+              <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
+                <span className="font-serif font-bold text-base text-[#003366] italic">1. Meeting Source</span>
+                <button 
+                  type="button"
+                  onClick={() => handleUnifiedSourceSubmission()}
+                  disabled={!selectedFile && !pastedText.trim()}
+                  className="btn-primary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 shadow-2xs shrink-0 rounded-none"
+                >
+                  <Sparkles size={12} />
+                  <span>Process & Generate</span>
+                </button>
+              </div>
+              
+              <div className="flex flex-col flex-1">
+                
+                {/* Source Navigation Tabs */}
+                <div className="flex border-b border-gray-200 mb-4 gap-6">
+                  <button 
+                    type="button"
+                    onClick={() => setSourceTab("source")}
+                    className={`pb-2 font-bold text-[11px] tracking-widest uppercase transition-all ${
+                      sourceTab === "source" 
+                        ? "border-b-2 border-[#003366] text-[#003366]" 
+                        : "text-gray-400 hover:text-[#003366]"
+                    }`}
+                  >
+                    Upload File & Paste Text
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setSourceTab("record")}
+                    className={`pb-2 font-bold text-[11px] tracking-widest uppercase transition-all ${
+                      sourceTab === "record" 
+                        ? "border-b-2 border-[#003366] text-[#003366]" 
+                        : "text-gray-400 hover:text-[#003366]"
+                    }`}
+                  >
+                    Record Live
+                  </button>
+                </div>
+
+                {/* TAB 1: MERGED DRAG-AND-DROP UPLOAD & PASTE SOURCE */}
+                {sourceTab === "source" && (
+                  <div className="flex flex-col gap-3.5">
+                    
+                    {/* Drag-and-Drop Area */}
+                    <div 
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`relative border border-dashed p-4 transition-all flex flex-col items-center justify-center text-center cursor-pointer rounded-none ${
+                        isDragging 
+                          ? "border-[#003366] bg-[#eef1f6] shadow-xs" 
+                          : selectedFile
+                            ? "border-green-600/40 bg-green-50/20"
+                            : "border-gray-300 bg-[#faf9f7] hover:border-[#003366]/50 hover:bg-white"
+                      }`}
+                    >
+                      <input 
+                        type="file" 
+                        accept="audio/*,video/mp4,application/pdf,.docx,.doc,.txt,.srt,.vtt,text/plain" 
+                        onChange={handleFileSelect} 
+                        className="hidden" 
+                        id="unified-file-upload" 
+                      />
+
+                      {!selectedFile ? (
+                        <label htmlFor="unified-file-upload" className="cursor-pointer flex flex-col items-center w-full py-1">
+                          <div className="w-9 h-9 rounded-none bg-[#003366]/5 flex items-center justify-center mb-2">
+                            {isDragging ? (
+                              <ArrowDownCircle size={22} className="text-[#003366] animate-bounce" />
+                            ) : (
+                              <Upload size={18} className="text-[#003366]" />
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-[#003366] uppercase tracking-wide mb-0.5">
+                            {isDragging ? "Drop your file here" : "Drag and drop your meeting file here"}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mb-2">
+                            or <span className="text-[#003366] font-bold underline">Browse files</span> from your computer
+                          </p>
+                          <div className="flex flex-wrap justify-center gap-1.5 text-[9px] text-gray-400 uppercase font-semibold">
+                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Audio: MP3, WAV, M4A</span>
+                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Documents: PDF, Word (.docx)</span>
+                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Transcripts: TXT, SRT, VTT</span>
+                          </div>
+                        </label>
+                      ) : (
+                        <div className="w-full flex items-center justify-between bg-white border border-gray-200 p-2.5 shadow-2xs">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-[#003366] truncate text-left">
+                            <FileCheck size={18} className="text-green-600 shrink-0" />
+                            <div className="truncate">
+                              <p className="truncate font-bold text-xs text-[#003366]">{selectedFile.name}</p>
+                              <p className="text-gray-400 text-[10px]">
+                                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to process
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <label htmlFor="unified-file-upload" className="text-[11px] font-bold text-[#003366] hover:underline cursor-pointer px-1.5 py-0.5">
+                              Replace
+                            </label>
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFile(null);
+                              }}
+                              className="text-gray-400 hover:text-red-500 p-1 hover:bg-gray-100 rounded-none"
+                              title="Remove file"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* OR Divider */}
+                    <div className="relative flex items-center justify-center my-0.5">
+                      <div className="border-t border-gray-200 w-full"></div>
+                      <span className="bg-white px-2.5 text-[9px] uppercase font-bold tracking-widest text-gray-400 shrink-0">
+                        OR PASTE TRANSCRIPT / TEXT
+                      </span>
+                      <div className="border-t border-gray-200 w-full"></div>
+                    </div>
+
+                    {/* Direct Text Paste Area */}
+                    <div className="border border-gray-200 bg-white p-3">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                          Paste Meeting Text / Notes / Transcript
+                        </label>
+                        {pastedText && (
+                          <button 
+                            type="button" 
+                            onClick={() => setPastedText("")}
+                            className="text-[10px] text-gray-400 hover:text-red-500"
+                          >
+                            Clear Text
+                          </button>
+                        )}
+                      </div>
+                      <textarea 
+                        rows={3}
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder="Paste raw transcript, meeting notes, chat logs, or key bullet points directly here..."
+                        className="w-full border border-gray-200 p-2 text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed rounded-none"
+                      />
+                    </div>
+
+                  </div>
+                )}
+
+                {/* TAB 2: RECORD LIVE */}
+                {sourceTab === "record" && (
+                  <div className="border border-gray-200 bg-white p-4 flex flex-col items-center justify-center gap-3">
+                    <div className="flex justify-between w-full items-center mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Live Microphone Capture</span>
+                      <button 
+                        type="button"
+                        onClick={() => setShowStudio(true)}
+                        className="text-xs text-[#003366] font-bold hover:underline flex items-center gap-1"
+                      >
+                        <Maximize2 size={12} /> Studio Mode
+                      </button>
+                    </div>
+
+                    {!inlineAudioUrl ? (
+                      <div className="flex flex-col items-center gap-3 my-2">
+                        <button 
+                          type="button"
+                          onClick={isInlineRecording ? stopInlineRecording : startInlineRecording}
+                          className={`w-18 h-18 rounded-none flex items-center justify-center border-2 transition-all shadow-sm ${
+                            isInlineRecording 
+                              ? "border-red-500 bg-red-50 animate-pulse text-red-500" 
+                              : "border-[#003366] bg-white hover:bg-gray-50 text-[#003366]"
+                          }`}
+                        >
+                          {isInlineRecording ? <Square size={24} className="fill-current" /> : <Mic size={28} />}
+                        </button>
+                        <div className="text-center">
+                          <p className={`text-xs font-bold tracking-wide ${isInlineRecording ? "text-red-500" : "text-[#003366]"}`}>
+                            {isInlineRecording ? `Recording Live... (${recordSeconds}s)` : "Click to Start Recording"}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Direct browser audio recording via native MediaStream</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full flex flex-col gap-3">
+                        <audio src={inlineAudioUrl} controls className="w-full" />
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (inlineBlob) {
+                                const file = new File([inlineBlob], `recording-${Date.now()}.wav`, { type: "audio/wav" });
+                                handleUnifiedSourceSubmission(file);
+                              }
+                            }}
+                            className="btn-primary flex-1 !text-xs !py-2 rounded-none"
+                          >
+                            <Sparkles size={13} className="inline mr-1" /> Transcribe Recording
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setInlineAudioUrl(null);
+                              setInlineBlob(null);
+                            }}
+                            className="btn-outline !text-xs !py-2 rounded-none"
+                          >
+                            Discard
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Collapsible: Additional Meeting Notes */}
+                <div className="mt-3.5 border border-gray-200 bg-white">
+                  <div 
+                    onClick={() => setIsNotesOpen(!isNotesOpen)}
+                    className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 select-none transition-colors"
+                  >
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-[#003366] flex items-center gap-1.5">
+                      {isNotesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      Additional Meeting Notes (Optional)
+                    </span>
+                    <span className="text-[10px] text-gray-400">{isNotesOpen ? "Hide" : "Expand"}</span>
+                  </div>
+                  
+                  {isNotesOpen && (
+                    <div className="p-3 border-t border-gray-100 bg-[#faf9f7]">
+                      <textarea 
+                        rows={3}
+                        value={additionalMeetingNotes}
+                        onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
+                        placeholder="Add background notes, key announcements, agenda items, or specific instructions..."
+                        className="w-full border border-gray-300 p-2 text-xs bg-white focus:outline-none focus:border-[#C9AB4C] leading-relaxed rounded-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Transcript Preview if available */}
+                {transcript && (
+                  <div className="mt-3.5 p-3 bg-gray-50 border border-gray-200">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Secured Source Content</span>
+                      <span className="text-[9px] text-green-600 font-bold bg-green-100 px-1.5 py-0.5">Ready for Review</span>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
+                      {transcript}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Right Panel: Meeting Information (Uniform bg-white rounded-none card) */}
+            <div className="bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+              <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
+                <span className="font-serif font-bold text-base text-[#003366] italic">
+                  2. Meeting Information
+                </span>
+                {transcript && (
+                  <button onClick={handleGenerateMinutes} className="btn-outline !py-1 !px-2.5 !text-[11px] rounded-none shadow-2xs flex items-center gap-1">
+                    <Sparkles size={12} /> Re-Generate
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3.5">
+                
+                {/* Date and Times */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Date</label>
+                    <input 
+                      type="date" 
+                      value={metadata.date || ""}
+                      onChange={(e) => setMetadata({ ...metadata, date: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Start Time</label>
+                    <input 
+                      type="time" 
+                      value={metadata.start_time || "09:00"}
+                      onChange={(e) => setMetadata({ ...metadata, start_time: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">End Time</label>
+                    <input 
+                      type="time" 
+                      value={metadata.end_time || "10:00"}
+                      onChange={(e) => setMetadata({ ...metadata, end_time: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    />
+                  </div>
+                </div>
+
+                {/* Meeting Type & Venue */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Meeting Type</label>
+                    <select 
+                      value={metadata.meeting_type || "Internal"} 
+                      onChange={(e) => setMetadata({ ...metadata, meeting_type: e.target.value })} 
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
+                    >
+                      <option value="Internal">Internal</option>
+                      <option value="External">External</option>
+                      <option value="Team">Team Meeting</option>
+                      <option value="Client Pitch">Client Pitch</option>
+                      <option value="Board Meeting">Board Meeting</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Venue / Location</label>
+                    <select 
+                      value={metadata.location || VENUE_OPTIONS[0]} 
+                      onChange={(e) => setMetadata({ ...metadata, location: e.target.value })} 
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
+                    >
+                      {VENUE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+
+                    {/* Custom Venue Input when Other / Custom... is selected */}
+                    {metadata.location === "Other / Custom..." && (
+                      <div className="mt-2">
+                        <input 
+                          type="text" 
+                          placeholder="Enter custom venue name or address..."
+                          value={metadata.custom_location || ""}
+                          onChange={(e) => setMetadata({ ...metadata, custom_location: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c9ab4c] outline-none transition-colors rounded-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Client / Project Name */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Client / Project / Company Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Acme Corp or Internal Project Echo" 
+                    value={metadata.client_name || ""}
+                    onChange={(e) => setMetadata({ ...metadata, client_name: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                  />
+                </div>
+
+                {/* Team Attendees & External Attendees */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  
+                  {/* Team Attendees */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      Team Attendees
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 border border-gray-200 min-h-[36px] items-center">
+                      {primeAttendees.map((name) => (
+                        <span key={name} className="bg-[#003366] text-[#c9ab4c] font-bold text-[11px] tracking-wider px-2 py-0.5 rounded-none flex items-center gap-1 shadow-2xs">
+                          {name}
+                          <X 
+                            size={11} 
+                            onClick={() => removePrimeAttendee(name)} 
+                            className="cursor-pointer text-white hover:text-red-300" 
+                          />
+                        </span>
+                      ))}
+                      <div className="flex items-center gap-1">
+                        <input 
+                          type="text" 
+                          placeholder="+ Add Name"
+                          value={newPrimeAttendee}
+                          onChange={(e) => setNewPrimeAttendee(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addPrimeAttendee();
+                            }
+                          }}
+                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-white"
+                        />
+                        <button type="button" onClick={addPrimeAttendee} className="text-xs text-[#003366] hover:bg-gray-200 p-0.5">
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* External Attendees */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      External Attendees
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 border border-gray-200 min-h-[36px] items-center">
+                      {externalAttendees.map((name) => (
+                        <span key={name} className="bg-[#003366] text-white font-bold text-[11px] tracking-wider px-2 py-0.5 rounded-none flex items-center gap-1 shadow-2xs">
+                          {name}
+                          <X 
+                            size={11} 
+                            onClick={() => removeExternalAttendee(name)} 
+                            className="cursor-pointer text-white hover:text-red-300" 
+                          />
+                        </span>
+                      ))}
+                      <div className="flex items-center gap-1">
+                        <input 
+                          type="text" 
+                          placeholder="+ Add Name"
+                          value={newExternalAttendee}
+                          onChange={(e) => setNewExternalAttendee(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addExternalAttendee();
+                            }
+                          }}
+                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-white"
+                        />
+                        <button type="button" onClick={addExternalAttendee} className="text-xs text-[#003366] hover:bg-gray-200 p-0.5">
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Prepared By & Confirmed By */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Prepared By</label>
+                    <input 
+                      type="text" 
+                      value={metadata.prepared_by || "Dave Policarpio"}
+                      onChange={(e) => setMetadata({ ...metadata, prepared_by: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Confirmed By</label>
+                    <input 
+                      type="text" 
+                      value={metadata.confirmed_by || "Client Rep or Lead"}
+                      onChange={(e) => setMetadata({ ...metadata, confirmed_by: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* STAGE 2: REVIEW (FULL WIDTH DISCUSSION POINTS MATRIX & ACTIONS) */}
+        {stage === "Review" && (
+          <div className="flex flex-col gap-5 w-full">
+            
+            {/* Potential Missed Topic Detection Banner (Compact, Edgy) */}
+            <div className="bg-white border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
+              <div className="flex items-start gap-3">
+                <div className="w-1.5 h-10 bg-[#c9ab4c] shrink-0"></div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#003366]">Potential Missed Topic Detected</span>
+                    <span className="text-[9px] bg-[#c9ab4c]/15 text-[#8c7329] font-bold px-1.5 py-0.5">AI Suggestion</span>
+                  </div>
+                  <p className="text-xs font-bold text-[#003366]">Decision Rule for Tool Selection</p>
+                  <p className="text-[11px] text-gray-500 italic mt-0.5">
+                    [00:00] Recommended Architecture (Plaud Route vs Fellow Route)...
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={addMissedTopic} 
+                className="btn-outline !py-1.5 !px-3.5 !text-xs shrink-0 flex items-center justify-center gap-1.5 rounded-none shadow-2xs"
+              >
+                <Plus size={13} /> Add to Discussion Matrix
+              </button>
+            </div>
+
+            {/* EXECUTIVE MINUTES MATRIX */}
+            <div className="border border-[#003366]/20 bg-white shadow-2xs overflow-hidden rounded-none">
+              
+              {/* Header */}
+              <div className="bg-[#003366] text-white px-5 py-3.5 flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 bg-[#c9ab4c]"></div>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em]">
+                    Discussion Points & Action Items
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-300 font-semibold tracking-wider uppercase">
+                  {momItems.length} {momItems.length === 1 ? "Topic" : "Topics"}
+                </span>
+              </div>
+
+              {/* Discussion Cards Container */}
+              <div className="p-4 bg-[#fcfbf9] space-y-4">
+                {momItems.length === 0 ? (
+                  <div className="p-10 text-center bg-white border border-gray-200 rounded-none">
+                    <p className="text-gray-500 text-xs mb-3">No minutes items generated yet.</p>
+                    <button onClick={addRow} className="btn-primary !text-xs !py-1.5 !px-3 rounded-none">
+                      <Plus size={13} className="inline mr-1" /> Add First Topic Manually
+                    </button>
+                  </div>
+                ) : (
+                  momItems.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      className="p-4 bg-white border border-gray-200 shadow-2xs hover:border-[#003366]/40 transition-colors relative rounded-none"
+                    >
+                      {/* 1. TOPIC AS HEADER + MOVE/REMOVE BUTTONS */}
+                      <div className="flex items-start justify-between gap-4 pb-2.5 border-b border-gray-100">
+                        <div className="flex items-center gap-3 flex-1">
+                          <span className="font-[family-name:--font-bebas] text-xl text-[#c9ab4c] tracking-wider shrink-0 select-none">
+                            {String(idx + 1).padStart(2, "0")}
+                          </span>
+                          <div className="flex-1">
+                            <input 
+                              type="text" 
+                              className="w-full font-serif text-base text-[#003366] font-bold italic bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#003366] focus:outline-none transition-colors py-0.5 rounded-none" 
+                              value={item.topic_title || ""} 
+                              placeholder="Topic title (e.g., Project Updates & Milestones)..."
+                              onChange={(e) => {
+                                const newItems = [...momItems];
+                                newItems[idx].topic_title = e.target.value;
+                                setMomItems(newItems);
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Top-Right Move/Remove */}
+                        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                          <button 
+                            type="button" 
+                            onClick={() => moveRow(idx, -1)} 
+                            disabled={idx === 0}
+                            title="Move topic up"
+                            className="p-1 border border-gray-200 bg-white hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
+                          >
+                            <ChevronUp size={13} />
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => moveRow(idx, 1)} 
+                            disabled={idx === momItems.length - 1}
+                            title="Move topic down"
+                            className="p-1 border border-gray-200 bg-white hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
+                          >
+                            <ChevronDown size={13} />
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => removeRow(idx)} 
+                            title="Remove topic"
+                            className="p-1 border border-gray-200 bg-white hover:bg-red-500 hover:text-white transition-colors text-gray-400 hover:border-red-500 rounded-none ml-0.5"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2. EVIDENCE SECTION */}
+                      <div className="pt-2.5 pb-3">
+                        <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-1">
+                          Evidence Quote / Context Reference
+                        </label>
+                        <AutoResizeTextarea
+                          rows={2}
+                          className="w-full border-l-2 border-[#c9ab4c] bg-[#faf9f7] p-2 text-xs italic text-gray-700 focus:outline-none focus:bg-white focus:border-[#003366] transition-colors leading-relaxed rounded-none"
+                          value={item.evidence_quote || ""}
+                          placeholder='[00:00] Direct context or source reference quote...'
+                          onChange={(e) => {
+                            const newItems = [...momItems];
+                            newItems[idx].evidence_quote = e.target.value;
+                            setMomItems(newItems);
+                          }}
+                        />
+                      </div>
+
+                      {/* 3. ROW FOR DISCUSSION POINT, ACTION PLAN, TARGET DATE, PERSON IN CHARGE */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start pt-2.5 border-t border-gray-100">
+                        
+                        {/* Discussion Point */}
+                        <div className="lg:col-span-5">
+                          <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-500 mb-1">
+                            Discussion Point
+                          </label>
+                          <AutoResizeTextarea
+                            rows={3}
+                            className="w-full border border-gray-200 p-2 text-xs bg-white text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
+                            value={item.discussion_point || ""}
+                            placeholder="Detail discussions, key arguments, and conclusions..."
+                            onChange={(e) => {
+                              const newItems = [...momItems];
+                              newItems[idx].discussion_point = e.target.value;
+                              setMomItems(newItems);
+                            }}
+                          />
+                        </div>
+
+                        {/* Action Plan */}
+                        <div className="lg:col-span-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-500">
+                              Action Plan
+                            </label>
+                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-none ${
+                              item.action_plan && item.action_plan !== "None"
+                                ? "bg-[#003366] text-[#c9ab4c]"
+                                : "bg-gray-100 text-gray-400"
+                            }`}>
+                              {item.action_plan && item.action_plan !== "None" ? "Action" : "Info"}
+                            </span>
+                          </div>
+                          <AutoResizeTextarea
+                            rows={3}
+                            className="w-full border border-gray-200 p-2 text-xs bg-white text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
+                            value={item.action_plan || ""}
+                            placeholder="Next steps or operational action..."
+                            onChange={(e) => {
+                              const newItems = [...momItems];
+                              newItems[idx].action_plan = e.target.value;
+                              setMomItems(newItems);
+                            }}
+                          />
+                        </div>
+
+                        {/* Target Date */}
+                        <div className="lg:col-span-2">
+                          <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-500 mb-1">
+                            Target Date
+                          </label>
+                          <DatePickerInput
+                            value={item.indicative_delivery_date || ""}
+                            onChange={(val) => {
+                              const newItems = [...momItems];
+                              newItems[idx].indicative_delivery_date = val;
+                              setMomItems(newItems);
+                            }}
+                          />
+                          <span className="text-[9px] text-gray-400 mt-0.5 block">Pick or type date</span>
+                        </div>
+
+                        {/* Person in Charge */}
+                        <div className="lg:col-span-2">
+                          <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-500 mb-1">
+                            Person in Charge
+                          </label>
+                          <div className="flex items-center gap-1.5 border border-gray-200 bg-gray-50 px-2 py-1.5 rounded-none">
+                            <Users size={12} className="text-[#c9ab4c] shrink-0" />
+                            <input 
+                              type="text" 
+                              className="w-full text-xs font-semibold text-gray-800 bg-transparent focus:outline-none" 
+                              value={item.person_in_charge || ""} 
+                              placeholder="e.g. Dave Policarpio"
+                              onChange={(e) => {
+                                const newItems = [...momItems];
+                                newItems[idx].person_in_charge = e.target.value;
+                                setMomItems(newItems);
+                              }} 
+                            />
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Table / Card List Footer */}
+              <div className="p-3.5 bg-[#faf9f7] border-t border-gray-200 flex justify-between items-center">
+                <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
+                  <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
+                </button>
+                <button 
+                  onClick={() => setStage("Export")}
+                  className="btn-outline !py-2 !px-4 text-xs font-bold flex items-center gap-1.5 rounded-none"
+                >
+                  Proceed to Export <ChevronRight size={13} />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Other Discussions */}
+            <div className="border border-gray-200 bg-white p-5 shadow-2xs rounded-none">
+              <h3 className="text-lg font-serif text-[#003366] italic mb-1.5">Other Discussions & Peripheral Notes</h3>
+              <p className="text-[11px] text-gray-500 mb-3">
+                Summary of housekeeping topics, general announcements, administrative items, and non-action discussions.
+              </p>
+              <textarea 
+                className="w-full border border-gray-200 p-3 text-xs bg-[#faf9f7] focus:bg-white min-h-[100px] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed shadow-2xs rounded-none" 
+                value={otherDiscussions}
+                onChange={(e) => setOtherDiscussions(e.target.value)}
+                placeholder="Summary paragraph of all general discussions and administrative updates..."
+              />
+            </div>
+
+          </div>
+        )}
+
+        {/* STAGE 3: EXPORT (Uniform bg-white rounded-none card) */}
+        {stage === "Export" && (
+          <div className="bg-white border border-gray-200/90 rounded-none p-6 shadow-2xs">
+            <h1 className="text-2xl font-serif text-[#003366] italic font-semibold mb-1">Export Minutes Package</h1>
+            <p className="text-xs font-bold tracking-wider uppercase text-gray-400 mb-8">
+              Choose an executive template and download the completed minutes package.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <button 
+                onClick={handleExportWord} 
+                className="py-12 bg-white border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
+              >
+                <FileText size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
+                <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download Word (.docx)</span>
+                <span className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">Executive Template</span>
+              </button>
+              
+              <button 
+                onClick={handleExportPdf} 
+                className="py-12 bg-white border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
+              >
+                <Download size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
+                <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download PDF (.pdf)</span>
+                <span className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">Print-Ready Document</span>
+              </button>
+            </div>
+
+            <div className="mt-10 pt-6 border-t border-gray-100 flex justify-between items-center">
+              <button onClick={() => setStage("Review")} className="btn-outline !py-2.5 !px-5 text-xs">
+                Back to Review
+              </button>
+              <button onClick={handleSaveToDb} className="btn-primary !py-2.5 !px-6 text-xs flex items-center gap-2">
+                <Save size={15} /> Save to Supabase Database
+              </button>
+            </div>
+          </div>
+        )}
+
+              </div>
+            </div>
+          )}
+          </div>
+        </main>
+      </div>
+
+      {/* Universal Slide-Over AI Assistant Drawer */}
+      <UniversalEchoDrawer
+        isOpen={isUniversalEchoOpen}
+        onClose={() => setIsUniversalEchoOpen(false)}
+        meetings={archivedMeetings}
+      />
+    </div>
+  );
+}
