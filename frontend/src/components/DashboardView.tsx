@@ -148,82 +148,69 @@ export function DashboardView({
           </p>
         </div>
 
-        {/* Date Filter Controls Group */}
-        <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200/90 p-1.5 shadow-2xs">
-          {/* Mode Switcher Buttons */}
-          <div className="flex items-center gap-1 border-r border-gray-200 pr-2 mr-1">
+        {/* Minimalist Date Selection */}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex bg-gray-100 p-0.5 rounded-none border border-gray-200 text-xs">
             <button
               type="button"
               onClick={() => setFilterMode("all")}
-              className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`px-3 py-1 text-[11px] font-semibold tracking-wide transition-all ${
                 filterMode === "all"
-                  ? "bg-[#003366] text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-white text-[#1b1d1e] shadow-2xs border-b border-[#C9AB4C]"
+                  : "text-gray-500 hover:text-gray-900"
               }`}
             >
-              All Dates
+              All
             </button>
             <button
               type="button"
               onClick={() => setFilterMode("specific")}
-              className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`px-3 py-1 text-[11px] font-semibold tracking-wide transition-all ${
                 filterMode === "specific"
-                  ? "bg-[#003366] text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-white text-[#1b1d1e] shadow-2xs border-b border-[#C9AB4C]"
+                  : "text-gray-500 hover:text-gray-900"
               }`}
             >
-              Specific Date
+              Date
             </button>
             <button
               type="button"
               onClick={() => setFilterMode("range")}
-              className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`px-3 py-1 text-[11px] font-semibold tracking-wide transition-all ${
                 filterMode === "range"
-                  ? "bg-[#003366] text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-white text-[#1b1d1e] shadow-2xs border-b border-[#C9AB4C]"
+                  : "text-gray-500 hover:text-gray-900"
               }`}
             >
-              Date Range
+              Range
             </button>
           </div>
 
-          {/* Inline Controls based on Mode */}
-          {filterMode === "all" && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs text-gray-500">
-              <CalendarIcon size={13} className="text-[#C9AB4C]" />
-              <span>Showing all recorded sessions ({meetings.length})</span>
-            </div>
-          )}
-
           {filterMode === "specific" && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Date:</span>
-              <div className="w-36">
-                <DatePickerInput
-                  value={specificDate}
-                  onChange={(val) => setSpecificDate(val)}
-                  placeholder="YYYY-MM-DD"
-                />
-              </div>
+            <div className="w-32 animate-in fade-in duration-150">
+              <DatePickerInput
+                value={specificDate}
+                onChange={(val) => setSpecificDate(val)}
+                placeholder="YYYY-MM-DD"
+              />
             </div>
           )}
 
           {filterMode === "range" && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">From:</span>
-              <div className="w-32">
+            <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+              <div className="w-28">
                 <DatePickerInput
                   value={rangeStart}
                   onChange={(val) => setRangeStart(val)}
-                  placeholder="Start date"
+                  placeholder="Start"
                 />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">To:</span>
-              <div className="w-32">
+              <span className="text-gray-400 text-xs font-mono">→</span>
+              <div className="w-28">
                 <DatePickerInput
                   value={rangeEnd}
                   onChange={(val) => setRangeEnd(val)}
-                  placeholder="End date"
+                  placeholder="End"
                 />
               </div>
             </div>

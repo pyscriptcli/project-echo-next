@@ -210,7 +210,7 @@ export default function Home() {
 
   // Navigation Shell & View State
   const [currentView, setCurrentView] = useState<NavView>("dashboard");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isUniversalEchoOpen, setIsUniversalEchoOpen] = useState(false);
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);

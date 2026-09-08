@@ -380,11 +380,11 @@ export function MeetingsView({
                         : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h4 className={`text-xs font-bold line-clamp-1 ${isSelected ? "text-[#003366]" : "text-[#1b1d1e]"}`}>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <h4 className={`font-serif text-base lg:text-[17px] font-bold italic line-clamp-1 ${isSelected ? "text-[#003366]" : "text-[#1b1d1e]"}`}>
                         {m.title}
                       </h4>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider shrink-0">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider shrink-0 mt-0.5">
                         {m.meeting_type}
                       </span>
                     </div>

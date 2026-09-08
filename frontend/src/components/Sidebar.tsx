@@ -23,9 +23,33 @@ interface SidebarProps {
 export function Sidebar({
   currentView,
   onSelectView,
-  isCollapsed,
+  isCollapsed: externalCollapsed,
   onToggleCollapse
 }: SidebarProps) {
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [isPinned, setIsPinned] = React.useState(false);
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150);
+  };
+
+  // Auto-collapsed when pointer is not hovering; auto-expanded when hovering
+  const effectiveCollapsed = isPinned ? false : !isHovered;
+
   // Ordered strictly as: dashboard -> meetings -> Notetaker
   const navItems = [
     {
@@ -49,108 +73,120 @@ export function Sidebar({
   ];
 
   return (
-    <aside 
-      className={`relative flex flex-col justify-between bg-[#1b1d1e] text-[#E0E0E0] border-r-2 border-[#C9AB4C] shadow-[4px_0_24px_rgba(0,0,0,0.5),2px_0_12px_rgba(201,171,76,0.25)] transition-all duration-300 ease-in-out z-40 select-none ${
-        isCollapsed ? "w-18 min-w-[72px]" : "w-64 min-w-[256px]"
+    <div
+      className={`relative h-full z-40 shrink-0 transition-all duration-300 ease-in-out ${
+        isPinned ? "w-64 min-w-[256px]" : "w-18 min-w-[72px]"
       }`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Top Header & Branding (Text-only Echo, no subheadings/no prime) */}
-      <div>
-        <div className={`h-16 flex items-center border-b border-[#2c2f32] ${isCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
-          {!isCollapsed && (
-            <div className="flex items-center gap-1.5">
-              <span className="font-serif italic text-2xl font-normal tracking-wide text-[#FAF9F7]">
-                Echo
-              </span>
-              <span className="w-1.5 h-1.5 bg-[#C9AB4C] mt-1"></span>
-            </div>
-          )}
+      <aside 
+        className={`absolute top-0 left-0 h-full flex flex-col justify-between bg-[#1b1d1e] text-[#E0E0E0] border-r-2 border-[#C9AB4C] shadow-[4px_0_24px_rgba(0,0,0,0.5),2px_0_12px_rgba(201,171,76,0.25)] transition-all duration-300 ease-in-out z-40 select-none overflow-hidden ${
+          effectiveCollapsed ? "w-18 min-w-[72px]" : "w-64 min-w-[256px]"
+        }`}
+      >
+        {/* Top Header & Branding (Text-only Echo, no subheadings/no prime) */}
+        <div>
+          <div className={`h-16 flex items-center border-b border-[#2c2f32] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
+            {!effectiveCollapsed && (
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="font-serif italic text-2xl font-normal tracking-wide text-[#FAF9F7]">
+                  Echo
+                </span>
+                <span className="w-1.5 h-1.5 bg-[#C9AB4C] mt-1"></span>
+              </div>
+            )}
 
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="p-1.5 rounded-none hover:bg-[#25282a] text-gray-400 hover:text-[#C9AB4C] transition-colors"
-          >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsPinned(!isPinned);
+                if (onToggleCollapse) onToggleCollapse();
+              }}
+              aria-label={isPinned ? "Unpin sidebar (auto-collapse)" : "Pin sidebar expanded"}
+              title={isPinned ? "Unpin sidebar (auto-collapse on leave)" : "Pin sidebar expanded"}
+              className="p-1.5 rounded-none hover:bg-[#25282a] text-gray-400 hover:text-[#C9AB4C] transition-colors cursor-pointer"
+            >
+              {effectiveCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+          </div>
+
+          {/* Navigation Items (Dashboard, Meetings, Notetaker) */}
+          <nav className="p-3 space-y-1.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectView(item.id)}
+                  title={effectiveCollapsed ? item.label : undefined}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-[#25282a] text-[#C9AB4C] border-l-2 border-[#C9AB4C] shadow-inner"
+                      : "text-gray-400 hover:bg-[#25282a] hover:text-white"
+                  } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
+                >
+                  <Icon size={18} className={`shrink-0 ${isActive ? "text-[#C9AB4C]" : "text-gray-400"}`} />
+                  {!effectiveCollapsed && (
+                    <div className="flex items-center justify-between flex-1 whitespace-nowrap overflow-hidden">
+                      <span className="truncate">{item.label}</span>
+                      {item.badge && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-[#C9AB4C]/15 text-[#C9AB4C] border border-[#C9AB4C]/30 flex items-center gap-0.5 shrink-0">
+                          <Sparkles size={8} /> {item.badge}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Navigation Items (Dashboard, Meetings, Notetaker) */}
-        <nav className="p-3 space-y-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
+        {/* Bottom User Profile Section (#1b1d1e, No mention of prime) */}
+        <div className="p-3 border-t border-[#2c2f32] bg-[#161819]">
+          {!effectiveCollapsed ? (
+            <div className="flex items-center justify-between whitespace-nowrap overflow-hidden">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0">
+                  DP
+                </div>
+                <div className="truncate">
+                  <div className="text-xs font-semibold text-white truncate">Dave Policarpio</div>
+                  <div className="text-[10px] text-gray-400 truncate">Account</div>
+                </div>
+              </div>
               <button
-                key={item.id}
                 type="button"
-                onClick={() => onSelectView(item.id)}
-                title={isCollapsed ? item.label : undefined}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-xs font-semibold tracking-wide transition-all ${
-                  isActive
-                    ? "bg-[#25282a] text-[#C9AB4C] border-l-2 border-[#C9AB4C] shadow-inner"
-                    : "text-gray-400 hover:bg-[#25282a] hover:text-white"
-                } ${isCollapsed ? "justify-center px-0" : ""}`}
+                title="Sign out"
+                onClick={() => alert("Signed out")}
+                className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#25282a] rounded-none transition-colors cursor-pointer shrink-0"
               >
-                <Icon size={18} className={isActive ? "text-[#C9AB4C]" : "text-gray-400"} />
-                {!isCollapsed && (
-                  <div className="flex items-center justify-between flex-1">
-                    <span>{item.label}</span>
-                    {item.badge && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-[#C9AB4C]/15 text-[#C9AB4C] border border-[#C9AB4C]/30 flex items-center gap-0.5">
-                        <Sparkles size={8} /> {item.badge}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <LogOut size={15} />
               </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Bottom User Profile Section (#1b1d1e, No mention of prime) */}
-      <div className="p-3 border-t border-[#2c2f32] bg-[#161819]">
-        {!isCollapsed ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0">
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-1">
+              <div 
+                title="Dave Policarpio"
+                className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
+              >
                 DP
               </div>
-              <div className="truncate">
-                <div className="text-xs font-semibold text-white truncate">Dave Policarpio</div>
-                <div className="text-[10px] text-gray-400 truncate">Account</div>
-              </div>
+              <button
+                type="button"
+                title="Sign out"
+                onClick={() => alert("Signed out")}
+                className="p-1 text-gray-500 hover:text-red-400 transition-colors rounded-none cursor-pointer"
+              >
+                <LogOut size={14} />
+              </button>
             </div>
-            <button
-              type="button"
-              title="Sign out"
-              onClick={() => alert("Signed out")}
-              className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#25282a] rounded-none transition-colors"
-            >
-              <LogOut size={15} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 py-1">
-            <div 
-              title="Dave Policarpio"
-              className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
-            >
-              DP
-            </div>
-            <button
-              type="button"
-              title="Sign out"
-              onClick={() => alert("Signed out")}
-              className="p-1 text-gray-500 hover:text-red-400 transition-colors rounded-none"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+    </div>
   );
 }
