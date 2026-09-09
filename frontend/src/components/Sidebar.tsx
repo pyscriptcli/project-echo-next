@@ -19,13 +19,24 @@ interface SidebarProps {
   onSelectView: (view: NavView) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  user?: {
+    id?: number | string;
+    username?: string;
+    email?: string;
+    color?: string;
+    profilePicture?: string | null;
+    initials?: string;
+  } | null;
+  onSignOut?: () => void;
 }
 
 export function Sidebar({
   currentView,
   onSelectView,
   isCollapsed: externalCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  user,
+  onSignOut
 }: SidebarProps) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
@@ -152,23 +163,38 @@ export function Sidebar({
           </nav>
         </div>
 
-        {/* Bottom User Profile Section (#1b1d1e, No mention of prime) */}
+        {/* Bottom User Profile Section (#1b1d1e) */}
         <div className="p-3 border-t border-[#2c2f32] bg-[#161819]">
           {!effectiveCollapsed ? (
             <div className="flex items-center justify-between whitespace-nowrap overflow-hidden">
               <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0">
-                  DP
-                </div>
+                {user?.profilePicture ? (
+                  <img
+                    src={user.profilePicture}
+                    alt={user.username || "User"}
+                    className="w-8 h-8 rounded-none border border-[#C9AB4C]/60 object-cover shrink-0"
+                  />
+                ) : (
+                  <div
+                    style={user?.color ? { borderColor: user.color } : undefined}
+                    className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0"
+                  >
+                    {user?.initials || "CU"}
+                  </div>
+                )}
                 <div className="truncate">
-                  <div className="text-xs font-semibold text-white truncate">Dave Policarpio</div>
-                  <div className="text-[10px] text-gray-400 truncate">Account</div>
+                  <div className="text-xs font-semibold text-white truncate">
+                    {user?.username || "ClickUp User"}
+                  </div>
+                  <div className="text-[10px] text-gray-400 truncate">
+                    {user?.email || "ClickUp Portal"}
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
-                title="Sign out"
-                onClick={() => alert("Signed out")}
+                title="Sign out from ClickUp"
+                onClick={onSignOut}
                 className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#25282a] rounded-none transition-colors cursor-pointer shrink-0"
               >
                 <LogOut size={15} />
@@ -176,16 +202,26 @@ export function Sidebar({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 py-1">
-              <div 
-                title="Dave Policarpio"
-                className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
-              >
-                DP
-              </div>
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.username || "User"}
+                  title={user.username || "User"}
+                  className="w-8 h-8 rounded-none border border-[#C9AB4C]/60 object-cover shrink-0"
+                />
+              ) : (
+                <div 
+                  title={user?.username || "ClickUp User"}
+                  style={user?.color ? { borderColor: user.color } : undefined}
+                  className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
+                >
+                  {user?.initials || "CU"}
+                </div>
+              )}
               <button
                 type="button"
-                title="Sign out"
-                onClick={() => alert("Signed out")}
+                title="Sign out from ClickUp"
+                onClick={onSignOut}
                 className="p-1 text-gray-500 hover:text-red-400 transition-colors rounded-none cursor-pointer"
               >
                 <LogOut size={14} />

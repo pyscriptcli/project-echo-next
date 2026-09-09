@@ -31,6 +31,7 @@ import { DashboardView } from "@/components/DashboardView";
 import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
+import { LoginView } from "@/components/LoginView";
 import { ArchivedMeeting } from "@/types/meeting";
 import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -179,6 +180,49 @@ function DatePickerInput({
 }
 
 export default function Home() {
+  // ClickUp OAuth Authentication State
+  const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
+  const [authUser, setAuthUser] = useState<{
+    id: number | string;
+    username: string;
+    email: string;
+    color?: string;
+    profilePicture?: string | null;
+    initials?: string;
+  } | null>(null);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          setAuthUser(data.user);
+          setAuthStatus("authenticated");
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("[Auth] Check failed:", err);
+    }
+    setAuthStatus("unauthenticated");
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("[Auth] Logout failed:", err);
+    }
+    setAuthUser(null);
+    setAuthStatus("unauthenticated");
+    window.location.href = "/";
+  };
+
   const [stage, setStage] = useState<Stage>("Input");
   const [showStudio, setShowStudio] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -650,6 +694,31 @@ export default function Home() {
   const actionItemsCount = momItems.filter((i) => i.action_plan && i.action_plan !== "None").length;
   const assignedCount = momItems.filter((i) => i.person_in_charge && i.person_in_charge !== "Unassigned").length;
 
+  // ClickUp Session Loading Gate
+  if (authStatus === "loading") {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#FAF9F7]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="font-serif italic text-3xl font-semibold tracking-wide text-[#1b1d1e]">
+              Echo
+            </span>
+            <span className="w-2 h-2 bg-[#C9AB4C]"></span>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#003366]">
+            <Loader2 className="w-4 h-4 animate-spin text-[#C9AB4C]" />
+            <span>Verifying ClickUp Session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ClickUp Authentication Gate
+  if (authStatus === "unauthenticated") {
+    return <LoginView onLoginSuccess={() => checkAuth()} />;
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-primary font-sans text-[#1b1d1e]">
       
@@ -675,6 +744,8 @@ export default function Home() {
         onSelectView={(view) => setCurrentView(view)}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        user={authUser}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Area */}
