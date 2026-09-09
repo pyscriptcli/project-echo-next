@@ -1,4 +1,5 @@
-import { isAudioFile, decodeAndChunkAudio, processChunksInPool } from "./audioCompressor";
+import { isAudioFile, runAudioPipeline, AudioTelemetry } from "./audioPipeline";
+export type { AudioTelemetry };
 
 export function getStoredApiKey(): string {
   if (typeof window !== "undefined") {
@@ -151,46 +152,37 @@ export async function processSource(
   fileOrText: { file?: File | null; text?: string },
   onProgress?: (message: string) => void,
   signal?: AbortSignal
-): Promise<{ transcript: string; metadata: any }> {
+): Promise<{ transcript: string; metadata: any; telemetry?: AudioTelemetry }> {
   const headers = getAudioApiHeaders();
 
-  // 1. Audio Processing with Client-Side Downsampling & Parallel Threadpool
+  // 1. Audio Processing through the 10-Layer Resilient Pipeline
   if (fileOrText.file && isAudioFile(fileOrText.file) && typeof window !== "undefined") {
     try {
-      onProgress?.("Optimizing audio for transcription (16kHz mono)...");
-      const chunks = await decodeAndChunkAudio(fileOrText.file, 90, onProgress, signal);
+      const pipelineResult = await runAudioPipeline(
+        fileOrText.file,
+        (chunkBlob, idx) => transcribeSingleChunk(chunkBlob, idx, 0, headers, signal),
+        onProgress,
+        signal
+      );
 
-      if (chunks.length === 1) {
-        onProgress?.("Transcribing audio recording...");
-        const chunkText = await transcribeSingleChunk(chunks[0], 0, 1, headers, signal);
-        onProgress?.("Extracting meeting metadata with AI...");
-        return await processSource({ text: chunkText }, onProgress, signal);
-      } else {
-        onProgress?.(`Starting parallel transcription (2 workers, ${chunks.length} parts)...`);
-        const chunkTranscripts = await processChunksInPool<Blob, string>(
-          chunks,
-          2, // Concurrency = 2 workers (safe for rate limits)
-          (chunkBlob, idx) => transcribeSingleChunk(chunkBlob, idx, chunks.length, headers, signal),
-          (completed, total) => {
-            const pct = Math.round((completed / total) * 100);
-            onProgress?.(`Transcribing audio: ${completed} of ${total} parts (${pct}%)...`);
-          },
-          signal
-        );
+      onProgress?.("Extracting structured meeting metadata...");
+      // Send assembled text to extract metadata with DeepSeek/AI
+      const metaRes = await processSource({ text: pipelineResult.transcript }, onProgress, signal);
 
-        const fullTranscript = chunkTranscripts.filter(Boolean).join(" ");
-        onProgress?.("Extracting meeting metadata with AI...");
-        return await processSource({ text: fullTranscript }, onProgress, signal);
+      return {
+        transcript: pipelineResult.transcript,
+        metadata: metaRes.metadata,
+        telemetry: pipelineResult.telemetry,
+      };
+    } catch (pipelineErr: any) {
+      if (signal?.aborted || pipelineErr?.name === "AbortError") {
+        throw pipelineErr;
       }
-    } catch (decodeErr: any) {
-      if (signal?.aborted || decodeErr?.name === "AbortError") {
-        throw decodeErr;
-      }
-      console.warn("Client-side audio downsampling failed, checking fallback:", decodeErr);
+      console.warn("Audio pipeline fallback triggered:", pipelineErr);
 
       if (fileOrText.file.size > 4.2 * 1024 * 1024) {
         throw new Error(
-          `Audio file (${(fileOrText.file.size / (1024 * 1024)).toFixed(1)}MB) exceeds Vercel's 4.5MB upload limit and could not be decoded in this browser. Please export as MP3/WAV or paste meeting text.`
+          `Audio file (${(fileOrText.file.size / (1024 * 1024)).toFixed(1)}MB) could not be processed: ${pipelineErr.message || "Decoding error"}. Please export as MP3/WAV or paste meeting text.`
         );
       }
       // Fallback: file is under 4.2MB, continue to direct upload below

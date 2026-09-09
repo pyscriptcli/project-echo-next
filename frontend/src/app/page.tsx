@@ -22,7 +22,8 @@ import {
   getStoredClickUpToken,
   setStoredClickUpToken,
   getStoredClickUpListId,
-  setStoredClickUpListId
+  setStoredClickUpListId,
+  AudioTelemetry
 } from "@/lib/api";
 import { Sidebar, NavView } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -228,6 +229,7 @@ export default function Home() {
   const [showStudio, setShowStudio] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+  const [audioTelemetry, setAudioTelemetry] = useState<AudioTelemetry | null>(null);
 
   // System Key state
   const [apiKey, setApiKey] = useState("");
@@ -534,6 +536,9 @@ export default function Home() {
       );
 
       setTranscript(res.transcript || "");
+      if (res.telemetry) {
+        setAudioTelemetry(res.telemetry);
+      }
       if (res.metadata) {
         setMetadata((prev: any) => ({
           ...prev,
@@ -1415,6 +1420,28 @@ export default function Home() {
         {/* STAGE 2: REVIEW (FULL WIDTH DISCUSSION POINTS MATRIX & ACTIONS) */}
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
+            
+            {/* Audio Pipeline Telemetry Optimization Badge */}
+            {audioTelemetry && (
+              <div className="bg-[#003366]/5 border border-[#003366]/20 p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-none text-xs">
+                <div className="flex items-center gap-2 text-[#003366]">
+                  <Sparkles size={14} className="text-[#c9ab4c] shrink-0" />
+                  <span className="font-bold">10-Layer Audio Pipeline:</span>
+                  <span>
+                    {audioTelemetry.originalDurationSec > 0 
+                      ? `${Math.floor(audioTelemetry.originalDurationSec / 60)}m ${audioTelemetry.originalDurationSec % 60}s audio optimized to ${Math.floor(audioTelemetry.trimmedDurationSec / 60)}m ${audioTelemetry.trimmedDurationSec % 60}s (${audioTelemetry.percentDurationSaved}% silence removed)`
+                      : "Loaded instant transcript from cache"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+                  <span className="bg-white border border-gray-200 px-2 py-0.5">
+                    {audioTelemetry.totalChunks} chunk{audioTelemetry.totalChunks !== 1 ? "s" : ""}
+                    {audioTelemetry.cachedChunksReused > 0 ? ` (${audioTelemetry.cachedChunksReused} cached)` : ""}
+                  </span>
+                  <span>• {(audioTelemetry.processingTimeMs / 1000).toFixed(1)}s elapsed</span>
+                </div>
+              </div>
+            )}
             
             {/* Potential Missed Topic Detection Banner (Compact, Edgy) */}
             <div className="bg-white border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
