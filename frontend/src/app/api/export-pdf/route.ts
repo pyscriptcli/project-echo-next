@@ -149,17 +149,13 @@ export async function POST(req: NextRequest) {
       tableStartY = summaryStartY + summaryBoxHeight + 4;
     }
 
-    // 5. Discussion Points Table Data
+    // 5. Discussion Points Table Data (Evidence removed - soft copy only)
     const tableData = (items || []).map((item: any, index: number) => {
       const topic = cleanField(item.topic_title);
       const disc = cleanField(item.discussion_point);
       let topicCell = topic;
       if (disc) {
         topicCell = topicCell ? `${topicCell}\n\n${disc}` : disc;
-      }
-      const quote = cleanField(item.evidence_quote);
-      if (quote) {
-        topicCell += `\n\nEvidence: "${quote}"`;
       }
       return [
         String(index + 1),
@@ -172,7 +168,7 @@ export async function POST(req: NextRequest) {
 
     autoTable(doc, {
       startY: tableStartY,
-      head: [["#", "Topic & Discussion Point", "Action Plan", "Target Date", "Owner"]],
+      head: [["#", "Discussion Point", "Action Plan", "Delivery Date", "Person in Charge"]],
       body: tableData,
       theme: "grid",
       headStyles: {

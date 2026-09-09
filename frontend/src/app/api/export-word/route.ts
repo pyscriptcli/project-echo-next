@@ -51,98 +51,248 @@ export async function POST(req: NextRequest) {
     const teamAtt = cleanField(meeting_details?.team_attendees || meeting_details?.prime_attendees);
     const extAtt = cleanField(meeting_details?.external_attendees);
 
-    // 1. Metadata Info Table
+    // 1. Sleek Top Header Banner (Charcoal with Gold Accent Bottom Border - 1-of-1 PDF Clone)
+    const headerTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.NONE },
+        left: { style: BorderStyle.NONE },
+        right: { style: BorderStyle.NONE },
+        bottom: { style: BorderStyle.SINGLE, size: 14, color: "C9AB4C" },
+        insideHorizontal: { style: BorderStyle.NONE },
+        insideVertical: { style: BorderStyle.NONE },
+      },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              shading: { type: ShadingType.CLEAR, fill: "1A1A1A" },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: "Minutes of the Meeting",
+                      bold: true,
+                      italics: true,
+                      color: "FFFFFF",
+                      size: 24,
+                    }),
+                  ],
+                  spacing: { before: 140, after: 140 },
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // 2. Metadata Info Table (Identical 4 columns and styling to PDF)
+    const cellBorderLight = {
+      style: BorderStyle.SINGLE,
+      size: 1,
+      color: "CDD2DA",
+    };
+
+    const metaBorders = {
+      top: cellBorderLight,
+      bottom: cellBorderLight,
+      left: cellBorderLight,
+      right: cellBorderLight,
+    };
+
     const metaTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
             new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "Client / Project:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "PROJECT / CLIENT:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              children: [new Paragraph({ children: [new TextRun({ text: clientName, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: clientName, size: 18, color: "23282D" })] })],
             }),
             new TableCell({
-              width: { size: 20, type: WidthType.PERCENTAGE },
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "Meeting Type:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "MEETING TYPE:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              children: [new Paragraph({ children: [new TextRun({ text: typeStr, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: typeStr, size: 18, color: "23282D" })] })],
             }),
-          ]
+          ],
         }),
         new TableRow({
           children: [
             new TableCell({
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "Date & Time:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "DATE & TIME:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: dateTimeStr, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: dateTimeStr, size: 18, color: "23282D" })] })],
             }),
             new TableCell({
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "Venue / Location:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "TEAM ATTENDEES:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: locationStr, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: teamAtt, size: 18, color: "23282D" })] })],
             }),
-          ]
+          ],
         }),
         new TableRow({
           children: [
             new TableCell({
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "Team Attendees:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "VENUE / LOCATION:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: teamAtt, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: locationStr, size: 18, color: "23282D" })] })],
             }),
             new TableCell({
-              shading: { type: ShadingType.CLEAR, fill: "F4F1EC" },
-              children: [new Paragraph({ children: [new TextRun({ text: "External Attendees:", bold: true, size: 20, color: "003366" })] })],
+              width: { size: 19, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: "EXTERNAL ATTENDEES:", bold: true, size: 17, color: "003366" })] })],
             }),
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: extAtt, size: 20 })] })],
+              width: { size: 31, type: WidthType.PERCENTAGE },
+              shading: { type: ShadingType.CLEAR, fill: "F8F6F2" },
+              borders: metaBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: extAtt, size: 18, color: "23282D" })] })],
             }),
-          ]
+          ],
         }),
-      ]
+      ],
     });
 
-    // 2. Minutes Items Table
+    // 3. Executive Summary Box (1-of-1 PDF Clone)
+    let summaryText = "";
+    if (items && items.length > 0) {
+      const pointSummaries = items
+        .map((it: any) => {
+          const disc = cleanField(it.discussion_point);
+          if (!disc) return "";
+          const firstSentence = disc.split(/\.\s+/)[0];
+          return firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
+        })
+        .filter(Boolean);
+
+      if (pointSummaries.length > 0) {
+        summaryText = pointSummaries.slice(0, 3).join(" ");
+        if (!summaryText.endsWith(".")) summaryText += ".";
+      }
+    }
+
+    const summaryTable = summaryText
+      ? new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: "DCDFE3" },
+            right: { style: BorderStyle.SINGLE, size: 4, color: "DCDFE3" },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: "DCDFE3" },
+            left: { style: BorderStyle.SINGLE, size: 24, color: "C9AB4C" },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE },
+          },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  shading: { type: ShadingType.CLEAR, fill: "FAF9F7" },
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: "EXECUTIVE SUMMARY",
+                          bold: true,
+                          color: "003366",
+                          size: 17,
+                        }),
+                      ],
+                      spacing: { before: 100, after: 60 },
+                    }),
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: summaryText,
+                          color: "374151",
+                          size: 18,
+                        }),
+                      ],
+                      spacing: { after: 100 },
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      : null;
+
+    // 4. Minutes Items Table: Columns [#, Discussion Point, Action Plan, Delivery Date, Person in Charge]
+    const gridBorder = {
+      style: BorderStyle.SINGLE,
+      size: 2,
+      color: "DCDFE3",
+    };
+
     const tableHeader = new TableRow({
       tableHeader: true,
       children: [
         new TableCell({
           shading: { type: ShadingType.CLEAR, fill: "003366" },
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "#", bold: true, color: "FFFFFF", size: 20 })] })],
+          borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "#", bold: true, color: "FFFFFF", size: 19 })] })],
           width: { size: 5, type: WidthType.PERCENTAGE }
         }),
         new TableCell({
           shading: { type: ShadingType.CLEAR, fill: "003366" },
-          children: [new Paragraph({ children: [new TextRun({ text: "Topic & Discussion Point", bold: true, color: "FFFFFF", size: 20 })] })],
+          borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+          children: [new Paragraph({ children: [new TextRun({ text: "Discussion Point", bold: true, color: "FFFFFF", size: 19 })] })],
           width: { size: 45, type: WidthType.PERCENTAGE }
         }),
         new TableCell({
           shading: { type: ShadingType.CLEAR, fill: "003366" },
-          children: [new Paragraph({ children: [new TextRun({ text: "Action Plan", bold: true, color: "FFFFFF", size: 20 })] })],
-          width: { size: 25, type: WidthType.PERCENTAGE }
+          borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+          children: [new Paragraph({ children: [new TextRun({ text: "Action Plan", bold: true, color: "FFFFFF", size: 19 })] })],
+          width: { size: 24, type: WidthType.PERCENTAGE }
         }),
         new TableCell({
           shading: { type: ShadingType.CLEAR, fill: "003366" },
-          children: [new Paragraph({ children: [new TextRun({ text: "Target Date", bold: true, color: "FFFFFF", size: 20 })] })],
-          width: { size: 12, type: WidthType.PERCENTAGE }
+          borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+          children: [new Paragraph({ children: [new TextRun({ text: "Delivery Date", bold: true, color: "FFFFFF", size: 19 })] })],
+          width: { size: 13, type: WidthType.PERCENTAGE }
         }),
         new TableCell({
           shading: { type: ShadingType.CLEAR, fill: "003366" },
-          children: [new Paragraph({ children: [new TextRun({ text: "Owner", bold: true, color: "FFFFFF", size: 20 })] })],
+          borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+          children: [new Paragraph({ children: [new TextRun({ text: "Person in Charge", bold: true, color: "FFFFFF", size: 19 })] })],
           width: { size: 13, type: WidthType.PERCENTAGE }
         }),
       ]
@@ -154,80 +304,98 @@ export async function POST(req: NextRequest) {
       const isAlt = idx % 2 === 1;
       const rowFill = isAlt ? "FAF9F7" : "FFFFFF";
 
-      const topicParagraphs = [
-        new Paragraph({
-          children: [new TextRun({ text: cleanField(item.topic_title), bold: true, color: "003366", size: 22 })]
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: cleanField(item.discussion_point), size: 19 })]
-        })
-      ];
+      const topic = cleanField(item.topic_title);
+      const disc = cleanField(item.discussion_point);
+      const topicParagraphs: Paragraph[] = [];
 
-      const quote = cleanField(item.evidence_quote);
-      if (quote) {
+      if (topic) {
         topicParagraphs.push(new Paragraph({
-          children: [
-            new TextRun({ text: "Evidence: ", bold: true, italics: true, size: 18, color: "888888" }),
-            new TextRun({ text: `"${quote}"`, italics: true, size: 18, color: "666666" })
-          ]
+          children: [new TextRun({ text: topic, bold: true, color: "003366", size: 19 })],
+          spacing: { after: disc ? 60 : 0 }
         }));
       }
+      if (disc) {
+        topicParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: disc, size: 18, color: "333333" })]
+        }));
+      }
+      if (topicParagraphs.length === 0) {
+        topicParagraphs.push(new Paragraph({ text: "" }));
+      }
+      // Note: evidence_quote is completely removed (soft copy only)
 
       tableRows.push(new TableRow({
         children: [
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: rowFill },
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), bold: true, color: "C9AB4C", size: 22 })] })]
+            borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), bold: true, color: "C9AB4C", size: 19 })] })]
           }),
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: rowFill },
+            borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
             children: topicParagraphs
           }),
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: rowFill },
-            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.action_plan), size: 19 })] })]
+            borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.action_plan), size: 18, color: "333333" })] })],
           }),
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: rowFill },
-            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.indicative_delivery_date), size: 19 })] })]
+            borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.indicative_delivery_date), size: 18, color: "333333" })] })],
           }),
           new TableCell({
             shading: { type: ShadingType.CLEAR, fill: rowFill },
-            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.person_in_charge), size: 19 })] })]
+            borders: { top: gridBorder, bottom: gridBorder, left: gridBorder, right: gridBorder },
+            children: [new Paragraph({ children: [new TextRun({ text: cleanField(item.person_in_charge), size: 18, color: "333333" })] })],
           }),
         ]
       }));
     });
 
-    // 3. Signature Approval Table
+    // 5. Signature Approval Table (with Gold Divider Line)
     const prepBy = cleanField(meeting_details?.prepared_by);
     const confBy = cleanField(meeting_details?.confirmed_by);
     const prepDes = cleanField(meeting_details?.prep_designation);
     const confDes = cleanField(meeting_details?.conf_designation);
 
+    const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
+
     const signTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 8, color: "C9AB4C" },
+        bottom: noBorder,
+        left: noBorder,
+        right: noBorder,
+        insideHorizontal: noBorder,
+        insideVertical: noBorder,
+      },
       rows: [
         new TableRow({
           children: [
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: [
-                new Paragraph({ children: [new TextRun({ text: "PREPARED BY:", bold: true, size: 20, color: "003366" })] }),
-                new Paragraph({ text: "", spacing: { after: 400 } }),
+                new Paragraph({ children: [new TextRun({ text: "PREPARED BY:", bold: true, size: 18, color: "003366" })], spacing: { before: 120 } }),
+                new Paragraph({ text: "", spacing: { after: 350 } }),
                 new Paragraph({ children: [new TextRun({ text: "____________________________________", color: "888888" })] }),
-                new Paragraph({ children: [new TextRun({ text: prepBy, bold: true, size: 20 })] }),
-                new Paragraph({ children: [new TextRun({ text: prepDes, size: 18, color: "666666" })] }),
+                ...(prepBy ? [new Paragraph({ children: [new TextRun({ text: prepBy, bold: true, size: 18, color: "1B1D1E" })] })] : []),
+                ...(prepDes ? [new Paragraph({ children: [new TextRun({ text: prepDes, size: 17, color: "666666" })] })] : []),
               ]
             }),
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: [
-                new Paragraph({ children: [new TextRun({ text: "CONFIRMED BY:", bold: true, size: 20, color: "003366" })] }),
-                new Paragraph({ text: "", spacing: { after: 400 } }),
+                new Paragraph({ children: [new TextRun({ text: "CONFIRMED BY:", bold: true, size: 18, color: "003366" })], spacing: { before: 120 } }),
+                new Paragraph({ text: "", spacing: { after: 350 } }),
                 new Paragraph({ children: [new TextRun({ text: "____________________________________", color: "888888" })] }),
-                new Paragraph({ children: [new TextRun({ text: confBy, bold: true, size: 20 })] }),
-                new Paragraph({ children: [new TextRun({ text: confDes, size: 18, color: "666666" })] }),
+                ...(confBy ? [new Paragraph({ children: [new TextRun({ text: confBy, bold: true, size: 18, color: "1B1D1E" })] })] : []),
+                ...(confDes ? [new Paragraph({ children: [new TextRun({ text: confDes, size: 17, color: "666666" })] })] : []),
               ]
             }),
           ]
@@ -235,57 +403,71 @@ export async function POST(req: NextRequest) {
       ]
     });
 
-    // Build the full Document
+    // Build the full Document sections (1-of-1 PDF Clone order and margins)
+    const docChildren: any[] = [
+      headerTable,
+      new Paragraph({ text: "", spacing: { after: 150 } }),
+      metaTable,
+      new Paragraph({ text: "", spacing: { after: 150 } }),
+    ];
+
+    if (summaryTable) {
+      docChildren.push(summaryTable);
+      docChildren.push(new Paragraph({ text: "", spacing: { after: 150 } }));
+    }
+
+    docChildren.push(
+      new Table({
+        rows: tableRows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+      })
+    );
+    docChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+
+    if (cleanField(other_discussions)) {
+      docChildren.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "Other Discussions & Administrative Notes",
+              bold: true,
+              italics: true,
+              size: 20,
+              color: "003366",
+            }),
+          ],
+          spacing: { before: 100, after: 80 }
+        })
+      );
+      docChildren.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: cleanField(other_discussions),
+              size: 18,
+              color: "333333"
+            })
+          ],
+          spacing: { after: 250 }
+        })
+      );
+    }
+
+    docChildren.push(signTable);
+
     const doc = new Document({
       sections: [{
-        properties: {},
-        children: [
-          // Header (No PROJECT ECHO)
-          new Paragraph({
-            children: [
-              new TextRun({ text: "Minutes of the Meeting", bold: true, italics: true, size: 32, color: "003366" }),
-            ],
-            spacing: { after: 200 }
-          }),
-
-          // Metadata Table
-          metaTable,
-          new Paragraph({ text: "", spacing: { after: 300 } }),
-
-          // Action Matrix Title
-          new Paragraph({
-            children: [
-              new TextRun({ text: "DISCUSSION POINTS & ACTION MATRIX", bold: true, size: 22, color: "003366" }),
-            ],
-            spacing: { after: 150 }
-          }),
-
-          // MoM Table
-          new Table({
-            rows: tableRows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
-          }),
-          new Paragraph({ text: "", spacing: { after: 300 } }),
-
-          // Other Discussions Block
-          ...(cleanField(other_discussions) ? [
-            new Paragraph({
-              children: [
-                new TextRun({ text: "OTHER DISCUSSIONS & ADMINISTRATIVE NOTES", bold: true, size: 22, color: "003366" }),
-              ],
-              spacing: { after: 150 }
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: cleanField(other_discussions), size: 20 })
-              ],
-              spacing: { after: 400 }
-            })
-          ] : []),
-
-          // Sign-off
-          signTable,
-        ]
+        properties: {
+          page: {
+            margin: {
+              top: 720,
+              bottom: 720,
+              left: 720,
+              right: 720,
+            }
+          }
+        },
+        children: docChildren,
       }]
     });
 
