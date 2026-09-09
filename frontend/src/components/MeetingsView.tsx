@@ -26,6 +26,7 @@ import {
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
+import { formatEchoDate } from "@/lib/dateUtils";
 
 const VENUE_OPTIONS = [
   "GreatWork Mega Tower 32F - Secret Room",
@@ -197,6 +198,8 @@ export function MeetingsView({
       dueDate?: string;
       priority?: string;
       assigneeName?: string;
+      topic?: string;
+      evidence?: string;
       discussionPointId?: string;
       existingTaskId?: string;
       existingTaskUrl?: string;
@@ -416,7 +419,7 @@ export function MeetingsView({
 
                     <div className="text-[11px] text-gray-500 flex items-center gap-1">
                       <Calendar size={11} className="text-[#C9AB4C]" />
-                      <span>{m.date}</span>
+                      <span>{formatEchoDate(m.date)}</span>
                     </div>
 
                     {m.location && (
@@ -829,7 +832,9 @@ export function MeetingsView({
                                   item.action_plan && item.action_plan !== "None"
                                     ? item.action_plan
                                     : item.topic || `Action from Topic #${idx + 1}`,
-                                description: `**Topic:** ${item.topic || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence || ""}`,
+                                description: item.discussion_point || "",
+                                topic: item.topic || "",
+                                evidence: item.evidence || "",
                                 meetingTitle: activeMeeting?.title || "Meeting Archive",
                                 meetingDate: activeMeeting?.date,
                                 dueDate: item.target_date || "",

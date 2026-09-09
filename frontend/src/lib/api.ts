@@ -278,6 +278,11 @@ export async function createClickUpTask(taskData: {
   assignees?: any[];
   listId?: string;
   discussionPointId?: string;
+  structuredDescription?: boolean;
+  personInCharge?: string;
+  topic?: string;
+  discussion?: string;
+  evidence?: string;
 }) {
   const headers = getClickUpHeaders();
   const res = await fetch("/api/tasks", {

@@ -13,6 +13,7 @@ import {
   Plus
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
+import { formatEchoDate } from "@/lib/dateUtils";
 
 interface DashboardViewProps {
   meetings: ArchivedMeeting[];
@@ -339,7 +340,7 @@ export function DashboardView({
                           {meeting.meeting_type}
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-                          <CalendarIcon size={12} className="text-gray-400" /> {meeting.date}
+                          <CalendarIcon size={12} className="text-gray-400" /> {formatEchoDate(meeting.date)}
                         </span>
                         {meeting.location && (
                           <span className="text-xs text-gray-500">

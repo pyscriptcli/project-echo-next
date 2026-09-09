@@ -10,6 +10,7 @@ import {
   exportWord, 
   exportPdf,
   askEcho,
+  fetchClickUpTasks,
   getStoredApiKey,
   setStoredApiKey,
   getStoredOpenAiKey,
@@ -28,10 +29,11 @@ import { Topbar } from "@/components/Topbar";
 import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
 import { DashboardView } from "@/components/DashboardView";
 import { MeetingsView } from "@/components/MeetingsView";
-import TasksView from "@/components/TasksView";
+import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { ArchivedMeeting } from "@/types/meeting";
 import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
+import { formatEchoDate } from "@/lib/dateUtils";
 import { 
   Upload, 
   X, 
@@ -204,6 +206,8 @@ export default function Home() {
       dueDate?: string;
       priority?: string;
       assigneeName?: string;
+      topic?: string;
+      evidence?: string;
       discussionPointId?: string;
       existingTaskId?: string;
       existingTaskUrl?: string;
@@ -279,6 +283,19 @@ export default function Home() {
       })
       .catch((err) => console.log("Meetings sync fallback:", err));
   }, []);
+
+  // Universal Search Tasks State
+  const [tasks, setTasks] = useState<ClickUpTask[]>([]);
+
+  useEffect(() => {
+    fetchClickUpTasks()
+      .then((data) => {
+        if (data.tasks && Array.isArray(data.tasks)) {
+          setTasks(data.tasks);
+        }
+      })
+      .catch((e) => console.warn("Tasks prefetch for universal search:", e));
+  }, [currentView]);
 
   // App Meeting Data
   const [transcript, setTranscript] = useState("");
@@ -644,120 +661,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* System Key Configuration Modal */}
-      {showKeyModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-lg rounded-none">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <Key className="text-[#c9ab4c]" size={20} />
-                <h3 className="font-serif italic font-bold text-xl text-[#003366]">API & Transcription Keys</h3>
-              </div>
-              <button onClick={() => setShowKeyModal(false)} className="text-gray-400 hover:text-gray-700">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-              Configure your API keys directly here (stored privately in your browser) or in Vercel Environment Variables.
-            </p>
-
-            <div className="space-y-3.5 mb-5">
-              {/* OpenAI API Key */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                    OpenAI API Key (Whisper Audio Transcription)
-                  </label>
-                  <span className="text-[9px] bg-blue-50 text-[#003366] font-bold px-1.5 py-0.5">Recommended Audio</span>
-                </div>
-                <input 
-                  type="password"
-                  placeholder="sk-proj-..."
-                  value={openaiKeyInput}
-                  onChange={(e) => setOpenaiKeyInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
-                />
-              </div>
-
-              {/* OpenRouter API Key */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                    OpenRouter API Key (Universal Audio & AI Fallback)
-                  </label>
-                  <span className="text-[9px] bg-amber-50 text-[#8c7329] font-bold px-1.5 py-0.5">Flexible Audio/AI</span>
-                </div>
-                <input 
-                  type="password"
-                  placeholder="sk-or-v1-..."
-                  value={openrouterKeyInput}
-                  onChange={(e) => setOpenrouterKeyInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
-                />
-              </div>
-
-              {/* DeepSeek API Key */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                    DeepSeek API Key (Minutes Synthesis & Ask Echo)
-                  </label>
-                  <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5">MoM Engine</span>
-                </div>
-                <input 
-                  type="password"
-                  placeholder="sk-..."
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
-                />
-              </div>
-
-              {/* ClickUp Personal API Token & List */}
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                    ClickUp Personal API Token (Tasks Portal)
-                  </label>
-                  <span className="text-[9px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5">ClickUp v2</span>
-                </div>
-                <input 
-                  type="password"
-                  placeholder="pk_12345678_..."
-                  value={clickupTokenInput}
-                  onChange={(e) => setClickupTokenInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none mb-2"
-                />
-                
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700 block mb-1">
-                  Default ClickUp List ID
-                </label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 9012345678"
-                  value={clickupListIdInput}
-                  onChange={(e) => setClickupListIdInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <span className="text-[10px] text-gray-400 italic">Saved locally in browser</span>
-              <div className="flex gap-2">
-                <button onClick={() => setShowKeyModal(false)} className="btn-outline !py-1.5 !px-3.5 !text-xs rounded-none">
-                  Cancel
-                </button>
-                <button onClick={saveKey} className="btn-primary !py-1.5 !px-4 !text-xs rounded-none">
-                  Save Keys
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Full Recording Studio Modal */}
       {showStudio && (
         <RecordingStudio 
@@ -779,10 +682,15 @@ export default function Home() {
         {/* Persistent Slim Topbar */}
         <Topbar
           meetings={archivedMeetings}
+          tasks={tasks}
           onOpenUniversalEcho={() => setIsUniversalEchoOpen(true)}
           onSelectMeeting={(meetingId) => {
             setSelectedMeetingId(meetingId);
             setCurrentView("meetings");
+          }}
+          onSelectTask={(taskId) => {
+            setFocusedTaskId(taskId);
+            setCurrentView("tasks");
           }}
           onNewMeeting={() => {
             setCurrentView("minutes");
@@ -793,6 +701,7 @@ export default function Home() {
             setCurrentView("minutes");
             setStage("Input");
           }}
+          onNavigateToPage={(page) => setCurrentView(page)}
         />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
@@ -868,14 +777,6 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <button 
-                      onClick={() => setShowKeyModal(true)}
-                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-[#003366] shadow-2xs transition-colors"
-                    >
-                      <Key size={13} className="text-[#c9ab4c]" />
-                      <span>Configure Key</span>
-                    </button>
-
                     {stage === "Input" && (
                       <button 
                         onClick={handleGenerateMinutes} 
@@ -1635,7 +1536,9 @@ export default function Home() {
                                     item.action_plan && item.action_plan !== "None"
                                       ? item.action_plan
                                       : item.topic_title || `Action from Topic #${idx + 1}`,
-                                  description: `**Topic:** ${item.topic_title || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence_quote || ""}`,
+                                  description: item.discussion_point || "",
+                                  topic: item.topic_title || "",
+                                  evidence: item.evidence_quote || "",
                                   meetingTitle: metadata.client_name || "Executive Meeting",
                                   meetingDate: metadata.date,
                                   dueDate: item.indicative_delivery_date || "",

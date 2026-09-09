@@ -21,6 +21,8 @@ import {
   getStoredClickUpListId
 } from "@/lib/api";
 import { WORKSPACE_STATUS_CATEGORIES } from "@/app/api/tasks/route";
+import { SearchableMemberSelect } from "./SearchableMemberSelect";
+import { formatEchoDate } from "@/lib/dateUtils";
 
 interface QuickAddTaskModalProps {
   isOpen: boolean;
@@ -33,6 +35,8 @@ interface QuickAddTaskModalProps {
     dueDate?: string;
     priority?: string;
     assigneeName?: string;
+    topic?: string;
+    evidence?: string;
     discussionPointId?: string;
     existingTaskId?: string;
     existingTaskUrl?: string;
@@ -147,10 +151,6 @@ export function QuickAddTaskModal({
       const selectedMember = availableMembers.find(m => String(m.id) === selectedAssigneeId);
       const assigneeLabel = selectedMember ? selectedMember.username : customAssigneeName.trim();
 
-      if (assigneeLabel) {
-        fullDescription = `**Person in Charge:** ${assigneeLabel}\n\n${fullDescription}`;
-      }
-
       const assigneesPayload = selectedAssigneeId ? [Number(selectedAssigneeId)] : undefined;
 
       const res = await createClickUpTask({
@@ -163,6 +163,11 @@ export function QuickAddTaskModal({
         dueDate: dueDate || null,
         assignees: assigneesPayload,
         discussionPointId: initialData?.discussionPointId,
+        structuredDescription: true,
+        personInCharge: assigneeLabel,
+        topic: initialData?.topic || initialData?.name,
+        discussion: description.trim(),
+        evidence: initialData?.evidence,
       });
 
       const taskId = res.id || res.task?.id;
@@ -226,7 +231,7 @@ export function QuickAddTaskModal({
             </h4>
             <p className="text-xs text-gray-600 max-w-xs mx-auto">
               This discussion point is linked to ClickUp with tag{" "}
-              <code className="bg-gray-100 px-1 font-bold text-purple-700">echo-meeting</code>.
+              <code className="bg-gray-100 px-1 font-bold text-purple-700">echo</code>.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2.5 pt-3">
               {/* OPEN IN TASKS BUTTON */}
@@ -295,7 +300,7 @@ export function QuickAddTaskModal({
                 <span className="font-semibold truncate max-w-[320px]">
                   🔗 Meeting: {meetingTitle}
                 </span>
-                {meetingDate && <span className="font-mono text-[10px] text-gray-500">{meetingDate}</span>}
+                {meetingDate && <span className="font-mono text-[10px] text-gray-500">{formatEchoDate(meetingDate)}</span>}
               </div>
             )}
 
@@ -354,11 +359,11 @@ export function QuickAddTaskModal({
                 />
               </div>
 
-              {/* Assignee Selection from ClickUp Members API */}
+              {/* Assignee Selection from ClickUp Space Members API */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                    Assignee (ClickUp API)
+                    Assignee (Space Members)
                   </label>
                   {loadingMembers && (
                     <span className="text-[9px] text-[#c9ab4c] font-bold flex items-center gap-1">
@@ -367,28 +372,12 @@ export function QuickAddTaskModal({
                   )}
                 </div>
 
-                {availableMembers.length > 0 ? (
-                  <select
-                    value={selectedAssigneeId}
-                    onChange={e => setSelectedAssigneeId(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                  >
-                    <option value="">-- Assign to Member --</option>
-                    {availableMembers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.username} ({m.email || "ClickUp User"})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={customAssigneeName}
-                    onChange={e => setCustomAssigneeName(e.target.value)}
-                    placeholder="Assignee name..."
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                  />
-                )}
+                <SearchableMemberSelect
+                  members={availableMembers}
+                  selectedMemberId={selectedAssigneeId}
+                  onChange={setSelectedAssigneeId}
+                  placeholder="-- Assign to Space Member --"
+                />
               </div>
             </div>
 

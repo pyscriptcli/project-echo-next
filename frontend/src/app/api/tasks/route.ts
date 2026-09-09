@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatEchoDate } from "@/lib/dateUtils";
 
 function getClickUpCredentials(req: NextRequest) {
   const token =
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "ClickUp API Token not configured. Please enter your API token in Configure Keys or set CLICKUP_API_TOKEN.",
+            "ClickUp API Token not configured. Please verify your CLICKUP_API_TOKEN environment variable in Vercel.",
           needsAuth: true,
         },
         { status: 401 }
@@ -171,15 +172,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "ClickUp List ID not configured. Please select or enter your ClickUp List ID.",
+            "ClickUp List ID not configured. Please select or verify your ClickUp List ID in Vercel.",
           needsListId: true,
         },
         { status: 400 }
       );
     }
 
-    // Fetch tasks, list info, and members in parallel
-    const [tasksRes, listInfoRes, membersRes, teamsRes] = await Promise.all([
+    // Fetch tasks, list info, and list-specific members in parallel
+    const [tasksRes, listInfoRes, listMembersRes] = await Promise.all([
       fetch(
         `https://api.clickup.com/api/v2/list/${targetListId}/task?subtasks=true&include_closed=true`,
         {
@@ -192,10 +193,6 @@ export async function GET(req: NextRequest) {
         cache: "no-store",
       }).catch(() => null),
       fetch(`https://api.clickup.com/api/v2/list/${targetListId}/member`, {
-        headers: { Authorization: token },
-        cache: "no-store",
-      }).catch(() => null),
-      fetch(`https://api.clickup.com/api/v2/team`, {
         headers: { Authorization: token },
         cache: "no-store",
       }).catch(() => null),
@@ -213,11 +210,15 @@ export async function GET(req: NextRequest) {
     const tasksData = await tasksRes.json();
     const rawTasks = tasksData.tasks || [];
 
-    // Parse list statuses
+    // Parse list statuses & space ID
     let listStatuses: any[] = [];
+    let spaceId: string | null = null;
     if (listInfoRes && listInfoRes.ok) {
       try {
         const listData = await listInfoRes.json();
+        if (listData.space && listData.space.id) {
+          spaceId = String(listData.space.id);
+        }
         if (listData.statuses && Array.isArray(listData.statuses)) {
           listStatuses = listData.statuses.map((s: any) => ({
             status: s.status?.toLowerCase() || "",
@@ -240,13 +241,40 @@ export async function GET(req: NextRequest) {
     });
     const finalStatuses = Array.from(knownStatusMap.values());
 
-    // Parse members (assignees)
+    // Parse members - RESTRICT TO THIS SPACE AND LIST ONLY
     const membersMap = new Map<string, any>();
 
-    // Check list-level members
-    if (membersRes && membersRes.ok) {
+    // 1. Fetch space members if spaceId is resolved
+    if (spaceId) {
       try {
-        const membersData = await membersRes.json();
+        const spaceMembersRes = await fetch(
+          `https://api.clickup.com/api/v2/space/${spaceId}/member`,
+          {
+            headers: { Authorization: token },
+            cache: "no-store",
+          }
+        );
+        if (spaceMembersRes.ok) {
+          const spaceMembersData = await spaceMembersRes.json();
+          for (const m of spaceMembersData.members || []) {
+            membersMap.set(String(m.id), {
+              id: m.id,
+              username: m.username || m.email?.split("@")[0] || "Member",
+              email: m.email || "",
+              initials: m.initials || m.username?.[0]?.toUpperCase() || "?",
+              profilePicture: m.profilePicture || null,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch space members:", e);
+      }
+    }
+
+    // 2. Also check list-level members
+    if (listMembersRes && listMembersRes.ok) {
+      try {
+        const membersData = await listMembersRes.json();
         for (const m of membersData.members || []) {
           membersMap.set(String(m.id), {
             id: m.id,
@@ -255,27 +283,6 @@ export async function GET(req: NextRequest) {
             initials: m.initials || m.username?.[0]?.toUpperCase() || "?",
             profilePicture: m.profilePicture || null,
           });
-        }
-      } catch (e) {}
-    }
-
-    // Check team-level members fallback/enrichment
-    if (teamsRes && teamsRes.ok) {
-      try {
-        const teamsData = await teamsRes.json();
-        for (const team of teamsData.teams || []) {
-          for (const m of team.members || []) {
-            const user = m.user || m;
-            if (user && user.id && !membersMap.has(String(user.id))) {
-              membersMap.set(String(user.id), {
-                id: user.id,
-                username: user.username || user.email?.split("@")[0] || "Member",
-                email: user.email || "",
-                initials: user.initials || user.username?.[0]?.toUpperCase() || "?",
-                profilePicture: user.profilePicture || null,
-              });
-            }
-          }
         }
       } catch (e) {}
     }
@@ -299,19 +306,23 @@ export async function GET(req: NextRequest) {
 
     // Map tasks to Project Echo standardized format
     const tasks = rawTasks.map((t: any) => {
-      // Check for meeting tag
-      const isMeetingTask = (t.tags || []).some(
-        (tag: any) => tag.name?.toLowerCase() === "echo-meeting"
-      );
+      // Check for meeting tag (supports both 'echo' and 'echo-meeting')
+      const isMeetingTask = (t.tags || []).some((tag: any) => {
+        const tagName = tag.name?.toLowerCase() || "";
+        return tagName === "echo" || tagName === "echo-meeting";
+      });
 
       // Extract meeting title/context and echo_point_id from description if present
       let meetingTitle = "";
       let discussionPointId = "";
       const desc = t.text_content || t.description || "";
       
-      const titleMatch = desc.match(/🔗\s*Echo Meeting:\s*([^\n\r]+)/i);
+      const titleMatch =
+        desc.match(/•\s*\*\*Meeting:\*\*\s*([^\n\r]+)/i) ||
+        desc.match(/🔗\s*Echo Meeting:\s*([^\n\r]+)/i);
       if (titleMatch && titleMatch[1]) {
-        meetingTitle = titleMatch[1].trim();
+        // Strip out trailing date parenthesis like (September 9, 2026) if present
+        meetingTitle = titleMatch[1].replace(/\s*\([^)]*\)$/, "").trim();
       }
 
       const pointMatch =
@@ -431,23 +442,55 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Prepare description with Project Echo meeting footprint and unique ID
-    let description = body.description || "";
-    if (body.meetingTitle) {
-      description += `\n\n---\n🔗 Echo Meeting: ${body.meetingTitle}`;
-      if (body.meetingDate) {
-        description += ` (${body.meetingDate})`;
-      }
-    }
+    // Prepare upgraded executive description format
+    let description = "";
+    if (body.structuredDescription || body.topic || body.evidence || body.discussion) {
+      const taskTitle = body.name.trim();
+      const pic = body.personInCharge || body.assigneeName || "Unassigned";
+      const topic = body.topic || "Discussion Point";
+      const discussion = body.discussion || body.description || "N/A";
+      const evidence = body.evidence || "";
+      const meetingTitle = body.meetingTitle || "Echo Meeting";
+      const meetingDate = body.meetingDate ? formatEchoDate(body.meetingDate) : formatEchoDate(new Date());
 
-    if (body.discussionPointId) {
-      description += `\n<!-- echo_point_id:${body.discussionPointId} -->\n[Echo-Point-ID: ${body.discussionPointId}]`;
+      description = [
+        `# 🎯 Action Item: ${taskTitle}`,
+        "",
+        `### 👤 Person in Charge`,
+        `${pic}`,
+        "",
+        `### 📋 Executive Context`,
+        `• **Meeting:** ${meetingTitle}`,
+        `• **Date:** ${meetingDate}`,
+        `• **Topic:** ${topic}`,
+        "",
+        `### 💬 Discussion & Decisions`,
+        `${discussion}`,
+        ...(evidence ? [
+          "",
+          `### 📌 Evidence & Transcript Reference`,
+          `> "${evidence}"`,
+        ] : []),
+        "",
+        "---",
+        `*Generated by Echo Executive Intelligence • Tag: \`echo\`*`,
+        body.discussionPointId ? `<!-- echo_point_id:${body.discussionPointId} -->\n[Echo-Point-ID: ${body.discussionPointId}]` : "",
+      ].filter(Boolean).join("\n");
+    } else {
+      description = body.description || "";
+      if (body.meetingTitle) {
+        const mDate = body.meetingDate ? ` (${formatEchoDate(body.meetingDate)})` : "";
+        description += `\n\n---\n🔗 Echo Meeting: ${body.meetingTitle}${mDate}`;
+      }
+      if (body.discussionPointId) {
+        description += `\n<!-- echo_point_id:${body.discussionPointId} -->\n[Echo-Point-ID: ${body.discussionPointId}]`;
+      }
     }
 
     const payload: Record<string, any> = {
       name: body.name.trim(),
       description,
-      tags: ["echo-meeting"],
+      tags: ["echo"],
       status: body.status || "to do",
       priority: priorityToNumber(body.priority || "normal"),
     };

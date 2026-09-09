@@ -282,7 +282,7 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
       return NextResponse.json({ 
-        error: "Audio transcription requires an OpenAI API Key, OpenRouter Key, or Gemini Key. Configure one in Vercel Environment Variables (OPENAI_API_KEY / OPENROUTER_API_KEY) or via the 'Configure Key' menu." 
+        error: "Audio transcription requires an OpenAI API Key, OpenRouter Key, or Gemini Key. Please configure them in your Vercel Environment Variables (OPENAI_API_KEY / OPENROUTER_API_KEY)." 
       }, { status: 400 });
     }
 

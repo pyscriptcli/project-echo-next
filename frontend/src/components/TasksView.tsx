@@ -39,6 +39,8 @@ import {
   discoverClickUpLists
 } from "@/lib/api";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/app/api/tasks/route";
+import { SearchableMemberSelect } from "./SearchableMemberSelect";
+import { formatEchoDate } from "@/lib/dateUtils";
 
 export interface ClickUpTask {
   id: string;
@@ -626,7 +628,7 @@ export default function TasksView({
 
         <div className="flex items-center gap-2 text-[11px] text-[#c9ab4c]">
           <Tag size={12} />
-          <span className="font-mono">Tag: echo-meeting</span>
+          <span className="font-mono">Tag: echo</span>
         </div>
       </div>
 
@@ -918,7 +920,7 @@ export default function TasksView({
                           {task.dueDate && (
                             <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-2 font-mono">
                               <Calendar size={10} />
-                              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                              <span>{formatEchoDate(task.dueDate)}</span>
                               {new Date(task.dueDate) < new Date() &&
                                 getStatusCategory(task.status) !== "Done" &&
                                 getStatusCategory(task.status) !== "Closed" && (
@@ -1081,7 +1083,7 @@ export default function TasksView({
                               : ""
                           }
                         >
-                          {new Date(task.dueDate).toLocaleDateString()}
+                          {formatEchoDate(task.dueDate)}
                         </span>
                       ) : (
                         <span className="text-gray-400">—</span>
@@ -1127,9 +1129,10 @@ export default function TasksView({
       </div>
 
       {/* ─── TASK DETAIL & EDIT MODAL ─── */}
+      {/* ─── TASK DETAIL & EDIT MODAL ─── */}
       {selectedTaskForDetail && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-xl rounded-none animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-4xl rounded-none animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-gray-200 pb-3 mb-4">
               <div>
@@ -1142,9 +1145,12 @@ export default function TasksView({
                       DP ID: {selectedTaskForDetail.discussionPointId}
                     </span>
                   )}
+                  <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.2 font-bold">
+                    Tag: echo
+                  </span>
                 </div>
                 <h3 className="font-serif italic font-bold text-xl text-[#003366]">
-                  Task Details & Live Synchronization
+                  Task Details
                 </h3>
               </div>
               <button
@@ -1153,144 +1159,159 @@ export default function TasksView({
                   setSelectedTaskForDetail(null);
                   if (onClearFocusedTask) onClearFocusedTask();
                 }}
-                className="text-gray-400 hover:text-gray-700 text-sm font-bold"
+                className="text-gray-400 hover:text-gray-700 text-sm font-bold p-1"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveTaskDetail} className="space-y-4">
-              {/* Task Title */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  Task Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs font-bold text-gray-900 bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                />
-              </div>
-
-              {/* Originating Meeting Context */}
-              {selectedTaskForDetail.meetingTitle && (
-                <div className="p-2.5 bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs text-[#003366]">
-                  <div className="flex items-center gap-2">
-                    <Link2 size={13} className="text-[#c9ab4c]" />
-                    <span className="font-semibold">
-                      Originating Meeting: {selectedTaskForDetail.meetingTitle}
+              {/* 2-Column Rectangular Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Column Left: Task Details */}
+                <div className="space-y-3.5">
+                  <div className="border-b border-gray-100 pb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366]">
+                      Task Attributes
                     </span>
                   </div>
-                  {onSelectMeeting && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedTaskForDetail(null);
-                        onSelectMeeting(selectedTaskForDetail.meetingTitle!);
-                      }}
-                      className="text-[11px] font-bold underline hover:text-[#c9ab4c]"
-                    >
-                      View Meeting
-                    </button>
+
+                  {/* Task Title */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                      Task Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      className="w-full border border-gray-300 p-2 text-xs font-bold text-gray-900 bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                    />
+                  </div>
+
+                  {/* Originating Meeting Context */}
+                  {selectedTaskForDetail.meetingTitle && (
+                    <div className="p-2.5 bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs text-[#003366]">
+                      <div className="flex items-center gap-2 truncate">
+                        <Link2 size={13} className="text-[#c9ab4c] shrink-0" />
+                        <span className="font-semibold truncate">
+                          Originating Meeting: {selectedTaskForDetail.meetingTitle}
+                        </span>
+                      </div>
+                      {onSelectMeeting && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTaskForDetail(null);
+                            onSelectMeeting(selectedTaskForDetail.meetingTitle!);
+                          }}
+                          className="text-[11px] font-bold underline hover:text-[#c9ab4c] shrink-0 ml-2"
+                        >
+                          View Meeting
+                        </button>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
-              {/* Status & Priority Row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    ClickUp Status
-                  </label>
-                  <select
-                    value={editStatus}
-                    onChange={e => setEditStatus(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
-                  >
-                    {statusCategories.map(cat => (
-                      <optgroup key={cat.category} label={`── ${cat.category} ──`}>
-                        {cat.statuses.map(st => (
-                          <option key={st.status} value={st.status}>
-                            {st.label}
-                          </option>
+                  {/* Status & Priority Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                        ClickUp Status
+                      </label>
+                      <select
+                        value={editStatus}
+                        onChange={e => setEditStatus(e.target.value)}
+                        className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                      >
+                        {statusCategories.map(cat => (
+                          <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                            {cat.statuses.map(st => (
+                              <option key={st.status} value={st.status}>
+                                {st.label}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                        Priority
+                      </label>
+                      <select
+                        value={editPriority}
+                        onChange={e => setEditPriority(e.target.value)}
+                        className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                      >
+                        <option value="urgent">🔴 Urgent</option>
+                        <option value="high">🟠 High</option>
+                        <option value="normal">🔵 Normal</option>
+                        <option value="low">⚪ Low</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Due Date */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                      Due Date {editDueDate && <span className="text-gray-400 font-normal">({formatEchoDate(editDueDate)})</span>}
+                    </label>
+                    <input
+                      type="date"
+                      value={editDueDate}
+                      onChange={e => setEditDueDate(e.target.value)}
+                      className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                    />
+                  </div>
+
+                  {/* Assignee with SearchableMemberSelect */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                      Assignee (Space Members)
+                    </label>
+                    <SearchableMemberSelect
+                      members={availableMembers}
+                      selectedMemberId={editAssigneeId}
+                      onChange={setEditAssigneeId}
+                      placeholder="-- Select Space Member --"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Priority
-                  </label>
-                  <select
-                    value={editPriority}
-                    onChange={e => setEditPriority(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
-                  >
-                    <option value="urgent">🔴 Urgent</option>
-                    <option value="high">🟠 High</option>
-                    <option value="normal">🔵 Normal</option>
-                    <option value="low">⚪ Low</option>
-                  </select>
+                {/* Column Right: Description & Context */}
+                <div className="flex flex-col h-full space-y-2">
+                  <div className="border-b border-gray-100 pb-1.5 flex items-center justify-between">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#003366]">
+                      Description & Context
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-mono">Executive Format</span>
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <textarea
+                      rows={12}
+                      value={editDescription}
+                      onChange={e => setEditDescription(e.target.value)}
+                      placeholder="Executive context, action plan, and meeting evidence..."
+                      className="w-full flex-1 min-h-[260px] border border-gray-300 p-3 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none font-mono leading-relaxed rounded-none"
+                    />
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+                      <span>Synchronized with ClickUp task description</span>
+                      <span>Tag: echo</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Due Date & Assignee Row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editDueDate}
-                    onChange={e => setEditDueDate(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Assignee (ClickUp Members)
-                  </label>
-                  <select
-                    value={editAssigneeId}
-                    onChange={e => setEditAssigneeId(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                  >
-                    <option value="">-- Unassigned --</option>
-                    {availableMembers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.username} ({m.email || "Member"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  Description & Context
-                </label>
-                <textarea
-                  rows={5}
-                  value={editDescription}
-                  onChange={e => setEditDescription(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none rounded-none"
-                />
               </div>
 
               {/* Footer Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleDeleteTask(selectedTaskForDetail.id)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 text-xs flex items-center gap-1"
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 text-xs flex items-center gap-1 rounded-none"
                   >
                     <Trash2 size={13} />
                     <span>Delete Task</span>
@@ -1447,20 +1468,14 @@ export default function TasksView({
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    Assignee (ClickUp API)
+                    Assignee (Space Members)
                   </label>
-                  <select
-                    value={newTaskAssigneeId}
-                    onChange={e => setNewTaskAssigneeId(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
-                  >
-                    <option value="">-- Unassigned --</option>
-                    {availableMembers.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.username}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableMemberSelect
+                    members={availableMembers}
+                    selectedMemberId={newTaskAssigneeId}
+                    onChange={setNewTaskAssigneeId}
+                    placeholder="-- Select Space Member --"
+                  />
                 </div>
               </div>
 
