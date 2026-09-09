@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   CheckSquare,
   X,
@@ -11,6 +11,7 @@ import {
   Users,
   AlertCircle,
   FolderKanban,
+  FolderSync,
   Check,
   ChevronDown
 } from "lucide-react";
@@ -19,7 +20,10 @@ import {
   fetchClickUpTasks,
   getStoredClickUpToken,
   getStoredClickUpListId,
-  getStoredClickUpListName
+  setStoredClickUpListId,
+  getStoredClickUpListName,
+  setStoredClickUpListName,
+  discoverClickUpLists
 } from "@/lib/api";
 import { WORKSPACE_STATUS_CATEGORIES } from "@/app/api/tasks/route";
 import { SearchableMemberSelect } from "./SearchableMemberSelect";
@@ -63,6 +67,14 @@ export function QuickAddTaskModal({
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>("");
   const [customAssigneeName, setCustomAssigneeName] = useState("");
 
+  // Configurable ClickUp Space & List state
+  const [selectedSpace, setSelectedSpace] = useState<string>("");
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const [availableLists, setAvailableLists] = useState<
+    Array<{ id: string; name: string; spaceName: string; folderName?: string; teamName?: string }>
+  >([]);
+  const [loadingLists, setLoadingLists] = useState(false);
+
   // ClickUp members and statuses from API
   const [availableMembers, setAvailableMembers] = useState<
     Array<{ id: number | string; username: string; email: string; initials: string }>
@@ -76,28 +88,103 @@ export function QuickAddTaskModal({
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
   const [isAlreadyCreated, setIsAlreadyCreated] = useState(false);
 
-  // Load members and statuses on open
-  useEffect(() => {
-    if (isOpen) {
-      loadWorkspaceContext();
-    }
-  }, [isOpen]);
+  // Unique available spaces
+  const availableSpaces = useMemo(() => {
+    const spaces = Array.from(new Set(availableLists.map(l => l.spaceName).filter(Boolean)));
+    return spaces.sort((a, b) => a.localeCompare(b));
+  }, [availableLists]);
 
-  const loadWorkspaceContext = async () => {
+  // Lists filtered by chosen space
+  const listsInSelectedSpace = useMemo(() => {
+    if (!selectedSpace) return availableLists;
+    return availableLists.filter(l => l.spaceName === selectedSpace);
+  }, [availableLists, selectedSpace]);
+
+  // Load members and statuses for target list
+  const loadWorkspaceContext = async (targetListId?: string) => {
     setLoadingMembers(true);
     try {
-      const data = await fetchClickUpTasks();
+      const data = await fetchClickUpTasks(targetListId);
       if (data.members && Array.isArray(data.members)) {
         setAvailableMembers(data.members);
       }
       if (data.categories && Array.isArray(data.categories)) {
         setStatusCategories(data.categories);
       }
+      if (data.spaceName) {
+        setSelectedSpace(prev => prev || data.spaceName);
+      }
     } catch (e) {
       console.warn("Could not preload ClickUp members:", e);
     } finally {
       setLoadingMembers(false);
     }
+  };
+
+  // Discover all spaces and lists
+  const loadLists = async () => {
+    setLoadingLists(true);
+    try {
+      const data = await discoverClickUpLists();
+      const lists = data.lists || [];
+      setAvailableLists(lists);
+
+      const currentListId = selectedListId || getStoredClickUpListId();
+      if (lists.length > 0) {
+        if (currentListId) {
+          const matched = lists.find((l: any) => l.id === currentListId);
+          if (matched) {
+            setSelectedSpace(matched.spaceName);
+            setSelectedListId(matched.id);
+            return;
+          }
+        }
+        // Fallback to first discovered list
+        setSelectedSpace(lists[0].spaceName);
+        setSelectedListId(lists[0].id);
+        const displayName = lists[0].folderName ? `${lists[0].folderName} / ${lists[0].name}` : lists[0].name;
+        setStoredClickUpListId(lists[0].id);
+        setStoredClickUpListName(displayName);
+      }
+    } catch (e) {
+      console.warn("Could not discover ClickUp lists:", e);
+    } finally {
+      setLoadingLists(false);
+    }
+  };
+
+  // Load members, statuses, and available lists on modal open
+  useEffect(() => {
+    if (isOpen) {
+      const storedId = getStoredClickUpListId();
+      if (storedId) setSelectedListId(storedId);
+      loadWorkspaceContext(storedId || undefined);
+      loadLists();
+    }
+  }, [isOpen]);
+
+  const handleSpaceChange = (newSpace: string) => {
+    setSelectedSpace(newSpace);
+    const inSpace = availableLists.filter(l => l.spaceName === newSpace);
+    if (inSpace.length > 0) {
+      const nextList = inSpace[0];
+      setSelectedListId(nextList.id);
+      const displayName = nextList.folderName ? `${nextList.folderName} / ${nextList.name}` : nextList.name;
+      setStoredClickUpListId(nextList.id);
+      setStoredClickUpListName(displayName);
+      loadWorkspaceContext(nextList.id);
+    }
+  };
+
+  const handleListChange = (newListId: string) => {
+    setSelectedListId(newListId);
+    const found = availableLists.find(l => l.id === newListId);
+    if (found) {
+      const displayName = found.folderName ? `${found.folderName} / ${found.name}` : found.name;
+      setStoredClickUpListId(found.id);
+      setStoredClickUpListName(displayName);
+    }
+    loadWorkspaceContext(newListId);
   };
 
   useEffect(() => {
@@ -169,7 +256,7 @@ export function QuickAddTaskModal({
         topic: initialData?.topic || initialData?.name,
         discussion: description.trim(),
         evidence: initialData?.evidence,
-        listId: getStoredClickUpListId() || undefined,
+        listId: selectedListId || getStoredClickUpListId() || undefined,
       });
 
       const taskId = res.id || res.task?.id;
@@ -274,10 +361,95 @@ export function QuickAddTaskModal({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3.5">
-            {/* Target List Info */}
-            <div className="flex items-center gap-2 text-[10px] text-gray-600 font-semibold bg-[#FAF9F7] px-2.5 py-1.5 border border-gray-200">
-              <FolderKanban size={13} className="text-[#c9ab4c] shrink-0" />
-              <span>Target ClickUp List: <strong className="text-[#003366]">{getStoredClickUpListName() || (getStoredClickUpListId() ? `List #${getStoredClickUpListId()}` : "Default Workspace List")}</strong></span>
+            {/* Configurable ClickUp Space & Target List */}
+            <div className="bg-[#FAF9F7] border border-gray-200 p-3 rounded-none space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#003366]">
+                  <FolderKanban size={13} className="text-[#c9ab4c]" />
+                  <span>ClickUp Destination</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadLists}
+                  disabled={loadingLists}
+                  title="Rescan ClickUp spaces and lists"
+                  className="text-[10px] text-gray-500 hover:text-[#003366] font-semibold flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                >
+                  <FolderSync size={11} className={loadingLists ? "animate-spin text-[#c9ab4c]" : ""} />
+                  <span>{loadingLists ? "Scanning..." : "Rescan"}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Space Dropdown */}
+                <div>
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                    Space
+                  </label>
+                  {availableSpaces.length > 0 ? (
+                    <div className="relative">
+                      <select
+                        value={selectedSpace}
+                        onChange={(e) => handleSpaceChange(e.target.value)}
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                      >
+                        {availableSpaces.map((sp) => (
+                          <option key={sp} value={sp}>
+                            {sp}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  ) : (
+                    <div className="p-2 border border-gray-200 bg-white text-xs text-gray-500">
+                      {loadingLists ? "Discovering spaces..." : (selectedSpace || "Default Space")}
+                    </div>
+                  )}
+                </div>
+
+                {/* List Dropdown */}
+                <div>
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                    Target List
+                  </label>
+                  {listsInSelectedSpace.length > 0 ? (
+                    <div className="relative">
+                      <select
+                        value={selectedListId}
+                        onChange={(e) => handleListChange(e.target.value)}
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                      >
+                        {listsInSelectedSpace.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.folderName ? `${l.folderName} / ${l.name}` : l.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  ) : availableLists.length > 0 ? (
+                    <div className="relative">
+                      <select
+                        value={selectedListId}
+                        onChange={(e) => handleListChange(e.target.value)}
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                      >
+                        {availableLists.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.spaceName} → {l.folderName ? `${l.folderName} / ${l.name}` : l.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  ) : (
+                    <div className="p-2 border border-gray-200 bg-white text-xs text-gray-500 truncate">
+                      {loadingLists ? "Loading lists..." : (getStoredClickUpListName() || "Default List")}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {error && (
