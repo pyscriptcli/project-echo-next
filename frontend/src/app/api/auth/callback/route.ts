@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setAuthCookies, ClickUpUserProfile } from "@/lib/auth";
+import { setAuthCookies, ClickUpUserProfile, getOAuthCredentials } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -13,8 +13,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const clientId = process.env.CLICKUP_CLIENT_ID?.trim();
-  const clientSecret = process.env.CLICKUP_CLIENT_SECRET?.trim();
+  const { clientId, clientSecret } = getOAuthCredentials();
 
   if (!clientId || !clientSecret) {
     console.error("[ClickUp OAuth] Missing CLICKUP_CLIENT_ID or CLICKUP_CLIENT_SECRET in env");

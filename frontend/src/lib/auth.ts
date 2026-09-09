@@ -19,6 +19,42 @@ export interface AuthSession {
   user?: ClickUpUserProfile | null;
 }
 
+export function cleanEnv(val?: string): string {
+  if (!val) return "";
+  let v = val.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
+export function getOAuthCredentials() {
+  const clientId = cleanEnv(
+    process.env.CLICKUP_CLIENT_ID ||
+    process.env.CLICKUP_CLIENTID ||
+    process.env.CLICKUP_OAUTH_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_CLICKUP_CLIENT_ID ||
+    process.env.CLIENT_ID
+  );
+
+  const clientSecret = cleanEnv(
+    process.env.CLICKUP_CLIENT_SECRET ||
+    process.env.CLICKUP_CLIENTSECRET ||
+    process.env.CLICKUP_OAUTH_CLIENT_SECRET ||
+    process.env.CLIENT_SECRET
+  );
+
+  const redirectUri = cleanEnv(
+    process.env.CLICKUP_REDIRECT_URI ||
+    process.env.CLICKUP_REDIRECT_URL
+  );
+
+  return { clientId, clientSecret, redirectUri };
+}
+
 /**
  * Read the ClickUp token from cookies (synchronously from NextRequest or async via next/headers)
  */

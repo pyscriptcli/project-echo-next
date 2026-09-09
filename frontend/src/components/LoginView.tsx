@@ -15,13 +15,16 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const error = params.get("auth_error");
+      const detected = params.get("detected");
       if (error) {
         if (error === "missing_client_id" || error === "missing_credentials") {
           setErrorMessage(
-            "ClickUp OAuth credentials (CLICKUP_CLIENT_ID & CLICKUP_CLIENT_SECRET) are not configured in your environment."
+            detected && detected.length > 0
+              ? `ClickUp OAuth Client ID was not detected by the server (Detected in environment: ${detected}). If you recently added CLICKUP_CLIENT_ID & CLICKUP_CLIENT_SECRET in Vercel, please trigger a Redeploy in your Vercel Deployments tab so the running instances receive the new variables.`
+              : "ClickUp OAuth credentials (CLICKUP_CLIENT_ID & CLICKUP_CLIENT_SECRET) were not detected in this deployment. If you recently added them in Vercel, please trigger a Redeploy in your Vercel Deployments tab so the running instances receive the new variables."
           );
         } else if (error === "token_exchange_failed") {
-          setErrorMessage("Failed to authenticate with ClickUp. Please verify your OAuth App settings.");
+          setErrorMessage("Failed to authenticate with ClickUp. Please verify your OAuth App settings and Client Secret.");
         } else if (error === "access_denied") {
           setErrorMessage("Access was denied in ClickUp authorization.");
         } else {
