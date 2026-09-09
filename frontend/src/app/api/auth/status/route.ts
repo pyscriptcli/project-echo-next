@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthCredentials } from "@/lib/auth";
+import { getOAuthCredentials, getWorkspaceApiToken } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const { clientId, clientSecret, redirectUri } = getOAuthCredentials();
@@ -7,10 +7,11 @@ export async function GET(req: NextRequest) {
 
   // List keys present in process.env that relate to ClickUp without disclosing their values
   const detectedKeys = Object.keys(process.env).filter((k) =>
-    k.toUpperCase().includes("CLICKUP")
+    k.toUpperCase().includes("CLICKUP") ||
+    (typeof process.env[k] === "string" && process.env[k]?.trim().startsWith("pk_"))
   );
 
-  const apiToken = (process.env.CLICKUP_API_TOKEN || process.env.CLICKUP_TOKEN)?.trim();
+  const apiToken = getWorkspaceApiToken();
 
   return NextResponse.json({
     status: "ok",

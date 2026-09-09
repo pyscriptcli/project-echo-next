@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthCredentials, setAuthCookies, ClickUpUserProfile } from "@/lib/auth";
+import { getOAuthCredentials, getWorkspaceApiToken, setAuthCookies, ClickUpUserProfile } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const { clientId, redirectUri: configuredUri } = getOAuthCredentials();
@@ -16,10 +16,7 @@ export async function GET(req: NextRequest) {
 
   // 2. If OAuth app is not yet configured (e.g. non-admin ClickUp account),
   // but CLICKUP_API_TOKEN exists in Vercel environment, authenticate immediately via workspace token!
-  const apiToken = (
-    process.env.CLICKUP_API_TOKEN ||
-    process.env.CLICKUP_TOKEN
-  )?.trim();
+  const apiToken = getWorkspaceApiToken();
 
   if (apiToken) {
     try {

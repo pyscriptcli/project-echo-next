@@ -55,6 +55,45 @@ export function getOAuthCredentials() {
   return { clientId, clientSecret, redirectUri };
 }
 
+export function getWorkspaceApiToken(): string {
+  // 1. Direct standard checks
+  const candidates = [
+    process.env.CLICKUP_API_TOKEN,
+    process.env.CLICKUP_TOKEN,
+    process.env.CLICKUP_API_KEY,
+    process.env.CLICKUP_KEY,
+    process.env.CLICK_UP_API_TOKEN,
+    process.env.CLICK_UP_TOKEN,
+    process.env.CLICK_UP_API_KEY,
+    process.env.NEXT_PUBLIC_CLICKUP_API_TOKEN,
+    process.env.NEXT_PUBLIC_CLICKUP_TOKEN,
+  ];
+
+  for (const c of candidates) {
+    if (c && cleanEnv(c)) return cleanEnv(c);
+  }
+
+  // 2. Any env var that starts with "pk_" (ClickUp's unique token prefix)
+  for (const val of Object.values(process.env)) {
+    if (typeof val === "string" && cleanEnv(val).startsWith("pk_")) {
+      return cleanEnv(val);
+    }
+  }
+
+  // 3. Any env var with CLICKUP and TOKEN/KEY in name
+  for (const [k, val] of Object.entries(process.env)) {
+    const u = k.toUpperCase();
+    if (
+      u.includes("CLICKUP") &&
+      (u.includes("TOKEN") || u.includes("KEY") || u.includes("SECRET") || u.includes("API"))
+    ) {
+      if (val && cleanEnv(val)) return cleanEnv(val);
+    }
+  }
+
+  return "";
+}
+
 /**
  * Read the ClickUp token from cookies (synchronously from NextRequest or async via next/headers)
  */
