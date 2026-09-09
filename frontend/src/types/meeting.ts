@@ -6,6 +6,8 @@ export interface DiscussionItem {
   action_plan: string;
   target_date: string;
   person_in_charge: string;
+  clickUpTaskId?: string;
+  clickUpUrl?: string;
 }
 
 export interface MeetingDetails {

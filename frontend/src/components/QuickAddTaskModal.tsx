@@ -1,8 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckSquare, X, RefreshCw, CheckCircle2, ExternalLink, Calendar, Users, AlertCircle } from "lucide-react";
-import { createClickUpTask, getStoredClickUpToken, getStoredClickUpListId } from "@/lib/api";
+import {
+  CheckSquare,
+  X,
+  RefreshCw,
+  CheckCircle2,
+  ExternalLink,
+  Calendar,
+  Users,
+  AlertCircle,
+  FolderKanban,
+  Check,
+  ChevronDown
+} from "lucide-react";
+import {
+  createClickUpTask,
+  fetchClickUpTasks,
+  getStoredClickUpToken,
+  getStoredClickUpListId
+} from "@/lib/api";
+import { WORKSPACE_STATUS_CATEGORIES } from "@/app/api/tasks/route";
 
 interface QuickAddTaskModalProps {
   isOpen: boolean;
@@ -15,15 +33,20 @@ interface QuickAddTaskModalProps {
     dueDate?: string;
     priority?: string;
     assigneeName?: string;
+    discussionPointId?: string;
+    existingTaskId?: string;
+    existingTaskUrl?: string;
   };
   onTaskCreated?: (task: any) => void;
+  onOpenInTasks?: (taskId: string) => void;
 }
 
 export function QuickAddTaskModal({
   isOpen,
   onClose,
   initialData,
-  onTaskCreated
+  onTaskCreated,
+  onOpenInTasks
 }: QuickAddTaskModalProps) {
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
@@ -32,11 +55,45 @@ export function QuickAddTaskModal({
   const [priority, setPriority] = useState("normal");
   const [status, setStatus] = useState("to do");
   const [dueDate, setDueDate] = useState("");
-  const [assigneeName, setAssigneeName] = useState("");
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>("");
+  const [customAssigneeName, setCustomAssigneeName] = useState("");
+
+  // ClickUp members and statuses from API
+  const [availableMembers, setAvailableMembers] = useState<
+    Array<{ id: number | string; username: string; email: string; initials: string }>
+  >([]);
+  const [statusCategories, setStatusCategories] = useState(WORKSPACE_STATUS_CATEGORIES);
 
   const [loading, setLoading] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
+  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
+  const [isAlreadyCreated, setIsAlreadyCreated] = useState(false);
+
+  // Load members and statuses on open
+  useEffect(() => {
+    if (isOpen) {
+      loadWorkspaceContext();
+    }
+  }, [isOpen]);
+
+  const loadWorkspaceContext = async () => {
+    setLoadingMembers(true);
+    try {
+      const data = await fetchClickUpTasks();
+      if (data.members && Array.isArray(data.members)) {
+        setAvailableMembers(data.members);
+      }
+      if (data.categories && Array.isArray(data.categories)) {
+        setStatusCategories(data.categories);
+      }
+    } catch (e) {
+      console.warn("Could not preload ClickUp members:", e);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -46,11 +103,35 @@ export function QuickAddTaskModal({
       setMeetingDate(initialData.meetingDate || "");
       setDueDate(initialData.dueDate || "");
       setPriority(initialData.priority || "normal");
-      setAssigneeName(initialData.assigneeName || "");
+      setCustomAssigneeName(initialData.assigneeName || "");
+      setSelectedAssigneeId("");
+
+      if (initialData.existingTaskId) {
+        setCreatedTaskId(initialData.existingTaskId);
+        setCreatedUrl(initialData.existingTaskUrl || null);
+        setIsAlreadyCreated(true);
+      } else {
+        setCreatedTaskId(null);
+        setCreatedUrl(null);
+        setIsAlreadyCreated(false);
+      }
     }
     setError(null);
-    setCreatedUrl(null);
   }, [initialData, isOpen]);
+
+  // Pre-match assignee if name matches
+  useEffect(() => {
+    if (customAssigneeName && availableMembers.length > 0 && !selectedAssigneeId) {
+      const match = availableMembers.find(
+        m =>
+          m.username.toLowerCase().includes(customAssigneeName.toLowerCase()) ||
+          customAssigneeName.toLowerCase().includes(m.username.toLowerCase())
+      );
+      if (match) {
+        setSelectedAssigneeId(String(match.id));
+      }
+    }
+  }, [customAssigneeName, availableMembers, selectedAssigneeId]);
 
   if (!isOpen) return null;
 
@@ -58,17 +139,19 @@ export function QuickAddTaskModal({
     e.preventDefault();
     if (!taskName.trim()) return;
 
-    const token = getStoredClickUpToken();
-    const listId = getStoredClickUpListId();
-
     setLoading(true);
     setError(null);
 
     try {
       let fullDescription = description.trim();
-      if (assigneeName.trim()) {
-        fullDescription = `**Person in Charge:** ${assigneeName.trim()}\n\n${fullDescription}`;
+      const selectedMember = availableMembers.find(m => String(m.id) === selectedAssigneeId);
+      const assigneeLabel = selectedMember ? selectedMember.username : customAssigneeName.trim();
+
+      if (assigneeLabel) {
+        fullDescription = `**Person in Charge:** ${assigneeLabel}\n\n${fullDescription}`;
       }
+
+      const assigneesPayload = selectedAssigneeId ? [Number(selectedAssigneeId)] : undefined;
 
       const res = await createClickUpTask({
         name: taskName.trim(),
@@ -78,13 +161,26 @@ export function QuickAddTaskModal({
         status,
         priority,
         dueDate: dueDate || null,
+        assignees: assigneesPayload,
+        discussionPointId: initialData?.discussionPointId,
       });
 
-      if (res.url) {
-        setCreatedUrl(res.url);
-      }
+      const taskId = res.id || res.task?.id;
+      const url = res.url || res.task?.url;
+
+      setCreatedTaskId(taskId);
+      setCreatedUrl(url);
+      setIsAlreadyCreated(!!res.alreadyExisted);
+
       if (onTaskCreated) {
-        onTaskCreated(res.task || res);
+        onTaskCreated({
+          id: taskId,
+          url,
+          name: taskName.trim(),
+          status,
+          priority,
+          discussionPointId: initialData?.discussionPointId,
+        });
       }
     } catch (err: any) {
       setError(err.message || "Failed to create task in ClickUp.");
@@ -107,7 +203,7 @@ export function QuickAddTaskModal({
                 Add to ClickUp Tasks
               </h3>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                Convert meeting action item into a tracked ClickUp task
+                Convert meeting discussion point into a tracked ClickUp task
               </p>
             </div>
           </div>
@@ -126,25 +222,44 @@ export function QuickAddTaskModal({
               <CheckCircle2 size={24} />
             </div>
             <h4 className="font-serif italic font-bold text-base text-[#003366]">
-              Task Created in ClickUp!
+              {isAlreadyCreated ? "Task Already Tracked in ClickUp!" : "Task Created in ClickUp!"}
             </h4>
             <p className="text-xs text-gray-600 max-w-xs mx-auto">
-              The action item has been tagged with <code className="bg-gray-100 px-1 font-bold">echo-meeting</code> and synced.
+              This discussion point is linked to ClickUp with tag{" "}
+              <code className="bg-gray-100 px-1 font-bold text-purple-700">echo-meeting</code>.
             </p>
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-3">
+              {/* OPEN IN TASKS BUTTON */}
+              {onOpenInTasks && createdTaskId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenInTasks(createdTaskId);
+                  }}
+                  className="btn-primary !py-2 !px-4 !text-xs flex items-center gap-1.5 shadow-xs"
+                >
+                  <FolderKanban size={13} />
+                  <span>Open in Tasks</span>
+                </button>
+              )}
+
+              {/* OPEN IN CLICKUP */}
               <a
                 href={createdUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-outline !py-1.5 !px-3.5 !text-xs flex items-center gap-1.5"
+                className="btn-outline !py-2 !px-4 !text-xs flex items-center gap-1.5 text-[#003366]"
               >
                 <ExternalLink size={13} />
                 <span>Open in ClickUp</span>
               </a>
+
+              {/* DONE */}
               <button
                 type="button"
                 onClick={onClose}
-                className="btn-primary !py-1.5 !px-4 !text-xs"
+                className="px-4 py-2 border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
               >
                 Done
               </button>
@@ -202,23 +317,30 @@ export function QuickAddTaskModal({
                 </select>
               </div>
 
+              {/* Status with Exact ClickUp Categories */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  Status
+                  ClickUp Status
                 </label>
                 <select
                   value={status}
                   onChange={e => setStatus(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
                 >
-                  <option value="to do">To Do</option>
-                  <option value="in progress">In Progress</option>
-                  <option value="in review">In Review</option>
+                  {statusCategories.map(cat => (
+                    <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                      {cat.statuses.map(st => (
+                        <option key={st.status} value={st.status}>
+                          {st.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* Target Due Date & In Charge */}
+            {/* Target Due Date & Assignee */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
@@ -232,17 +354,41 @@ export function QuickAddTaskModal({
                 />
               </div>
 
+              {/* Assignee Selection from ClickUp Members API */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  Person in Charge
-                </label>
-                <input
-                  type="text"
-                  value={assigneeName}
-                  onChange={e => setAssigneeName(e.target.value)}
-                  placeholder="Assignee name..."
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                    Assignee (ClickUp API)
+                  </label>
+                  {loadingMembers && (
+                    <span className="text-[9px] text-[#c9ab4c] font-bold flex items-center gap-1">
+                      <RefreshCw size={9} className="animate-spin" /> Fetching...
+                    </span>
+                  )}
+                </div>
+
+                {availableMembers.length > 0 ? (
+                  <select
+                    value={selectedAssigneeId}
+                    onChange={e => setSelectedAssigneeId(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  >
+                    <option value="">-- Assign to Member --</option>
+                    {availableMembers.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.username} ({m.email || "ClickUp User"})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={customAssigneeName}
+                    onChange={e => setCustomAssigneeName(e.target.value)}
+                    placeholder="Assignee name..."
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  />
+                )}
               </div>
             </div>
 

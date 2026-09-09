@@ -21,7 +21,11 @@ import {
   Sparkles,
   ArrowUpDown,
   Tag,
-  FolderSync
+  FolderSync,
+  Edit3,
+  X,
+  Users,
+  Check
 } from "lucide-react";
 import {
   fetchClickUpTasks,
@@ -34,6 +38,7 @@ import {
   setStoredClickUpListId,
   discoverClickUpLists
 } from "@/lib/api";
+import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/app/api/tasks/route";
 
 export interface ClickUpTask {
   id: string;
@@ -41,6 +46,7 @@ export interface ClickUpTask {
   description: string;
   status: string;
   statusColor?: string;
+  statusType?: string;
   priority: string;
   priorityOrder?: number;
   dueDate: string | null;
@@ -57,19 +63,22 @@ export interface ClickUpTask {
   tags?: string[];
   isMeetingTask?: boolean;
   meetingTitle?: string;
+  discussionPointId?: string;
   listId?: string;
 }
 
 interface TasksViewProps {
   onNavigateToMeetings?: () => void;
   onSelectMeeting?: (meetingTitle: string) => void;
+  focusedTaskId?: string | null;
+  onClearFocusedTask?: () => void;
 }
-
-const DEFAULT_STATUSES = ["to do", "in progress", "in review", "complete"];
 
 export default function TasksView({
   onNavigateToMeetings,
-  onSelectMeeting
+  onSelectMeeting,
+  focusedTaskId,
+  onClearFocusedTask
 }: TasksViewProps) {
   const [tasks, setTasks] = useState<ClickUpTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +92,12 @@ export default function TasksView({
   const [discoveredLists, setDiscoveredLists] = useState<Array<{ id: string; name: string; spaceName: string }>>([]);
   const [discovering, setDiscovering] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Available ClickUp members and statuses
+  const [availableMembers, setAvailableMembers] = useState<
+    Array<{ id: number | string; username: string; email: string; initials: string }>
+  >([]);
+  const [statusCategories, setStatusCategories] = useState(WORKSPACE_STATUS_CATEGORIES);
 
   // View state: 'board' | 'list'
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
@@ -102,7 +117,19 @@ export default function TasksView({
   const [newTaskPriority, setNewTaskPriority] = useState("normal");
   const [newTaskStatus, setNewTaskStatus] = useState("to do");
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskAssigneeId, setNewTaskAssigneeId] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
+
+  // Detail / Edit Modal state
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<ClickUpTask | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editPriority, setEditPriority] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editAssigneeId, setEditAssigneeId] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editSavedSuccess, setEditSavedSuccess] = useState(false);
 
   // Load stored credentials on mount
   useEffect(() => {
@@ -113,6 +140,16 @@ export default function TasksView({
     loadTasks();
   }, []);
 
+  // Handle focusedTaskId from external navigation
+  useEffect(() => {
+    if (focusedTaskId && tasks.length > 0) {
+      const matched = tasks.find(t => t.id === focusedTaskId);
+      if (matched) {
+        openTaskDetail(matched);
+      }
+    }
+  }, [focusedTaskId, tasks]);
+
   const loadTasks = async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setRefreshing(true);
     else setLoading(true);
@@ -121,6 +158,12 @@ export default function TasksView({
     try {
       const data = await fetchClickUpTasks();
       setTasks(data.tasks || []);
+      if (data.members && Array.isArray(data.members)) {
+        setAvailableMembers(data.members);
+      }
+      if (data.categories && Array.isArray(data.categories)) {
+        setStatusCategories(data.categories);
+      }
       setNeedsAuth(false);
     } catch (err: any) {
       console.warn("Failed to load ClickUp tasks:", err.message);
@@ -170,6 +213,75 @@ export default function TasksView({
     }
   };
 
+  const openTaskDetail = (task: ClickUpTask) => {
+    setSelectedTaskForDetail(task);
+    setEditTitle(task.name);
+    setEditDescription(task.description);
+    setEditStatus(task.status.toLowerCase());
+    setEditPriority(task.priority.toLowerCase());
+    setEditDueDate(task.dueDate ? task.dueDate.split("T")[0] : "");
+    setEditAssigneeId(task.assignees.length > 0 ? String(task.assignees[0].id) : "");
+    setEditSavedSuccess(false);
+  };
+
+  const handleSaveTaskDetail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTaskForDetail) return;
+
+    setSavingEdit(true);
+    try {
+      const payload: any = {
+        taskId: selectedTaskForDetail.id,
+        name: editTitle.trim(),
+        description: editDescription.trim(),
+        status: editStatus,
+        priority: editPriority,
+        dueDate: editDueDate || null,
+      };
+
+      if (editAssigneeId) {
+        payload.assignees = [Number(editAssigneeId)];
+      }
+
+      await updateClickUpTask(payload);
+
+      // Update local state
+      const updatedAssignee = availableMembers.find(m => String(m.id) === editAssigneeId);
+      setTasks(prev =>
+        prev.map(t => {
+          if (t.id === selectedTaskForDetail.id) {
+            return {
+              ...t,
+              name: editTitle.trim(),
+              description: editDescription.trim(),
+              status: editStatus,
+              priority: editPriority,
+              dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+              assignees: updatedAssignee
+                ? [
+                    {
+                      id: updatedAssignee.id,
+                      username: updatedAssignee.username,
+                      email: updatedAssignee.email,
+                      initials: updatedAssignee.initials,
+                    },
+                  ]
+                : t.assignees,
+            };
+          }
+          return t;
+        })
+      );
+
+      setEditSavedSuccess(true);
+      setTimeout(() => setEditSavedSuccess(false), 2500);
+    } catch (err: any) {
+      alert(err.message || "Failed to update task in ClickUp.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     // Optimistic UI update
     setTasks(prev =>
@@ -179,7 +291,6 @@ export default function TasksView({
       await updateClickUpTask({ taskId, status: newStatus });
     } catch (err: any) {
       console.error("Failed to update status in ClickUp:", err);
-      // Revert on error
       loadTasks();
     }
   };
@@ -199,6 +310,9 @@ export default function TasksView({
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm("Are you sure you want to delete this task from ClickUp?")) return;
     setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (selectedTaskForDetail?.id === taskId) {
+      setSelectedTaskForDetail(null);
+    }
     try {
       await deleteClickUpTask(taskId);
     } catch (err: any) {
@@ -212,6 +326,7 @@ export default function TasksView({
     if (!newTaskName.trim()) return;
     setCreatingTask(true);
     try {
+      const assigneesPayload = newTaskAssigneeId ? [Number(newTaskAssigneeId)] : undefined;
       await createClickUpTask({
         name: newTaskName.trim(),
         description: newTaskDesc.trim(),
@@ -219,12 +334,14 @@ export default function TasksView({
         status: newTaskStatus,
         priority: newTaskPriority,
         dueDate: newTaskDueDate || null,
+        assignees: assigneesPayload,
       });
       setShowCreateModal(false);
       setNewTaskName("");
       setNewTaskDesc("");
       setNewTaskMeetingTitle("");
       setNewTaskDueDate("");
+      setNewTaskAssigneeId("");
       await loadTasks();
     } catch (err: any) {
       alert(err.message || "Failed to create task in ClickUp.");
@@ -236,11 +353,12 @@ export default function TasksView({
   // Derive filter lists
   const allAssignees = useMemo(() => {
     const map = new Map<string, string>();
+    availableMembers.forEach(m => map.set(String(m.id), m.username));
     tasks.forEach(t => {
       t.assignees.forEach(a => map.set(String(a.id), a.username));
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [tasks]);
+  }, [availableMembers, tasks]);
 
   const allMeetings = useMemo(() => {
     const set = new Set<string>();
@@ -249,6 +367,20 @@ export default function TasksView({
     });
     return Array.from(set);
   }, [tasks]);
+
+  // Helper to get category for any status
+  const getStatusCategory = (statusStr: string): string => {
+    const s = statusStr.toLowerCase();
+    for (const cat of statusCategories) {
+      if (cat.statuses.some(st => st.status.toLowerCase() === s)) {
+        return cat.category;
+      }
+    }
+    if (s.includes("complete") || s.includes("done")) return "Done";
+    if (s.includes("closed")) return "Closed";
+    if (s.includes("progress") || s.includes("ongoing") || s.includes("delayed")) return "Active";
+    return "Not started";
+  };
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -296,7 +428,8 @@ export default function TasksView({
             due.getDate() === now.getDate();
           if (!isToday) return false;
         } else if (dateFilter === "overdue") {
-          if (due >= now || t.status.toLowerCase() === "complete") return false;
+          const cat = getStatusCategory(t.status);
+          if (due >= now || cat === "Done" || cat === "Closed") return false;
         } else if (dateFilter === "upcoming") {
           const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
           if (due < now || due > nextWeek) return false;
@@ -307,21 +440,25 @@ export default function TasksView({
 
       return true;
     });
-  }, [tasks, searchQuery, statusFilter, assigneeFilter, dateFilter, meetingFilter]);
+  }, [tasks, searchQuery, statusFilter, assigneeFilter, dateFilter, meetingFilter, statusCategories]);
 
   // Metrics
   const metrics = useMemo(() => {
     const total = tasks.length;
-    const completed = tasks.filter(t => t.status.toLowerCase() === "complete").length;
-    const inProgress = tasks.filter(t => t.status.toLowerCase().includes("progress")).length;
+    const completed = tasks.filter(t => {
+      const cat = getStatusCategory(t.status);
+      return cat === "Done" || cat === "Closed";
+    }).length;
+    const inProgress = tasks.filter(t => getStatusCategory(t.status) === "Active").length;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const overdue = tasks.filter(
-      t => t.dueDate && new Date(t.dueDate) < now && t.status.toLowerCase() !== "complete"
-    ).length;
+    const overdue = tasks.filter(t => {
+      const cat = getStatusCategory(t.status);
+      return t.dueDate && new Date(t.dueDate) < now && cat !== "Done" && cat !== "Closed";
+    }).length;
 
     return { total, completed, inProgress, overdue };
-  }, [tasks]);
+  }, [tasks, statusCategories]);
 
   const getPriorityBadge = (priority: string) => {
     const p = priority.toLowerCase();
@@ -353,6 +490,39 @@ export default function TasksView({
     );
   };
 
+  const getStatusBadge = (statusStr: string) => {
+    const s = statusStr.toLowerCase();
+    const cat = getStatusCategory(s);
+
+    let badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
+    if (cat === "Not started") badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+    else if (cat === "Active") {
+      if (s.includes("delayed")) badgeClass = "bg-red-50 text-red-700 border-red-200";
+      else if (s.includes("recovery")) badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-200";
+      else badgeClass = "bg-yellow-50 text-yellow-800 border-yellow-200";
+    } else if (cat === "Done") {
+      if (s.includes("delayed")) badgeClass = "bg-pink-50 text-pink-700 border-pink-200";
+      else if (s.includes("onhold") || s.includes("shelved")) badgeClass = "bg-gray-100 text-gray-600 border-gray-200";
+      else badgeClass = "bg-blue-50 text-[#003366] border-blue-200";
+    } else if (cat === "Closed") {
+      badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
+    }
+
+    return (
+      <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border rounded-none ${badgeClass}`}>
+        {statusStr}
+      </span>
+    );
+  };
+
+  // Kanban Board Columns by Category
+  const KANBAN_CATEGORIES: Array<{ key: string; label: string; color: string }> = [
+    { key: "Not started", label: "NOT STARTED", color: "border-amber-400" },
+    { key: "Active", label: "ACTIVE & ONGOING", color: "border-blue-500" },
+    { key: "Done", label: "DONE & RESOLVED", color: "border-purple-500" },
+    { key: "Closed", label: "CLOSED", color: "border-emerald-500" },
+  ];
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f8f9fa] overflow-hidden">
       {/* Top Header Bar */}
@@ -371,7 +541,7 @@ export default function TasksView({
               </span>
             </div>
             <p className="text-[11px] text-gray-500 mt-0.5">
-              Closed-loop operational execution synchronized directly with ClickUp.
+              Closed-loop operational execution synchronized directly with ClickUp. Click any task to view or edit details.
             </p>
           </div>
         </div>
@@ -436,13 +606,13 @@ export default function TasksView({
           </div>
           <div className="pl-6 flex items-center gap-2">
             <span className="text-gray-400 text-[11px] uppercase tracking-wider font-semibold">
-              In Progress:
+              In Progress / Active:
             </span>
             <span className="font-mono font-bold text-blue-400 text-sm">{metrics.inProgress}</span>
           </div>
           <div className="pl-6 flex items-center gap-2">
             <span className="text-gray-400 text-[11px] uppercase tracking-wider font-semibold">
-              Completed:
+              Completed / Done:
             </span>
             <span className="font-mono font-bold text-emerald-400 text-sm">{metrics.completed}</span>
           </div>
@@ -475,22 +645,23 @@ export default function TasksView({
             />
           </div>
 
-          {/* Status Filter Pills */}
-          <div className="flex items-center gap-1">
-            {["all", "to do", "in progress", "in review", "complete"].map(st => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border transition-colors ${
-                  statusFilter.toLowerCase() === st.toLowerCase()
-                    ? "bg-[#003366] text-white border-[#003366]"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                {st}
-              </button>
+          {/* Status Filter Dropdown */}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-2.5 py-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c] font-bold uppercase"
+          >
+            <option value="all">Status: All Statuses</option>
+            {statusCategories.map(cat => (
+              <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                {cat.statuses.map(st => (
+                  <option key={st.status} value={st.status}>
+                    {st.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
-          </div>
+          </select>
 
           {/* Date Range Selector */}
           <select
@@ -687,35 +858,24 @@ export default function TasksView({
         {/* ─── BOARD VIEW (KANBAN) ─── */}
         {!loading && !error && viewMode === "board" && filteredTasks.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-            {DEFAULT_STATUSES.map(statusCol => {
+            {KANBAN_CATEGORIES.map(col => {
               const colTasks = filteredTasks.filter(
-                t => t.status.toLowerCase() === statusCol.toLowerCase()
+                t => getStatusCategory(t.status) === col.key
               );
 
               return (
                 <div
-                  key={statusCol}
+                  key={col.key}
                   className="bg-gray-50/80 border border-gray-200 flex flex-col min-h-[500px]"
                 >
                   {/* Column Header */}
-                  <div className="bg-white px-3.5 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                  <div className={`bg-white px-3.5 py-2.5 border-b-2 ${col.color} flex items-center justify-between shadow-2xs`}>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 ${
-                          statusCol === "complete"
-                            ? "bg-emerald-500"
-                            : statusCol === "in progress"
-                            ? "bg-blue-500"
-                            : statusCol === "in review"
-                            ? "bg-purple-500"
-                            : "bg-gray-400"
-                        }`}
-                      ></span>
-                      <h4 className="font-bold text-[11px] uppercase tracking-wider text-gray-700">
-                        {statusCol}
+                      <h4 className="font-bold text-[11px] uppercase tracking-wider text-gray-800">
+                        {col.label}
                       </h4>
                     </div>
-                    <span className="text-[10px] font-mono font-bold bg-gray-100 text-gray-600 px-1.5 py-0.2">
+                    <span className="text-[10px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 py-0.2">
                       {colTasks.length}
                     </span>
                   </div>
@@ -725,33 +885,30 @@ export default function TasksView({
                     {colTasks.map(task => (
                       <div
                         key={task.id}
-                        className="bg-white border border-gray-200 hover:border-[#c9ab4c] p-3 shadow-2xs transition-all flex flex-col justify-between group"
+                        onClick={() => openTaskDetail(task)}
+                        className="bg-white border border-gray-200 hover:border-[#c9ab4c] p-3 shadow-2xs transition-all flex flex-col justify-between group cursor-pointer hover:shadow-xs"
                       >
                         <div>
-                          {/* Priority & ClickUp Direct Link */}
+                          {/* Priority & Specific Status Badge */}
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             {getPriorityBadge(task.priority)}
-                            {task.url && (
-                              <a
-                                href={task.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="Open in ClickUp"
-                                className="text-gray-400 hover:text-[#003366] transition-colors"
-                              >
-                                <ExternalLink size={12} />
-                              </a>
-                            )}
+                            {getStatusBadge(task.status)}
                           </div>
 
                           {/* Task Name */}
-                          <h5 className="text-xs font-bold text-gray-900 leading-snug mb-1.5">
+                          <h5 className="text-xs font-bold text-gray-900 leading-snug mb-1.5 group-hover:text-[#003366] transition-colors">
                             {task.name}
                           </h5>
 
                           {/* Originating Meeting Badge */}
                           {task.meetingTitle && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#003366] bg-blue-50/70 border border-blue-100 px-2 py-0.5 mb-2 font-medium">
+                            <div
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (onSelectMeeting) onSelectMeeting(task.meetingTitle!);
+                              }}
+                              className="flex items-center gap-1 text-[10px] text-[#003366] bg-blue-50/70 border border-blue-100 px-2 py-0.5 mb-2 font-medium hover:bg-blue-100/70"
+                            >
                               <Link2 size={10} className="shrink-0 text-[#c9ab4c]" />
                               <span className="truncate">{task.meetingTitle}</span>
                             </div>
@@ -763,7 +920,8 @@ export default function TasksView({
                               <Calendar size={10} />
                               <span>{new Date(task.dueDate).toLocaleDateString()}</span>
                               {new Date(task.dueDate) < new Date() &&
-                                task.status.toLowerCase() !== "complete" && (
+                                getStatusCategory(task.status) !== "Done" &&
+                                getStatusCategory(task.status) !== "Closed" && (
                                   <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.2 ml-1">
                                     OVERDUE
                                   </span>
@@ -773,7 +931,10 @@ export default function TasksView({
                         </div>
 
                         {/* Card Footer: Assignee & Quick Status Changer */}
-                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 mt-1">
+                        <div
+                          onClick={e => e.stopPropagation()}
+                          className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 mt-1"
+                        >
                           {/* Assignee Avatar / Name */}
                           <div className="flex items-center gap-1 text-[10px] text-gray-600 truncate">
                             {task.assignees.length > 0 ? (
@@ -794,12 +955,16 @@ export default function TasksView({
                           <select
                             value={task.status.toLowerCase()}
                             onChange={e => handleStatusChange(task.id, e.target.value)}
-                            className="text-[10px] uppercase font-bold tracking-wider bg-gray-50 border border-gray-200 text-gray-700 py-0.5 px-1 outline-none hover:border-gray-400 cursor-pointer"
+                            className="text-[9px] uppercase font-bold tracking-wider bg-gray-50 border border-gray-200 text-gray-700 py-0.5 px-1 outline-none hover:border-gray-400 cursor-pointer max-w-[120px] truncate"
                           >
-                            {DEFAULT_STATUSES.map(s => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
+                            {statusCategories.map(cat => (
+                              <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                                {cat.statuses.map(s => (
+                                  <option key={s.status} value={s.status}>
+                                    {s.label}
+                                  </option>
+                                ))}
+                              </optgroup>
                             ))}
                           </select>
                         </div>
@@ -829,41 +994,55 @@ export default function TasksView({
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredTasks.map(task => (
-                  <tr key={task.id} className="hover:bg-gray-50/80 transition-colors">
+                  <tr
+                    key={task.id}
+                    onClick={() => openTaskDetail(task)}
+                    className="hover:bg-blue-50/40 transition-colors cursor-pointer"
+                  >
                     {/* Status Column */}
-                    <td className="py-2.5 px-4">
+                    <td className="py-2.5 px-4" onClick={e => e.stopPropagation()}>
                       <select
                         value={task.status.toLowerCase()}
                         onChange={e => handleStatusChange(task.id, e.target.value)}
                         className="text-[10px] uppercase font-bold tracking-wider bg-gray-50 border border-gray-200 text-gray-800 py-1 px-1.5 outline-none hover:border-[#c9ab4c]"
                       >
-                        {DEFAULT_STATUSES.map(s => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
+                        {statusCategories.map(cat => (
+                          <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                            {cat.statuses.map(s => (
+                              <option key={s.status} value={s.status}>
+                                {s.label}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </td>
 
                     {/* Name Column */}
                     <td className="py-2.5 px-4 font-bold text-gray-900 max-w-sm">
-                      <div className="line-clamp-2">{task.name}</div>
+                      <div className="line-clamp-2 hover:text-[#003366]">{task.name}</div>
                     </td>
 
                     {/* Meeting Origin Column */}
-                    <td className="py-2.5 px-4 text-gray-600">
+                    <td className="py-2.5 px-4 text-gray-600" onClick={e => e.stopPropagation()}>
                       {task.meetingTitle ? (
-                        <div className="flex items-center gap-1.5 text-[11px] text-[#003366] font-medium">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onSelectMeeting) onSelectMeeting(task.meetingTitle!);
+                          }}
+                          className="flex items-center gap-1.5 text-[11px] text-[#003366] hover:underline font-medium"
+                        >
                           <Link2 size={11} className="text-[#c9ab4c] shrink-0" />
                           <span className="truncate max-w-[180px]">{task.meetingTitle}</span>
-                        </div>
+                        </button>
                       ) : (
                         <span className="text-gray-400 italic">Direct Task</span>
                       )}
                     </td>
 
                     {/* Priority Column */}
-                    <td className="py-2.5 px-4">
+                    <td className="py-2.5 px-4" onClick={e => e.stopPropagation()}>
                       <select
                         value={task.priority.toLowerCase()}
                         onChange={e => handlePriorityChange(task.id, e.target.value)}
@@ -896,7 +1075,8 @@ export default function TasksView({
                         <span
                           className={
                             new Date(task.dueDate) < new Date() &&
-                            task.status.toLowerCase() !== "complete"
+                            getStatusCategory(task.status) !== "Done" &&
+                            getStatusCategory(task.status) !== "Closed"
                               ? "text-rose-600 font-bold"
                               : ""
                           }
@@ -909,8 +1089,15 @@ export default function TasksView({
                     </td>
 
                     {/* Actions Column */}
-                    <td className="py-2.5 px-4 text-right">
+                    <td className="py-2.5 px-4 text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openTaskDetail(task)}
+                          title="View / Edit Details"
+                          className="p-1 text-gray-400 hover:text-[#003366]"
+                        >
+                          <Edit3 size={13} />
+                        </button>
                         {task.url && (
                           <a
                             href={task.url}
@@ -938,6 +1125,226 @@ export default function TasksView({
           </div>
         )}
       </div>
+
+      {/* ─── TASK DETAIL & EDIT MODAL ─── */}
+      {selectedTaskForDetail && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-xl rounded-none animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-gray-200 pb-3 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono uppercase bg-purple-50 text-purple-700 px-1.5 py-0.2 font-bold">
+                    ClickUp Task #{selectedTaskForDetail.id}
+                  </span>
+                  {selectedTaskForDetail.discussionPointId && (
+                    <span className="text-[10px] font-mono bg-blue-50 text-[#003366] px-1.5 py-0.2 font-bold">
+                      DP ID: {selectedTaskForDetail.discussionPointId}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-serif italic font-bold text-xl text-[#003366]">
+                  Task Details & Live Synchronization
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTaskForDetail(null);
+                  if (onClearFocusedTask) onClearFocusedTask();
+                }}
+                className="text-gray-400 hover:text-gray-700 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTaskDetail} className="space-y-4">
+              {/* Task Title */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  Task Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  className="w-full border border-gray-300 p-2 text-xs font-bold text-gray-900 bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                />
+              </div>
+
+              {/* Originating Meeting Context */}
+              {selectedTaskForDetail.meetingTitle && (
+                <div className="p-2.5 bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs text-[#003366]">
+                  <div className="flex items-center gap-2">
+                    <Link2 size={13} className="text-[#c9ab4c]" />
+                    <span className="font-semibold">
+                      Originating Meeting: {selectedTaskForDetail.meetingTitle}
+                    </span>
+                  </div>
+                  {onSelectMeeting && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTaskForDetail(null);
+                        onSelectMeeting(selectedTaskForDetail.meetingTitle!);
+                      }}
+                      className="text-[11px] font-bold underline hover:text-[#c9ab4c]"
+                    >
+                      View Meeting
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Status & Priority Row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    ClickUp Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                  >
+                    {statusCategories.map(cat => (
+                      <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                        {cat.statuses.map(st => (
+                          <option key={st.status} value={st.status}>
+                            {st.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={editPriority}
+                    onChange={e => setEditPriority(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                  >
+                    <option value="urgent">🔴 Urgent</option>
+                    <option value="high">🟠 High</option>
+                    <option value="normal">🔵 Normal</option>
+                    <option value="low">⚪ Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Due Date & Assignee Row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editDueDate}
+                    onChange={e => setEditDueDate(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Assignee (ClickUp Members)
+                  </label>
+                  <select
+                    value={editAssigneeId}
+                    onChange={e => setEditAssigneeId(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {availableMembers.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.username} ({m.email || "Member"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                  Description & Context
+                </label>
+                <textarea
+                  rows={5}
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none rounded-none"
+                />
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTask(selectedTaskForDetail.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 text-xs flex items-center gap-1"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete Task</span>
+                  </button>
+
+                  {selectedTaskForDetail.url && (
+                    <a
+                      href={selectedTaskForDetail.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-2 text-gray-600 hover:text-[#003366] text-xs flex items-center gap-1"
+                    >
+                      <ExternalLink size={13} />
+                      <span>Open in ClickUp</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {editSavedSuccess && (
+                    <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                      <Check size={14} /> Saved in ClickUp!
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTaskForDetail(null);
+                      if (onClearFocusedTask) onClearFocusedTask();
+                    }}
+                    className="btn-outline !py-1.5 !px-3.5 !text-xs rounded-none"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingEdit}
+                    className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 shadow-xs rounded-none"
+                  >
+                    {savingEdit ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin" />
+                        <span>Updating ClickUp...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ─── CREATE TASK MODAL ─── */}
       {showCreateModal && (
@@ -1010,25 +1417,51 @@ export default function TasksView({
                   <select
                     value={newTaskStatus}
                     onChange={e => setNewTaskStatus(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none uppercase font-bold"
                   >
-                    <option value="to do">To Do</option>
-                    <option value="in progress">In Progress</option>
-                    <option value="in review">In Review</option>
+                    {statusCategories.map(cat => (
+                      <optgroup key={cat.category} label={`── ${cat.category} ──`}>
+                        {cat.statuses.map(s => (
+                          <option key={s.status} value={s.status}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={newTaskDueDate}
-                  onChange={e => setNewTaskDueDate(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={e => setNewTaskDueDate(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Assignee (ClickUp API)
+                  </label>
+                  <select
+                    value={newTaskAssigneeId}
+                    onChange={e => setNewTaskAssigneeId(e.target.value)}
+                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {availableMembers.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

@@ -143,6 +143,7 @@ interface MeetingsViewProps {
   onSelectMeeting: (id: string) => void;
   onUpdateMeeting: (meeting: ArchivedMeeting) => void;
   onNewMinutes: () => void;
+  onNavigateToTasks?: (taskId: string) => void;
 }
 
 export function MeetingsView({
@@ -150,7 +151,8 @@ export function MeetingsView({
   selectedMeetingId,
   onSelectMeeting,
   onUpdateMeeting,
-  onNewMinutes
+  onNewMinutes,
+  onNavigateToTasks
 }: MeetingsViewProps) {
   // Search & Filter state
   const [searchFilter, setSearchFilter] = useState("");
@@ -195,7 +197,11 @@ export function MeetingsView({
       dueDate?: string;
       priority?: string;
       assigneeName?: string;
+      discussionPointId?: string;
+      existingTaskId?: string;
+      existingTaskUrl?: string;
     };
+    topicIndex?: number;
   }>({
     isOpen: false,
     data: {},
@@ -802,30 +808,46 @@ export function MeetingsView({
                       <span className="text-[10px] text-gray-400 font-mono">
                         Topic #{idx + 1}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuickAddTaskData({
-                            isOpen: true,
-                            data: {
-                              name:
-                                item.action_plan && item.action_plan !== "None"
-                                  ? item.action_plan
-                                  : item.topic || `Action from Topic #${idx + 1}`,
-                              description: `**Topic:** ${item.topic || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence || ""}`,
-                              meetingTitle: activeMeeting?.title || "Meeting Archive",
-                              meetingDate: activeMeeting?.date,
-                              dueDate: item.target_date || "",
-                              priority: "normal",
-                              assigneeName: item.person_in_charge || "",
-                            },
-                          });
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
-                      >
-                        <CheckSquare size={13} className="text-[#c9ab4c]" />
-                        <span>Add to Tasks</span>
-                      </button>
+                      {item.clickUpTaskId ? (
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToTasks && onNavigateToTasks(item.clickUpTaskId!)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs rounded-none cursor-pointer"
+                          title="Already added to ClickUp. Click to view in Tasks portal"
+                        >
+                          <CheckCircle size={13} className="text-emerald-600" />
+                          <span>Added to Tasks</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickAddTaskData({
+                              isOpen: true,
+                              data: {
+                                name:
+                                  item.action_plan && item.action_plan !== "None"
+                                    ? item.action_plan
+                                    : item.topic || `Action from Topic #${idx + 1}`,
+                                description: `**Topic:** ${item.topic || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence || ""}`,
+                                meetingTitle: activeMeeting?.title || "Meeting Archive",
+                                meetingDate: activeMeeting?.date,
+                                dueDate: item.target_date || "",
+                                priority: "normal",
+                                assigneeName: item.person_in_charge || "",
+                                discussionPointId: String(item.id || `dp_${activeMeeting?.id}_${idx + 1}`),
+                                existingTaskId: item.clickUpTaskId,
+                                existingTaskUrl: item.clickUpUrl,
+                              },
+                              topicIndex: idx,
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                        >
+                          <CheckSquare size={13} className="text-[#c9ab4c]" />
+                          <span>Add to Tasks</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -845,6 +867,25 @@ export function MeetingsView({
         isOpen={quickAddTaskData.isOpen}
         onClose={() => setQuickAddTaskData({ isOpen: false, data: {} })}
         initialData={quickAddTaskData.data}
+        onTaskCreated={(created) => {
+          if (activeMeeting && quickAddTaskData.topicIndex !== undefined) {
+            const idx = quickAddTaskData.topicIndex;
+            const updatedItems = [...activeMeeting.items];
+            if (updatedItems[idx]) {
+              updatedItems[idx] = {
+                ...updatedItems[idx],
+                clickUpTaskId: created.id,
+                clickUpUrl: created.url,
+              };
+              const updatedMeeting = { ...activeMeeting, items: updatedItems };
+              setActiveMeeting(updatedMeeting);
+              onUpdateMeeting(updatedMeeting);
+            }
+          }
+        }}
+        onOpenInTasks={(taskId) => {
+          if (onNavigateToTasks) onNavigateToTasks(taskId);
+        }}
       />
     </div>
   );

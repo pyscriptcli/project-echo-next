@@ -38,7 +38,47 @@ export function numberToPriority(num: number | null | undefined): string {
   }
 }
 
-// GET: Fetch tasks or discover lists
+// User-specified workspace status categories
+export const WORKSPACE_STATUS_CATEGORIES = [
+  {
+    category: "Not started",
+    statuses: [
+      { status: "to do", label: "TO DO", color: "#f59e0b", type: "open" },
+    ],
+  },
+  {
+    category: "Active",
+    statuses: [
+      { status: "ongoing", label: "ONGOING", color: "#eab308", type: "custom" },
+      { status: "delayed", label: "DELAYED", color: "#dc2626", type: "custom" },
+      { status: "recovery meeting", label: "RECOVERY MEETING", color: "#16a34a", type: "custom" },
+    ],
+  },
+  {
+    category: "Done",
+    statuses: [
+      { status: "completed 5 days ahead", label: "COMPLETED 5 DAYS AHEAD", color: "#7c3aed", type: "done" },
+      { status: "completed 1 day ahead", label: "COMPLETED 1 DAY AHEAD", color: "#2563eb", type: "done" },
+      { status: "completed on-time", label: "COMPLETED ON-TIME", color: "#0284c7", type: "done" },
+      { status: "delayed completion", label: "DELAYED COMPLETION", color: "#db2777", type: "done" },
+      { status: "onhold", label: "ONHOLD", color: "#ea580c", type: "done" },
+      { status: "shelved", label: "SHELVED", color: "#6b7280", type: "done" },
+    ],
+  },
+  {
+    category: "Closed",
+    statuses: [
+      { status: "closed", label: "CLOSED", color: "#059669", type: "closed" },
+    ],
+  },
+];
+
+// Flat array of all statuses
+export const ALL_WORKSPACE_STATUSES = WORKSPACE_STATUS_CATEGORIES.flatMap(
+  (cat) => cat.statuses
+);
+
+// GET: Fetch tasks, members, list statuses, or discover lists
 export async function GET(req: NextRequest) {
   try {
     const { token, listId } = getClickUpCredentials(req);
@@ -138,13 +178,28 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const tasksRes = await fetch(
-      `https://api.clickup.com/api/v2/list/${targetListId}/task?subtasks=true&include_closed=true`,
-      {
+    // Fetch tasks, list info, and members in parallel
+    const [tasksRes, listInfoRes, membersRes, teamsRes] = await Promise.all([
+      fetch(
+        `https://api.clickup.com/api/v2/list/${targetListId}/task?subtasks=true&include_closed=true`,
+        {
+          headers: { Authorization: token },
+          cache: "no-store",
+        }
+      ),
+      fetch(`https://api.clickup.com/api/v2/list/${targetListId}`, {
         headers: { Authorization: token },
         cache: "no-store",
-      }
-    );
+      }).catch(() => null),
+      fetch(`https://api.clickup.com/api/v2/list/${targetListId}/member`, {
+        headers: { Authorization: token },
+        cache: "no-store",
+      }).catch(() => null),
+      fetch(`https://api.clickup.com/api/v2/team`, {
+        headers: { Authorization: token },
+        cache: "no-store",
+      }).catch(() => null),
+    ]);
 
     if (!tasksRes.ok) {
       let errMsg = "Failed to fetch tasks from ClickUp";
@@ -158,6 +213,90 @@ export async function GET(req: NextRequest) {
     const tasksData = await tasksRes.json();
     const rawTasks = tasksData.tasks || [];
 
+    // Parse list statuses
+    let listStatuses: any[] = [];
+    if (listInfoRes && listInfoRes.ok) {
+      try {
+        const listData = await listInfoRes.json();
+        if (listData.statuses && Array.isArray(listData.statuses)) {
+          listStatuses = listData.statuses.map((s: any) => ({
+            status: s.status?.toLowerCase() || "",
+            label: s.status?.toUpperCase() || "",
+            color: s.color || "#808080",
+            type: s.type || "custom",
+          }));
+        }
+      } catch (e) {}
+    }
+
+    // Merge ClickUp statuses with user's specific workspace statuses
+    const knownStatusMap = new Map<string, any>();
+    ALL_WORKSPACE_STATUSES.forEach((s) => knownStatusMap.set(s.status.toLowerCase(), s));
+    listStatuses.forEach((s) => {
+      knownStatusMap.set(s.status.toLowerCase(), {
+        ...s,
+        label: s.status.toUpperCase(),
+      });
+    });
+    const finalStatuses = Array.from(knownStatusMap.values());
+
+    // Parse members (assignees)
+    const membersMap = new Map<string, any>();
+
+    // Check list-level members
+    if (membersRes && membersRes.ok) {
+      try {
+        const membersData = await membersRes.json();
+        for (const m of membersData.members || []) {
+          membersMap.set(String(m.id), {
+            id: m.id,
+            username: m.username || m.email?.split("@")[0] || "Member",
+            email: m.email || "",
+            initials: m.initials || m.username?.[0]?.toUpperCase() || "?",
+            profilePicture: m.profilePicture || null,
+          });
+        }
+      } catch (e) {}
+    }
+
+    // Check team-level members fallback/enrichment
+    if (teamsRes && teamsRes.ok) {
+      try {
+        const teamsData = await teamsRes.json();
+        for (const team of teamsData.teams || []) {
+          for (const m of team.members || []) {
+            const user = m.user || m;
+            if (user && user.id && !membersMap.has(String(user.id))) {
+              membersMap.set(String(user.id), {
+                id: user.id,
+                username: user.username || user.email?.split("@")[0] || "Member",
+                email: user.email || "",
+                initials: user.initials || user.username?.[0]?.toUpperCase() || "?",
+                profilePicture: user.profilePicture || null,
+              });
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Also extract assignees found in tasks themselves
+    rawTasks.forEach((t: any) => {
+      (t.assignees || []).forEach((a: any) => {
+        if (!membersMap.has(String(a.id))) {
+          membersMap.set(String(a.id), {
+            id: a.id,
+            username: a.username || "Member",
+            email: a.email || "",
+            initials: a.initials || a.username?.[0]?.toUpperCase() || "?",
+            profilePicture: a.profilePicture || null,
+          });
+        }
+      });
+    });
+
+    const members = Array.from(membersMap.values());
+
     // Map tasks to Project Echo standardized format
     const tasks = rawTasks.map((t: any) => {
       // Check for meeting tag
@@ -165,20 +304,33 @@ export async function GET(req: NextRequest) {
         (tag: any) => tag.name?.toLowerCase() === "echo-meeting"
       );
 
-      // Extract meeting title/context from description if present
+      // Extract meeting title/context and echo_point_id from description if present
       let meetingTitle = "";
+      let discussionPointId = "";
       const desc = t.text_content || t.description || "";
-      const match = desc.match(/🔗\s*Echo Meeting:\s*([^\n\r]+)/i);
-      if (match && match[1]) {
-        meetingTitle = match[1].trim();
+      
+      const titleMatch = desc.match(/🔗\s*Echo Meeting:\s*([^\n\r]+)/i);
+      if (titleMatch && titleMatch[1]) {
+        meetingTitle = titleMatch[1].trim();
       }
+
+      const pointMatch =
+        desc.match(/<!--\s*echo_point_id:([^\s\-]+)\s*-->/i) ||
+        desc.match(/\[Echo-Point-ID:\s*([^\s\]]+)\]/i);
+      if (pointMatch && pointMatch[1]) {
+        discussionPointId = pointMatch[1].trim();
+      }
+
+      const statusStr = t.status?.status?.toLowerCase() || "to do";
+      const statusMeta = knownStatusMap.get(statusStr);
 
       return {
         id: t.id,
         name: t.name,
         description: desc,
-        status: t.status?.status?.toLowerCase() || "to do",
-        statusColor: t.status?.color || "#808080",
+        status: statusStr,
+        statusColor: statusMeta?.color || t.status?.color || "#808080",
+        statusType: statusMeta?.type || t.status?.type || "custom",
         priority: numberToPriority(t.priority?.id ? Number(t.priority.id) : null),
         priorityOrder: t.priority?.id || 3,
         dueDate: t.due_date ? new Date(Number(t.due_date)).toISOString() : null,
@@ -195,6 +347,7 @@ export async function GET(req: NextRequest) {
         tags: (t.tags || []).map((tg: any) => tg.name),
         isMeetingTask,
         meetingTitle,
+        discussionPointId,
         listId: targetListId,
       };
     });
@@ -203,6 +356,9 @@ export async function GET(req: NextRequest) {
       tasks,
       total: tasks.length,
       listId: targetListId,
+      members,
+      statuses: finalStatuses,
+      categories: WORKSPACE_STATUS_CATEGORIES,
     });
   } catch (error: any) {
     console.error("ClickUp Tasks GET error:", error);
@@ -240,13 +396,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Prepare description with Project Echo meeting footprint
+    // Check if task with this discussionPointId already exists in this list to avoid duplicates
+    if (body.discussionPointId) {
+      try {
+        const existingRes = await fetch(
+          `https://api.clickup.com/api/v2/list/${targetListId}/task?subtasks=true&include_closed=true`,
+          {
+            headers: { Authorization: token },
+            cache: "no-store",
+          }
+        );
+        if (existingRes.ok) {
+          const existingData = await existingRes.json();
+          const found = (existingData.tasks || []).find((t: any) => {
+            const d = t.text_content || t.description || "";
+            return (
+              d.includes(`echo_point_id:${body.discussionPointId}`) ||
+              d.includes(`[Echo-Point-ID:${body.discussionPointId}]`)
+            );
+          });
+          if (found) {
+            return NextResponse.json({
+              success: true,
+              task: found,
+              url: found.url,
+              id: found.id,
+              alreadyExisted: true,
+              message: "Task already exists in ClickUp",
+            });
+          }
+        }
+      } catch (checkErr) {
+        console.warn("Duplicate check failed:", checkErr);
+      }
+    }
+
+    // Prepare description with Project Echo meeting footprint and unique ID
     let description = body.description || "";
     if (body.meetingTitle) {
       description += `\n\n---\n🔗 Echo Meeting: ${body.meetingTitle}`;
       if (body.meetingDate) {
         description += ` (${body.meetingDate})`;
       }
+    }
+
+    if (body.discussionPointId) {
+      description += `\n<!-- echo_point_id:${body.discussionPointId} -->\n[Echo-Point-ID: ${body.discussionPointId}]`;
     }
 
     const payload: Record<string, any> = {
@@ -293,6 +488,7 @@ export async function POST(req: NextRequest) {
       task: createdTask,
       url: createdTask.url,
       id: createdTask.id,
+      discussionPointId: body.discussionPointId,
     });
   } catch (error: any) {
     console.error("ClickUp Tasks POST error:", error);
@@ -303,7 +499,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT / PATCH: Update task status, priority, or due date
+// PUT / PATCH: Update task status, priority, due date, assignees, or name
 export async function PUT(req: NextRequest) {
   try {
     const { token } = getClickUpCredentials(req);
@@ -331,6 +527,11 @@ export async function PUT(req: NextRequest) {
     }
     if (body.dueDate !== undefined) {
       payload.due_date = body.dueDate ? new Date(body.dueDate).getTime() : null;
+    }
+    if (body.assignees !== undefined && Array.isArray(body.assignees)) {
+      payload.assignees = {
+        add: body.assignees,
+      };
     }
 
     const updateRes = await fetch(

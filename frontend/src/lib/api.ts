@@ -277,6 +277,7 @@ export async function createClickUpTask(taskData: {
   dueDate?: string | null;
   assignees?: any[];
   listId?: string;
+  discussionPointId?: string;
 }) {
   const headers = getClickUpHeaders();
   const res = await fetch("/api/tasks", {
@@ -298,6 +299,7 @@ export async function updateClickUpTask(updateData: {
   description?: string;
   priority?: string | number;
   dueDate?: string | null;
+  assignees?: any[];
 }) {
   const headers = getClickUpHeaders();
   const res = await fetch("/api/tasks", {

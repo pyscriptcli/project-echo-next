@@ -58,6 +58,7 @@ import {
   Calendar,
   Users,
   CheckCircle,
+  CheckCircle2,
   Clock,
   ListOrdered
 } from "lucide-react";
@@ -190,6 +191,7 @@ export default function Home() {
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [clickupTokenInput, setClickupTokenInput] = useState("");
   const [clickupListIdInput, setClickupListIdInput] = useState("");
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
 
   // Quick Add ClickUp Task state
   const [quickAddTaskData, setQuickAddTaskData] = useState<{
@@ -202,7 +204,11 @@ export default function Home() {
       dueDate?: string;
       priority?: string;
       assigneeName?: string;
+      discussionPointId?: string;
+      existingTaskId?: string;
+      existingTaskUrl?: string;
     };
+    topicIndex?: number;
   }>({
     isOpen: false,
     data: {},
@@ -470,7 +476,12 @@ export default function Home() {
         additionalMeetingNotes
       );
 
-      setMomItems(momRes.matched_items || []);
+      setMomItems(
+        (momRes.matched_items || []).map((item: any, idx: number) => ({
+          id: item.id || `dp_${Date.now()}_${idx}`,
+          ...item,
+        }))
+      );
       setOtherDiscussions(momRes.other_discussions || "");
       setStage("Review");
     } catch (err: any) {
@@ -491,7 +502,12 @@ export default function Home() {
     try {
       const topics = "1. Project Updates\n2. Next Steps";
       const res = await generateMinutes(content, topics, additionalMeetingNotes);
-      setMomItems(res.matched_items || []);
+      setMomItems(
+        (res.matched_items || []).map((item: any, idx: number) => ({
+          id: item.id || `dp_${Date.now()}_${idx}`,
+          ...item,
+        }))
+      );
       setOtherDiscussions(res.other_discussions || "");
       setStage("Review");
     } catch (err: any) {
@@ -506,6 +522,7 @@ export default function Home() {
     setMomItems([
       ...momItems,
       {
+        id: `dp_${Date.now()}_${momItems.length}`,
         topic_title: "",
         discussion_point: "",
         evidence_quote: "",
@@ -808,6 +825,8 @@ export default function Home() {
                   if (match) setSelectedMeetingId(match.id);
                   setCurrentView("meetings");
                 }}
+                focusedTaskId={focusedTaskId}
+                onClearFocusedTask={() => setFocusedTaskId(null)}
               />
             )}
 
@@ -817,6 +836,10 @@ export default function Home() {
                 meetings={archivedMeetings}
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
+                onNavigateToTasks={(taskId) => {
+                  setFocusedTaskId(taskId);
+                  setCurrentView("tasks");
+                }}
                 onUpdateMeeting={(updated) => {
                   const saved = saveLocalMeeting(updated);
                   setArchivedMeetings(saved);
@@ -1588,30 +1611,49 @@ export default function Home() {
                         <span className="text-[10px] text-gray-400 font-mono">
                           Topic #{idx + 1}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuickAddTaskData({
-                              isOpen: true,
-                              data: {
-                                name:
-                                  item.action_plan && item.action_plan !== "None"
-                                    ? item.action_plan
-                                    : item.topic_title || `Action from Topic #${idx + 1}`,
-                                description: `**Topic:** ${item.topic_title || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence_quote || ""}`,
-                                meetingTitle: metadata.client_name || "Executive Meeting",
-                                meetingDate: metadata.date,
-                                dueDate: item.indicative_delivery_date || "",
-                                priority: "normal",
-                                assigneeName: item.person_in_charge || "",
-                              },
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
-                        >
-                          <CheckSquare size={13} className="text-[#c9ab4c]" />
-                          <span>Add to Tasks</span>
-                        </button>
+                        {item.clickUpTaskId ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFocusedTaskId(item.clickUpTaskId);
+                              setCurrentView("tasks");
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs rounded-none cursor-pointer"
+                            title="Already added to ClickUp. Click to view or edit in Tasks portal"
+                          >
+                            <CheckCircle2 size={13} className="text-emerald-600" />
+                            <span>Added to Tasks</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickAddTaskData({
+                                isOpen: true,
+                                data: {
+                                  name:
+                                    item.action_plan && item.action_plan !== "None"
+                                      ? item.action_plan
+                                      : item.topic_title || `Action from Topic #${idx + 1}`,
+                                  description: `**Topic:** ${item.topic_title || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence_quote || ""}`,
+                                  meetingTitle: metadata.client_name || "Executive Meeting",
+                                  meetingDate: metadata.date,
+                                  dueDate: item.indicative_delivery_date || "",
+                                  priority: "normal",
+                                  assigneeName: item.person_in_charge || "",
+                                  discussionPointId: item.id || `dp_${idx + 1}`,
+                                  existingTaskId: item.clickUpTaskId,
+                                  existingTaskUrl: item.clickUpUrl,
+                                },
+                                topicIndex: idx,
+                              });
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                          >
+                            <CheckSquare size={13} className="text-[#c9ab4c]" />
+                            <span>Add to Tasks</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -1701,6 +1743,21 @@ export default function Home() {
         isOpen={quickAddTaskData.isOpen}
         onClose={() => setQuickAddTaskData({ isOpen: false, data: {} })}
         initialData={quickAddTaskData.data}
+        onTaskCreated={(created) => {
+          if (quickAddTaskData.topicIndex !== undefined) {
+            const idx = quickAddTaskData.topicIndex;
+            const updated = [...momItems];
+            if (updated[idx]) {
+              updated[idx].clickUpTaskId = created.id;
+              updated[idx].clickUpUrl = created.url;
+              setMomItems(updated);
+            }
+          }
+        }}
+        onOpenInTasks={(taskId) => {
+          setFocusedTaskId(taskId);
+          setCurrentView("tasks");
+        }}
       />
 
       {/* Universal Slide-Over AI Assistant Drawer */}
