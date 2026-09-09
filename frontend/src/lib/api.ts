@@ -11,6 +11,45 @@ export function setStoredApiKey(key: string) {
   }
 }
 
+export function getStoredOpenAiKey(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_openai_key") || "";
+  }
+  return "";
+}
+
+export function setStoredOpenAiKey(key: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_openai_key", key.trim());
+  }
+}
+
+export function getStoredOpenRouterKey(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_openrouter_key") || "";
+  }
+  return "";
+}
+
+export function setStoredOpenRouterKey(key: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_openrouter_key", key.trim());
+  }
+}
+
+export function getStoredGeminiKey(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_gemini_key") || "";
+  }
+  return "";
+}
+
+export function setStoredGeminiKey(key: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_gemini_key", key.trim());
+  }
+}
+
 export async function processSource(fileOrText: { file?: File | null; text?: string }) {
   const formData = new FormData();
   if (fileOrText.file) {
@@ -22,9 +61,16 @@ export async function processSource(fileOrText: { file?: File | null; text?: str
 
   const headers: Record<string, string> = {};
   const storedKey = getStoredApiKey();
-  if (storedKey) {
-    headers["x-api-key"] = storedKey;
-  }
+  if (storedKey) headers["x-api-key"] = storedKey;
+
+  const storedOpenAi = getStoredOpenAiKey();
+  if (storedOpenAi) headers["x-openai-api-key"] = storedOpenAi;
+
+  const storedOpenRouter = getStoredOpenRouterKey();
+  if (storedOpenRouter) headers["x-openrouter-api-key"] = storedOpenRouter;
+
+  const storedGemini = getStoredGeminiKey();
+  if (storedGemini) headers["x-gemini-api-key"] = storedGemini;
 
   const res = await fetch("/api/process-audio", {
     method: "POST",

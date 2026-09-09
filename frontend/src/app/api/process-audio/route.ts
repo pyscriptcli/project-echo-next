@@ -55,12 +55,113 @@ Extract meeting metadata in strict valid JSON matching this schema:
   return {};
 }
 
+async function transcribeWithOpenAI(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
+  const formData = new FormData();
+  const fileBlob = new Blob([new Uint8Array(buffer)], { type: mimeType || "audio/wav" });
+  formData.append("file", fileBlob, fileName || "recording.wav");
+  formData.append("model", "whisper-1");
+  formData.append("response_format", "json");
+
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `OpenAI Whisper transcription failed (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.text || "";
+}
+
+async function transcribeWithOpenRouter(buffer: Buffer, mimeType: string, apiKey: string): Promise<string> {
+  const base64Audio = buffer.toString("base64");
+  const audioMime = mimeType || "audio/wav";
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://project-echo.app",
+      "X-Title": "Project Echo Audio Transcriber"
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.0-flash-001",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Please transcribe this corporate meeting audio completely and accurately. Return ONLY the transcription text, capturing all speaker discussions, decisions, and action points."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${audioMime};base64,${base64Audio}`
+              }
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `OpenRouter transcription failed (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function transcribeWithGemini(
+  buffer: Buffer, 
+  fileName: string, 
+  mimeType: string, 
+  geminiKey: string
+): Promise<{ text: string; tempPath?: string }> {
+  const isSmallAudio = buffer.length < 15 * 1024 * 1024;
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const prompt = `Please transcribe this corporate meeting audio accurately, capturing all speaker discussions and decisions:`;
+
+  if (isSmallAudio) {
+    const result = await model.generateContent([
+      { inlineData: { mimeType: mimeType || "audio/wav", data: buffer.toString("base64") } },
+      { text: prompt }
+    ]);
+    return { text: result.response.text() };
+  } else {
+    const tempDir = os.tmpdir();
+    const ext = path.extname(fileName) || ".wav";
+    const tempPath = path.join(tempDir, `upload-${Date.now()}${ext}`);
+    await fs.writeFile(tempPath, buffer);
+    const fileManager = new GoogleAIFileManager(geminiKey);
+    const uploadResult = await fileManager.uploadFile(tempPath, { mimeType: mimeType || "audio/wav", displayName: fileName });
+    const result = await model.generateContent([
+      { fileData: { mimeType: uploadResult.file.mimeType, fileUri: uploadResult.file.uri } },
+      { text: prompt }
+    ]);
+    return { text: result.response.text(), tempPath };
+  }
+}
+
 export async function POST(req: NextRequest) {
   let tempFilePath: string | null = null;
   try {
     const headerKey = req.headers.get("x-api-key") || req.headers.get("x-deepseek-api-key");
     const aiKey = headerKey || process.env.DEEPSEEK_API_KEY || "";
-    const geminiKey = req.headers.get("x-gemini-api-key") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const openaiKey = req.headers.get("x-openai-api-key") || process.env.OPENAI_API_KEY || "";
+    const openrouterKey = req.headers.get("x-openrouter-api-key") || process.env.OPENROUTER_API_KEY || "";
+    const geminiKey = req.headers.get("x-gemini-api-key") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -106,11 +207,10 @@ export async function POST(req: NextRequest) {
 
     // CASE 4: PDF Document (.pdf)
     if (fileName.endsWith(".pdf") || mimeType === "application/pdf") {
-      // If Gemini Key available, use it for native PDF parsing
       if (geminiKey) {
         const isSmall = buffer.length < 15 * 1024 * 1024;
         const genAI = new GoogleGenerativeAI(geminiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const prompt = `Transcribe and summarize all text and discussion in this PDF document:`;
         
         let result;
@@ -139,38 +239,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ transcript, metadata });
     }
 
-    // CASE 5: Audio / Video recording
-    if (!geminiKey) {
+    // CASE 5: Audio / Video recording (OpenAI Whisper -> OpenRouter -> Gemini cascade)
+    let audioTranscript = "";
+    const errors: string[] = [];
+
+    // Provider 1: OpenAI Whisper (Standard industry meeting audio transcription)
+    if (openaiKey) {
+      try {
+        audioTranscript = await transcribeWithOpenAI(buffer, file.name, mimeType, openaiKey);
+      } catch (e: any) {
+        console.warn("OpenAI transcription failed, attempting fallbacks:", e.message);
+        errors.push(`OpenAI Whisper: ${e.message}`);
+      }
+    }
+
+    // Provider 2: OpenRouter Multimodal Audio
+    if (!audioTranscript && openrouterKey) {
+      try {
+        audioTranscript = await transcribeWithOpenRouter(buffer, mimeType, openrouterKey);
+      } catch (e: any) {
+        console.warn("OpenRouter transcription failed, attempting fallbacks:", e.message);
+        errors.push(`OpenRouter: ${e.message}`);
+      }
+    }
+
+    // Provider 3: Google Gemini Audio
+    if (!audioTranscript && geminiKey) {
+      try {
+        const gemRes = await transcribeWithGemini(buffer, file.name, mimeType, geminiKey);
+        if (gemRes.tempPath) tempFilePath = gemRes.tempPath;
+        audioTranscript = gemRes.text;
+      } catch (e: any) {
+        console.warn("Gemini transcription failed:", e.message);
+        errors.push(`Gemini: ${e.message}`);
+      }
+    }
+
+    if (!audioTranscript) {
+      if (errors.length > 0) {
+        return NextResponse.json({
+          error: `Audio transcription failed: ${errors.join(" | ")}`
+        }, { status: 500 });
+      }
       return NextResponse.json({ 
-        error: "Audio transcription requires media transcription configuration. Alternatively, upload a document (PDF, Word) or paste text directly." 
+        error: "Audio transcription requires an OpenAI API Key, OpenRouter Key, or Gemini Key. Configure one in Vercel Environment Variables (OPENAI_API_KEY / OPENROUTER_API_KEY) or via the 'Configure Key' menu." 
       }, { status: 400 });
     }
 
-    const isSmallAudio = buffer.length < 15 * 1024 * 1024;
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-    const prompt = `Please transcribe this corporate meeting audio accurately, capturing all speaker discussions and decisions:`;
-
-    let result;
-    if (isSmallAudio) {
-      result = await model.generateContent([
-        { inlineData: { mimeType: mimeType || "audio/wav", data: buffer.toString("base64") } },
-        { text: prompt }
-      ]);
-    } else {
-      const tempDir = os.tmpdir();
-      const ext = path.extname(file.name) || ".wav";
-      tempFilePath = path.join(tempDir, `upload-${Date.now()}${ext}`);
-      await fs.writeFile(tempFilePath, buffer);
-      const fileManager = new GoogleAIFileManager(geminiKey);
-      const uploadResult = await fileManager.uploadFile(tempFilePath, { mimeType: mimeType || "audio/wav", displayName: file.name });
-      result = await model.generateContent([
-        { fileData: { mimeType: uploadResult.file.mimeType, fileUri: uploadResult.file.uri } },
-        { text: prompt }
-      ]);
-    }
-
-    transcript = result.response.text();
+    transcript = audioTranscript;
     metadata = await extractMetadataWithAI(transcript, aiKey);
     return NextResponse.json({ transcript, metadata });
   } catch (error: any) {
