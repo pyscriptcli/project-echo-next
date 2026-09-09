@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, Sparkles, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { getStoredClickUpToken } from "@/lib/api";
 
 interface LoginViewProps {
@@ -11,9 +11,8 @@ interface LoginViewProps {
 export function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [tokenInput, setTokenInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [comingSoonNotice, setComingSoonNotice] = useState(false);
-  const [hasOAuth, setHasOAuth] = useState(false);
 
   useEffect(() => {
     const stored = getStoredClickUpToken();
@@ -21,40 +20,26 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       setTokenInput(stored);
     }
 
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.hasClientId) {
-          setHasOAuth(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get("auth_error");
+      if (error) {
+        if (error === "missing_client_id" || error === "missing_credentials") {
+          setErrorMessage("ClickUp OAuth Client ID & Secret were not detected in Vercel. Please verify your environment variables.");
+        } else if (error === "token_exchange_failed") {
+          setErrorMessage("Failed to exchange code with ClickUp. Please verify your Client Secret.");
+        } else if (error === "access_denied") {
+          setErrorMessage("Access was denied in ClickUp authorization.");
+        } else {
+          setErrorMessage(`Authentication notice: ${error}`);
         }
-      })
-      .catch(() => {});
+      }
+    }
   }, []);
 
   const handleOAuthClick = () => {
-    if (hasOAuth) {
-      window.location.href = "/api/auth/login";
-      return;
-    }
-
-    fetch("/api/auth/status")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.hasClientId) {
-          window.location.href = "/api/auth/login";
-        } else {
-          setComingSoonNotice(true);
-          setTimeout(() => {
-            setComingSoonNotice(false);
-          }, 3500);
-        }
-      })
-      .catch(() => {
-        setComingSoonNotice(true);
-        setTimeout(() => {
-          setComingSoonNotice(false);
-        }, 3500);
-      });
+    setIsRedirecting(true);
+    window.location.href = "/api/auth/login";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,12 +110,13 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
             ClickUp &gt; Settings &gt; Integrations &gt; ClickUp API
           </div>
 
-          {/* Log in with ClickUp (Coming Soon) */}
+          {/* Log in with ClickUp Button */}
           <div className="mb-5">
             <button
               type="button"
               onClick={handleOAuthClick}
-              className="w-full py-3 px-4 bg-[#7B68EE] hover:bg-[#6b57ea] text-white font-semibold text-xs tracking-wide transition-all rounded-none flex items-center justify-between cursor-pointer"
+              disabled={isRedirecting}
+              className="w-full py-3 px-4 bg-[#7B68EE] hover:bg-[#6b57ea] text-white font-semibold text-xs tracking-wide transition-all rounded-none flex items-center justify-between cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-5 h-5 bg-white rounded-none flex items-center justify-center p-0.5">
@@ -139,17 +125,12 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                     <path d="M20 66C30 76 70 76 80 66L88 74C72 88 28 88 12 74L20 66Z" fill="#FF005A" />
                   </svg>
                 </div>
-                <span>Log in with ClickUp</span>
+                <span>
+                  {isRedirecting ? "Connecting to ClickUp..." : "Log in with ClickUp"}
+                </span>
               </div>
               <ArrowRight size={14} />
             </button>
-
-            {/* Coming Soon Notice */}
-            {comingSoonNotice && (
-              <div className="mt-2 p-2 bg-[#C9AB4C]/10 border border-[#C9AB4C]/40 text-[#1b1d1e] text-[11px] font-semibold text-center rounded-none animate-fadeIn">
-                Coming soon. Please use your API Token below to sign in.
-              </div>
-            )}
           </div>
 
           {/* Divider */}
@@ -200,7 +181,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                   <span>Signing In...</span>
                 </>
               ) : (
-                <span>Sign In</span>
+                <span>Sign In with Token</span>
               )}
             </button>
           </form>
