@@ -13,19 +13,48 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [comingSoonNotice, setComingSoonNotice] = useState(false);
+  const [hasOAuth, setHasOAuth] = useState(false);
 
   useEffect(() => {
     const stored = getStoredClickUpToken();
     if (stored) {
       setTokenInput(stored);
     }
+
+    fetch("/api/auth/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasClientId) {
+          setHasOAuth(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleOAuthClick = () => {
-    setComingSoonNotice(true);
-    setTimeout(() => {
-      setComingSoonNotice(false);
-    }, 3500);
+    if (hasOAuth) {
+      window.location.href = "/api/auth/login";
+      return;
+    }
+
+    fetch("/api/auth/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasClientId) {
+          window.location.href = "/api/auth/login";
+        } else {
+          setComingSoonNotice(true);
+          setTimeout(() => {
+            setComingSoonNotice(false);
+          }, 3500);
+        }
+      })
+      .catch(() => {
+        setComingSoonNotice(true);
+        setTimeout(() => {
+          setComingSoonNotice(false);
+        }, 3500);
+      });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
