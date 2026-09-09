@@ -79,47 +79,113 @@ async function transcribeWithOpenAI(buffer: Buffer, fileName: string, mimeType: 
   return data.text || "";
 }
 
-async function transcribeWithOpenRouter(buffer: Buffer, mimeType: string, apiKey: string): Promise<string> {
+function getAudioFormat(mimeType: string, fileName?: string): string {
+  const m = (mimeType || "").toLowerCase();
+  const f = (fileName || "").toLowerCase();
+  if (m.includes("mp3") || f.endsWith(".mp3")) return "mp3";
+  if (m.includes("m4a") || f.endsWith(".m4a")) return "m4a";
+  if (m.includes("mp4") || f.endsWith(".mp4")) return "mp4";
+  if (m.includes("webm") || f.endsWith(".webm")) return "webm";
+  if (m.includes("ogg") || f.endsWith(".ogg") || f.endsWith(".oga")) return "ogg";
+  if (m.includes("flac") || f.endsWith(".flac")) return "flac";
+  if (m.includes("aac") || f.endsWith(".aac")) return "aac";
+  return "wav";
+}
+
+async function transcribeWithOpenRouter(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string,
+  apiKey: string
+): Promise<string> {
   const base64Audio = buffer.toString("base64");
-  const audioMime = mimeType || "audio/wav";
+  const format = getAudioFormat(mimeType, fileName);
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://project-echo.app",
-      "X-Title": "Project Echo Audio Transcriber"
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.0-flash-001",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Please transcribe this corporate meeting audio completely and accurately. Return ONLY the transcription text, capturing all speaker discussions, decisions, and action points."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${audioMime};base64,${base64Audio}`
-              }
-            }
-          ]
-        }
-      ]
-    })
-  });
+  // Strategy 1: Dedicated OpenRouter Speech-to-Text endpoint with Whisper Large V3
+  try {
+    const sttRes = await fetch("https://openrouter.ai/api/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://project-echo.app",
+        "X-Title": "Project Echo Audio Transcriber",
+      },
+      body: JSON.stringify({
+        model: "openai/whisper-large-v3",
+        input_audio: {
+          data: base64Audio,
+          format: format,
+        },
+      }),
+    });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || `OpenRouter transcription failed (${res.status})`);
+    if (sttRes.ok) {
+      const data = await sttRes.json();
+      if (data.text && data.text.trim().length > 0) {
+        return data.text.trim();
+      }
+    } else {
+      const errJson = await sttRes.json().catch(() => ({}));
+      console.warn("OpenRouter STT failed, trying chat completions:", errJson);
+    }
+  } catch (sttErr: any) {
+    console.warn("OpenRouter STT request error:", sttErr.message);
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  // Strategy 2: OpenRouter Multimodal Chat Completions with google/gemini-2.0-flash using input_audio
+  const candidateModels = ["google/gemini-2.0-flash", "google/gemini-flash-1.5"];
+  let lastError = "";
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://project-echo.app",
+          "X-Title": "Project Echo Audio Transcriber",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Please transcribe this corporate meeting audio completely and accurately. Return ONLY the full verbatim transcription text without any preamble, markdown wrapper, or commentary.",
+                },
+                {
+                  type: "input_audio",
+                  input_audio: {
+                    data: base64Audio,
+                    format: format,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || "";
+        if (text.trim().length > 0) {
+          return text.trim();
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        lastError = errData?.error?.message || `Failed with status ${res.status}`;
+      }
+    } catch (chatErr: any) {
+      lastError = chatErr.message;
+    }
+  }
+
+  throw new Error(lastError || "OpenRouter audio transcription failed across all endpoints.");
 }
 
 async function transcribeWithGemini(
@@ -256,7 +322,7 @@ export async function POST(req: NextRequest) {
     // Provider 2: OpenRouter Multimodal Audio
     if (!audioTranscript && openrouterKey) {
       try {
-        audioTranscript = await transcribeWithOpenRouter(buffer, mimeType, openrouterKey);
+        audioTranscript = await transcribeWithOpenRouter(buffer, file.name, mimeType, openrouterKey);
       } catch (e: any) {
         console.warn("OpenRouter transcription failed, attempting fallbacks:", e.message);
         errors.push(`OpenRouter: ${e.message}`);
