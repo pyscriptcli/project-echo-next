@@ -26,6 +26,7 @@ interface SidebarProps {
     color?: string;
     profilePicture?: string | null;
     initials?: string;
+    workspaceName?: string;
   } | null;
   onSignOut?: () => void;
 }
@@ -163,71 +164,98 @@ export function Sidebar({
           </nav>
         </div>
 
-        {/* Bottom User Profile Section (#1b1d1e) */}
-        <div className="p-3 border-t border-[#2c2f32] bg-[#161819]">
+        {/* Bottom Workspace & User Profile Section (#1b1d1e) */}
+        <div className="border-t border-[#2c2f32] bg-[#161819]">
+          {/* Workspace Name Header */}
           {!effectiveCollapsed ? (
-            <div className="flex items-center justify-between whitespace-nowrap overflow-hidden">
-              <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="px-3.5 pt-2.5 pb-2 border-b border-[#2c2f32]/80 flex items-center justify-between overflow-hidden">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="w-1.5 h-1.5 bg-[#C9AB4C] shrink-0"></span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9AB4C] truncate">
+                  {user?.workspaceName || "Primephilippines"}
+                </span>
+              </div>
+              <span className="text-[9px] uppercase tracking-widest text-gray-500 font-semibold shrink-0">
+                Workspace
+              </span>
+            </div>
+          ) : (
+            <div className="py-2 flex justify-center border-b border-[#2c2f32]/80">
+              <div 
+                title={user?.workspaceName || "Primephilippines"}
+                className="w-5 h-5 rounded-none bg-[#25282a] border border-[#C9AB4C]/50 flex items-center justify-center text-[10px] font-bold text-[#C9AB4C]"
+              >
+                {(user?.workspaceName || "P")[0].toUpperCase()}
+              </div>
+            </div>
+          )}
+
+          {/* User Account Details */}
+          <div className="p-3">
+            {!effectiveCollapsed ? (
+              <div className="flex items-center justify-between whitespace-nowrap overflow-hidden">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  {user?.profilePicture ? (
+                    <img
+                      src={user.profilePicture}
+                      alt={user.username || "User"}
+                      className="w-8 h-8 rounded-none border border-[#C9AB4C]/60 object-cover shrink-0"
+                    />
+                  ) : (
+                    <div
+                      style={user?.color ? { borderColor: user.color } : undefined}
+                      className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0"
+                    >
+                      {user?.initials || "CU"}
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <div className="text-xs font-semibold text-white truncate">
+                      {user?.username || "ClickUp User"}
+                    </div>
+                    <div className="text-[10px] text-gray-400 truncate">
+                      {user?.email || "ClickUp Portal"}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  title="Sign out from ClickUp"
+                  onClick={onSignOut}
+                  className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#25282a] rounded-none transition-colors cursor-pointer shrink-0"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-1">
                 {user?.profilePicture ? (
                   <img
                     src={user.profilePicture}
                     alt={user.username || "User"}
+                    title={user.username || "User"}
                     className="w-8 h-8 rounded-none border border-[#C9AB4C]/60 object-cover shrink-0"
                   />
                 ) : (
-                  <div
+                  <div 
+                    title={user?.username || "ClickUp User"}
                     style={user?.color ? { borderColor: user.color } : undefined}
-                    className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C] shrink-0"
+                    className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
                   >
                     {user?.initials || "CU"}
                   </div>
                 )}
-                <div className="truncate">
-                  <div className="text-xs font-semibold text-white truncate">
-                    {user?.username || "ClickUp User"}
-                  </div>
-                  <div className="text-[10px] text-gray-400 truncate">
-                    {user?.email || "ClickUp Portal"}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                title="Sign out from ClickUp"
-                onClick={onSignOut}
-                className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#25282a] rounded-none transition-colors cursor-pointer shrink-0"
-              >
-                <LogOut size={15} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 py-1">
-              {user?.profilePicture ? (
-                <img
-                  src={user.profilePicture}
-                  alt={user.username || "User"}
-                  title={user.username || "User"}
-                  className="w-8 h-8 rounded-none border border-[#C9AB4C]/60 object-cover shrink-0"
-                />
-              ) : (
-                <div 
-                  title={user?.username || "ClickUp User"}
-                  style={user?.color ? { borderColor: user.color } : undefined}
-                  className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-xs font-bold text-[#C9AB4C]"
+                <button
+                  type="button"
+                  title="Sign out from ClickUp"
+                  onClick={onSignOut}
+                  className="p-1 text-gray-500 hover:text-red-400 transition-colors rounded-none cursor-pointer"
                 >
-                  {user?.initials || "CU"}
-                </div>
-              )}
-              <button
-                type="button"
-                title="Sign out from ClickUp"
-                onClick={onSignOut}
-                className="p-1 text-gray-500 hover:text-red-400 transition-colors rounded-none cursor-pointer"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
-          )}
+                  <LogOut size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </div>

@@ -84,8 +84,26 @@ export async function GET(req: NextRequest) {
                 : "CU"),
           };
         }
-      } else {
-        console.warn("[ClickUp OAuth] Failed to fetch user profile, status:", userRes.status);
+      }
+
+      // Also fetch user's ClickUp workspace / team name
+      let workspaceName = "Primephilippines";
+      try {
+        const teamRes = await fetch("https://api.clickup.com/api/v2/team", {
+          headers: { Authorization: accessToken },
+        });
+        if (teamRes.ok) {
+          const teamData = await teamRes.json();
+          if (teamData.teams?.[0]?.name) {
+            workspaceName = teamData.teams[0].name;
+          }
+        }
+      } catch (err) {
+        console.warn("[ClickUp OAuth] Error fetching workspace name:", err);
+      }
+
+      if (userProfile) {
+        userProfile.workspaceName = workspaceName;
       }
     } catch (err) {
       console.warn("[ClickUp OAuth] Error fetching user profile:", err);

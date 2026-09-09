@@ -11,6 +11,9 @@ export async function GET(req: NextRequest) {
   // 1. Try to read cached user profile from cookie
   const cachedUser = getUserFromRequest(req);
   if (cachedUser) {
+    if (!cachedUser.workspaceName) {
+      cachedUser.workspaceName = "Primephilippines";
+    }
     return NextResponse.json({ authenticated: true, user: cachedUser });
   }
 
@@ -32,17 +35,31 @@ export async function GET(req: NextRequest) {
       // Return authenticated with fallback user
       return NextResponse.json({
         authenticated: true,
-        user: { id: "user", username: "ClickUp User", email: "", initials: "CU" },
+        user: { id: "user", username: "ClickUp User", email: "", initials: "CU", workspaceName: "Primephilippines" },
       });
     }
 
     const userData = await userRes.json();
+    let workspaceName = "Primephilippines";
+    try {
+      const teamRes = await fetch("https://api.clickup.com/api/v2/team", {
+        headers: { Authorization: token },
+      });
+      if (teamRes.ok) {
+        const teamData = await teamRes.json();
+        if (teamData.teams?.[0]?.name) {
+          workspaceName = teamData.teams[0].name;
+        }
+      }
+    } catch {}
+
     const user: ClickUpUserProfile = {
       id: userData.user.id,
       username: userData.user.username || userData.user.email || "ClickUp User",
       email: userData.user.email || "",
       color: userData.user.color || "#C9AB4C",
       profilePicture: userData.user.profilePicture || null,
+      workspaceName,
       initials:
         userData.user.initials ||
         (userData.user.username

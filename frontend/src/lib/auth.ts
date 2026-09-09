@@ -11,6 +11,7 @@ export interface ClickUpUserProfile {
   color?: string;
   profilePicture?: string | null;
   initials?: string;
+  workspaceName?: string;
 }
 
 export interface AuthSession {
