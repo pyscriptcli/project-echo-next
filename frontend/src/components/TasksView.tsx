@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   CheckSquare,
   Search,
@@ -16,12 +16,14 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Trash2,
   Link2,
   Sparkles,
   ArrowUpDown,
   Tag,
   FolderSync,
+  FolderKanban,
   Edit3,
   X,
   Users,
@@ -36,6 +38,8 @@ import {
   setStoredClickUpToken,
   getStoredClickUpListId,
   setStoredClickUpListId,
+  getStoredClickUpListName,
+  setStoredClickUpListName,
   discoverClickUpLists
 } from "@/lib/api";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/app/api/tasks/route";
@@ -88,10 +92,25 @@ export default function TasksView({
   const [error, setError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
 
-  // Setup / Connection credentials
+  // List Selector & Discovery state
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const [selectedListName, setSelectedListName] = useState<string>("");
+  const [selectedSpaceName, setSelectedSpaceName] = useState<string>("");
+  const [availableLists, setAvailableLists] = useState<
+    Array<{ id: string; name: string; spaceName: string; folderName?: string; teamName?: string }>
+  >([]);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [isListDropdownOpen, setIsListDropdownOpen] = useState(false);
+  const [listSearchQuery, setListSearchQuery] = useState("");
+  const [needsListSelection, setNeedsListSelection] = useState(false);
+  const listDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Setup / Connection credentials (manual fallback)
   const [tokenInput, setTokenInput] = useState("");
   const [listIdInput, setListIdInput] = useState("");
-  const [discoveredLists, setDiscoveredLists] = useState<Array<{ id: string; name: string; spaceName: string }>>([]);
+  const [discoveredLists, setDiscoveredLists] = useState<
+    Array<{ id: string; name: string; spaceName: string; folderName?: string; teamName?: string }>
+  >([]);
   const [discovering, setDiscovering] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -133,13 +152,29 @@ export default function TasksView({
   const [savingEdit, setSavingEdit] = useState(false);
   const [editSavedSuccess, setEditSavedSuccess] = useState(false);
 
-  // Load stored credentials on mount
+  // Load stored credentials & lists on mount
   useEffect(() => {
     const token = getStoredClickUpToken();
     const listId = getStoredClickUpListId();
+    const listName = getStoredClickUpListName();
     setTokenInput(token);
     setListIdInput(listId);
-    loadTasks();
+    if (listId) setSelectedListId(listId);
+    if (listName) setSelectedListName(listName);
+
+    loadTasks(false, listId || undefined);
+    loadDiscoveredLists(false);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (listDropdownRef.current && !listDropdownRef.current.contains(e.target as Node)) {
+        setIsListDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Handle focusedTaskId from external navigation
@@ -152,13 +187,16 @@ export default function TasksView({
     }
   }, [focusedTaskId, tasks]);
 
-  const loadTasks = async (showRefreshIndicator = false) => {
+  const loadTasks = async (showRefreshIndicator = false, listIdOverride?: string) => {
     if (showRefreshIndicator) setRefreshing(true);
     else setLoading(true);
     setError(null);
+    setNeedsListSelection(false);
+
+    const activeListId = listIdOverride !== undefined ? listIdOverride : (selectedListId || getStoredClickUpListId());
 
     try {
-      const data = await fetchClickUpTasks();
+      const data = await fetchClickUpTasks(activeListId || undefined);
       setTasks(data.tasks || []);
       if (data.members && Array.isArray(data.members)) {
         setAvailableMembers(data.members);
@@ -166,21 +204,84 @@ export default function TasksView({
       if (data.categories && Array.isArray(data.categories)) {
         setStatusCategories(data.categories);
       }
+      if (data.listId) {
+        setSelectedListId(data.listId);
+        setStoredClickUpListId(data.listId);
+      }
+      if (data.listName) {
+        const displayName = data.folderName ? `${data.folderName} / ${data.listName}` : data.listName;
+        setSelectedListName(displayName);
+        setStoredClickUpListName(displayName);
+      }
+      if (data.spaceName) {
+        setSelectedSpaceName(data.spaceName);
+      }
       setNeedsAuth(false);
+      setNeedsListSelection(false);
     } catch (err: any) {
       console.warn("Failed to load ClickUp tasks:", err.message);
       setError(err.message);
-      if (
-        err.message.includes("not configured") ||
-        err.message.includes("authentication") ||
-        err.message.includes("Token")
-      ) {
+      if (err.needsAuth || err.status === 401 || err.message.includes("authentication") || err.message.includes("Token")) {
         setNeedsAuth(true);
+      } else if (
+        err.needsListSelection ||
+        err.status === 404 ||
+        err.message.toLowerCase().includes("list not found") ||
+        err.message.toLowerCase().includes("select a clickup list") ||
+        err.message.toLowerCase().includes("not configured")
+      ) {
+        setNeedsListSelection(true);
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const loadDiscoveredLists = async (showNotification = false) => {
+    setLoadingLists(true);
+    setDiscovering(true);
+    try {
+      const data = await discoverClickUpLists(tokenInput.trim() || undefined);
+      const lists = data.lists || [];
+      setAvailableLists(lists);
+      setDiscoveredLists(lists);
+
+      const currentListId = selectedListId || getStoredClickUpListId();
+      if (currentListId && lists.length > 0) {
+        const matched = lists.find((l: any) => l.id === currentListId);
+        if (matched) {
+          const displayName = matched.folderName ? `${matched.folderName} / ${matched.name}` : matched.name;
+          setSelectedListName(displayName);
+          setSelectedSpaceName(matched.spaceName);
+          setStoredClickUpListName(displayName);
+        }
+      }
+      if (showNotification) {
+        alert(`Discovered ${lists.length} lists across your ClickUp workspace.`);
+      }
+    } catch (err: any) {
+      console.warn("Discovered lists notice:", err.message);
+      if (showNotification) {
+        alert(err.message || "Failed to discover ClickUp lists.");
+      }
+    } finally {
+      setLoadingLists(false);
+      setDiscovering(false);
+    }
+  };
+
+  const handleSelectList = (list: { id: string; name: string; spaceName: string; folderName?: string }) => {
+    const displayName = list.folderName ? `${list.folderName} / ${list.name}` : list.name;
+    setSelectedListId(list.id);
+    setSelectedListName(displayName);
+    setSelectedSpaceName(list.spaceName);
+    setStoredClickUpListId(list.id);
+    setStoredClickUpListName(displayName);
+    setIsListDropdownOpen(false);
+    setNeedsListSelection(false);
+    setError(null);
+    loadTasks(false, list.id);
   };
 
   const handleSaveCredentials = async () => {
@@ -189,30 +290,20 @@ export default function TasksView({
       return;
     }
     setStoredClickUpToken(tokenInput.trim());
-    setStoredClickUpListId(listIdInput.trim());
+    if (listIdInput.trim()) {
+      setStoredClickUpListId(listIdInput.trim());
+      setSelectedListId(listIdInput.trim());
+    }
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
     setNeedsAuth(false);
+    setNeedsListSelection(false);
     loadTasks();
+    loadDiscoveredLists(false);
   };
 
   const handleDiscoverLists = async () => {
-    if (!tokenInput.trim()) {
-      alert("Please enter a ClickUp API Token first.");
-      return;
-    }
-    setDiscovering(true);
-    try {
-      const data = await discoverClickUpLists(tokenInput.trim());
-      setDiscoveredLists(data.lists || []);
-      if ((data.lists || []).length > 0 && !listIdInput) {
-        setListIdInput(data.lists[0].id);
-      }
-    } catch (err: any) {
-      alert(err.message || "Failed to discover ClickUp lists.");
-    } finally {
-      setDiscovering(false);
-    }
+    await loadDiscoveredLists(true);
   };
 
   const openTaskDetail = (task: ClickUpTask) => {
@@ -337,6 +428,7 @@ export default function TasksView({
         priority: newTaskPriority,
         dueDate: newTaskDueDate || null,
         assignees: assigneesPayload,
+        listId: selectedListId || undefined,
       });
       setShowCreateModal(false);
       setNewTaskName("");
@@ -369,6 +461,29 @@ export default function TasksView({
     });
     return Array.from(set);
   }, [tasks]);
+
+  // Filtered available lists for dropdown search
+  const filteredAvailableLists = useMemo(() => {
+    const q = listSearchQuery.trim().toLowerCase();
+    if (!q) return availableLists;
+    return availableLists.filter(
+      l =>
+        l.name.toLowerCase().includes(q) ||
+        l.spaceName.toLowerCase().includes(q) ||
+        (l.folderName && l.folderName.toLowerCase().includes(q))
+    );
+  }, [availableLists, listSearchQuery]);
+
+  // Grouped lists by Space
+  const listsBySpace = useMemo(() => {
+    const map = new Map<string, typeof availableLists>();
+    filteredAvailableLists.forEach(l => {
+      const space = l.spaceName || "Workspace Lists";
+      if (!map.has(space)) map.set(space, []);
+      map.get(space)!.push(l);
+    });
+    return Array.from(map.entries());
+  }, [filteredAvailableLists]);
 
   // Helper to get category for any status
   const getStatusCategory = (statusStr: string): string => {
@@ -548,13 +663,163 @@ export default function TasksView({
           </div>
         </div>
 
-        {/* View Switcher & Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        {/* View Switcher, List Selector & Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Active ClickUp List Selector Dropdown */}
+          <div className="relative" ref={listDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsListDropdownOpen(!isListDropdownOpen);
+                if (availableLists.length === 0) loadDiscoveredLists(false);
+              }}
+              title="Click to switch ClickUp list"
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#FAF9F7] hover:bg-white border border-[#1b1d1e]/20 hover:border-[#c9ab4c] transition-all text-xs font-semibold text-[#1b1d1e] shadow-2xs rounded-none cursor-pointer"
+            >
+              <FolderKanban size={15} className="text-[#c9ab4c] shrink-0" />
+              <div className="flex flex-col text-left leading-tight max-w-[170px] sm:max-w-[240px] truncate">
+                <span className="text-[9px] uppercase tracking-widest text-gray-500 font-bold truncate">
+                  {selectedSpaceName || "ClickUp Space"}
+                </span>
+                <span className="text-xs font-bold text-[#003366] truncate">
+                  {selectedListName || (selectedListId ? `List #${selectedListId}` : "Select List...")}
+                </span>
+              </div>
+              <ChevronDown
+                size={13}
+                className={`text-gray-400 ml-1 transition-transform ${isListDropdownOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isListDropdownOpen && (
+              <div className="absolute right-0 mt-1.5 w-80 sm:w-96 bg-white border-2 border-[#1b1d1e] shadow-2xl z-50 rounded-none overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                {/* Search / Filter bar inside dropdown */}
+                <div className="p-2.5 bg-[#1b1d1e] text-white border-b border-[#2c2f32]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-[#c9ab4c]">
+                      Workspace Lists
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => loadDiscoveredLists(true)}
+                      disabled={loadingLists}
+                      className="text-[10px] text-gray-300 hover:text-white flex items-center gap-1 font-bold disabled:opacity-50 cursor-pointer"
+                    >
+                      <FolderSync size={11} className={loadingLists ? "animate-spin text-[#c9ab4c]" : ""} />
+                      <span>{loadingLists ? "Scanning..." : "Rescan"}</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#25282a] border border-[#3a3e42] px-2 py-1 text-xs">
+                    <Search size={12} className="text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Filter spaces and lists..."
+                      value={listSearchQuery}
+                      onChange={(e) => setListSearchQuery(e.target.value)}
+                      className="w-full bg-transparent text-white placeholder-gray-500 outline-none text-xs"
+                      autoFocus
+                    />
+                    {listSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setListSearchQuery("")}
+                        className="text-gray-400 hover:text-white cursor-pointer"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Lists Content */}
+                <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+                  {loadingLists && availableLists.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-gray-500 flex flex-col items-center gap-2">
+                      <RefreshCw size={16} className="animate-spin text-[#c9ab4c]" />
+                      <span>Discovering workspace lists...</span>
+                    </div>
+                  ) : listsBySpace.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-gray-500">
+                      {listSearchQuery ? "No lists match your search." : "No lists found. Click Rescan to discover."}
+                    </div>
+                  ) : (
+                    listsBySpace.map(([spaceName, spaceLists]) => (
+                      <div key={spaceName}>
+                        <div className="bg-gray-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-100 flex items-center justify-between">
+                          <span>{spaceName}</span>
+                          <span className="text-gray-400">{spaceLists.length} lists</span>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                          {spaceLists.map((l) => {
+                            const isSelected = selectedListId === l.id;
+                            return (
+                              <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => handleSelectList(l)}
+                                className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between group transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? "bg-amber-50/70 border-l-4 border-[#c9ab4c]"
+                                    : "hover:bg-gray-50"
+                                }`}
+                              >
+                                <div className="truncate pr-2">
+                                  {l.folderName && (
+                                    <span className="text-[10px] text-gray-400 block font-normal truncate">
+                                      {l.folderName}
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`text-xs font-semibold block truncate ${
+                                      isSelected ? "text-[#003366] font-bold" : "text-gray-800 group-hover:text-[#003366]"
+                                    }`}
+                                  >
+                                    {l.name}
+                                  </span>
+                                </div>
+                                {isSelected ? (
+                                  <Check size={14} className="text-[#c9ab4c] shrink-0" />
+                                ) : (
+                                  <ChevronRight
+                                    size={13}
+                                    className="text-gray-300 group-hover:text-[#003366] opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Dropdown Footer */}
+                <div className="p-2 bg-[#faf9f7] border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-500 px-3">
+                  <span>
+                    {availableLists.length > 0 ? `${availableLists.length} lists available` : "Click Rescan to refresh"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsListDropdownOpen(false);
+                      setNeedsListSelection(true);
+                    }}
+                    className="text-[#003366] font-bold hover:underline cursor-pointer"
+                  >
+                    Manage / Switch
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Board / List Toggle */}
           <div className="flex bg-gray-100 p-0.5 border border-gray-200">
             <button
               onClick={() => setViewMode("board")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
                 viewMode === "board"
                   ? "bg-[#003366] text-white shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -565,7 +830,7 @@ export default function TasksView({
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
                 viewMode === "list"
                   ? "bg-[#003366] text-white shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -581,7 +846,7 @@ export default function TasksView({
             onClick={() => loadTasks(true)}
             disabled={refreshing || loading}
             title="Refresh from ClickUp"
-            className="p-1.5 text-gray-600 hover:text-[#003366] bg-white border border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50"
+            className="p-1.5 text-gray-600 hover:text-[#003366] bg-white border border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin text-[#c9ab4c]" : ""} />
           </button>
@@ -589,7 +854,7 @@ export default function TasksView({
           {/* Create Task Button */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary !py-1.5 !px-3.5 !text-xs flex items-center gap-1.5 shadow-xs"
+            className="btn-primary !py-1.5 !px-3.5 !text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Plus size={14} />
             <span>New Task</span>
@@ -719,6 +984,147 @@ export default function TasksView({
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6">
         {/* Auth / Connection Warning Card */}
+        {/* List Selection Required Card */}
+        {needsListSelection && !loading && (
+          <div className="max-w-3xl mx-auto mb-8 bg-white border-2 border-[#1b1d1e] p-7 shadow-xl rounded-none">
+            <div className="flex items-start gap-3.5 mb-5">
+              <div className="w-10 h-10 bg-[#1b1d1e] text-[#c9ab4c] flex items-center justify-center shrink-0">
+                <FolderKanban size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif italic font-bold text-xl text-[#003366]">
+                    Select a ClickUp List to Display
+                  </h3>
+                  <span className="text-[9px] uppercase tracking-widest bg-amber-50 text-[#003366] font-bold px-2 py-0.5 border border-[#c9ab4c]/40">
+                    Workspace Connected
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                  Choose which list inside your connected ClickUp workspace you would like to view and synchronize with Project Echo.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                    Available Lists in Your Workspace
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => loadDiscoveredLists(true)}
+                    disabled={loadingLists}
+                    className="text-[11px] text-[#003366] hover:text-[#c9ab4c] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    <FolderSync size={13} className={loadingLists ? "animate-spin text-[#c9ab4c]" : ""} />
+                    <span>{loadingLists ? "Scanning Workspace..." : "Rescan Lists"}</span>
+                  </button>
+                </div>
+
+                {availableLists.length > 0 ? (
+                  <div className="border border-gray-200 divide-y divide-gray-100 max-h-80 overflow-y-auto bg-[#FAF9F7]">
+                    {listsBySpace.map(([spaceName, spaceLists]) => (
+                      <div key={spaceName}>
+                        <div className="bg-gray-100/80 px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-600 border-b border-gray-200 flex items-center justify-between">
+                          <span>{spaceName}</span>
+                          <span className="text-gray-400">{spaceLists.length} lists</span>
+                        </div>
+                        <div className="divide-y divide-gray-100 bg-white">
+                          {spaceLists.map((l) => (
+                            <div
+                              key={l.id}
+                              className="px-4 py-3 hover:bg-amber-50/60 transition-colors flex items-center justify-between gap-4"
+                            >
+                              <div className="truncate">
+                                {l.folderName && (
+                                  <span className="text-[10px] text-gray-400 font-semibold block uppercase tracking-wider">
+                                    {l.folderName}
+                                  </span>
+                                )}
+                                <span className="text-xs font-bold text-gray-900 block truncate">
+                                  {l.name}
+                                </span>
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  ID: {l.id}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectList(l)}
+                                className="btn-primary !py-1.5 !px-3.5 !text-xs shrink-0 flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Select & Sync</span>
+                                <ChevronRight size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 bg-gray-50 border border-gray-200 text-center">
+                    {loadingLists ? (
+                      <div className="flex flex-col items-center justify-center gap-2 text-xs text-gray-500">
+                        <RefreshCw size={20} className="animate-spin text-[#c9ab4c]" />
+                        <span className="font-semibold text-gray-700">Auto-discovering spaces and lists in your ClickUp workspace...</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-3">
+                          No lists were automatically discovered from your workspace. Click the button below to scan.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => loadDiscoveredLists(true)}
+                          className="btn-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2 cursor-pointer"
+                        >
+                          <FolderSync size={14} />
+                          <span>Scan Workspace Lists</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual List ID input fallback */}
+              <div className="pt-3 border-t border-gray-100">
+                <details className="text-xs text-gray-500">
+                  <summary className="cursor-pointer font-bold hover:text-[#003366] text-[11px]">
+                    Or enter a ClickUp List ID manually
+                  </summary>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 9012345678"
+                      value={listIdInput}
+                      onChange={(e) => setListIdInput(e.target.value)}
+                      className="flex-1 border border-gray-300 p-2 text-xs font-mono bg-white focus:border-[#c9ab4c] outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!listIdInput.trim()) return;
+                        setSelectedListId(listIdInput.trim());
+                        setStoredClickUpListId(listIdInput.trim());
+                        setNeedsListSelection(false);
+                        loadTasks(false, listIdInput.trim());
+                      }}
+                      className="btn-primary !py-2 !px-4 !text-xs cursor-pointer"
+                    >
+                      Connect ID
+                    </button>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auth / Connection Warning Card */}
         {needsAuth && (
           <div className="max-w-2xl mx-auto mb-6 bg-white border-2 border-[#003366] p-6 shadow-md">
             <div className="flex items-start gap-3 mb-4">
@@ -728,14 +1134,23 @@ export default function TasksView({
                   Connect Your ClickUp Workspace
                 </h3>
                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                  Project Echo connects directly to your ClickUp workspace via personal API token.
-                  Provide your token and target List ID below, or configure them in your Vercel
-                  environment variables (`CLICKUP_API_TOKEN` & `CLICKUP_DEFAULT_LIST_ID`).
+                  Project Echo synchronizes live tasks with ClickUp. Please sign in with ClickUp or provide a personal API token.
                 </p>
               </div>
             </div>
 
             <div className="space-y-3.5 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-3">
+                <a
+                  href="/api/auth/clickup"
+                  className="btn-primary !py-2 !px-4 !text-xs flex items-center gap-1.5"
+                >
+                  <ExternalLink size={13} />
+                  <span>Sign In with ClickUp</span>
+                </a>
+                <span className="text-xs text-gray-400">or configure a token below</span>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
                   ClickUp Personal API Token (pk_...)
@@ -747,55 +1162,9 @@ export default function TasksView({
                   onChange={e => setTokenInput(e.target.value)}
                   className="w-full border border-gray-300 p-2 text-xs font-mono bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
                 />
-                <span className="text-[10px] text-gray-400 mt-0.5 block">
-                  Find this in ClickUp: Settings → Apps → Generate API Token
-                </span>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                    Default ClickUp List ID
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleDiscoverLists}
-                    disabled={discovering || !tokenInput.trim()}
-                    className="text-[10px] text-[#003366] hover:text-[#c9ab4c] font-bold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <FolderSync size={11} className={discovering ? "animate-spin" : ""} />
-                    <span>Auto-Discover My Lists</span>
-                  </button>
-                </div>
-
-                {discoveredLists.length > 0 ? (
-                  <select
-                    value={listIdInput}
-                    onChange={e => setListIdInput(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
-                  >
-                    <option value="">-- Select a ClickUp List --</option>
-                    {discoveredLists.map(l => (
-                      <option key={l.id} value={l.id}>
-                        {l.spaceName} → {l.name} (ID: {l.id})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="e.g. 9012345678"
-                    value={listIdInput}
-                    onChange={e => setListIdInput(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs font-mono bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
-                  />
-                )}
-                <span className="text-[10px] text-gray-400 mt-0.5 block">
-                  The ID from your ClickUp URL: app.clickup.com/workspace/v/li/<b>9012345678</b>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-3">
+              <div className="flex items-center justify-between pt-2">
                 {saveSuccess && (
                   <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
                     <CheckCircle2 size={13} /> Connected successfully!
@@ -804,7 +1173,7 @@ export default function TasksView({
                 <button
                   type="button"
                   onClick={handleSaveCredentials}
-                  className="btn-primary !py-2 !px-5 !text-xs ml-auto shadow-xs"
+                  className="btn-primary !py-2 !px-5 !text-xs ml-auto shadow-xs cursor-pointer"
                 >
                   Save & Connect ClickUp
                 </button>
@@ -822,18 +1191,26 @@ export default function TasksView({
         )}
 
         {/* Error Notification */}
-        {!loading && error && !needsAuth && (
+        {!loading && error && !needsAuth && !needsListSelection && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle size={16} />
               <span>{error}</span>
             </div>
-            <button
-              onClick={() => loadTasks()}
-              className="font-bold underline hover:text-red-900"
-            >
-              Retry
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setNeedsListSelection(true)}
+                className="font-bold underline hover:text-red-900 cursor-pointer"
+              >
+                Change List
+              </button>
+              <button
+                onClick={() => loadTasks()}
+                className="font-bold underline hover:text-red-900 cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 

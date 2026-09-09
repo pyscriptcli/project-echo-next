@@ -65,14 +65,33 @@ export function setStoredClickUpToken(token: string) {
 
 export function getStoredClickUpListId(): string {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("project_echo_clickup_list_id") || "";
+    const fromStorage = localStorage.getItem("project_echo_clickup_list_id");
+    if (fromStorage) return fromStorage;
+    const match = document.cookie.match(/(^|;)\s*echo_clickup_list_id=([^;]+)/);
+    if (match) return decodeURIComponent(match[2]);
   }
   return "";
 }
 
 export function setStoredClickUpListId(listId: string) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("project_echo_clickup_list_id", listId.trim());
+    const trimmed = listId.trim();
+    localStorage.setItem("project_echo_clickup_list_id", trimmed);
+    const isProd = window.location.protocol === "https:";
+    document.cookie = `echo_clickup_list_id=${encodeURIComponent(trimmed)}; path=/; max-age=2592000; SameSite=Lax${isProd ? "; Secure" : ""}`;
+  }
+}
+
+export function getStoredClickUpListName(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_clickup_list_name") || "";
+  }
+  return "";
+}
+
+export function setStoredClickUpListName(name: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_clickup_list_name", name.trim());
   }
 }
 
@@ -256,13 +275,18 @@ function getClickUpHeaders(): Record<string, string> {
 export async function fetchClickUpTasks(customListId?: string) {
   const headers = getClickUpHeaders();
   let url = "/api/tasks";
-  if (customListId) {
-    url += `?listId=${encodeURIComponent(customListId)}`;
+  const targetId = customListId || getStoredClickUpListId();
+  if (targetId) {
+    url += `?listId=${encodeURIComponent(targetId)}`;
   }
   const res = await fetch(url, { headers, cache: "no-store" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Failed to fetch ClickUp tasks");
+    const error: any = new Error(err.error || "Failed to fetch ClickUp tasks");
+    error.status = res.status;
+    error.needsListSelection = err.needsListSelection;
+    error.needsAuth = err.needsAuth;
+    throw error;
   }
   return res.json();
 }
@@ -337,10 +361,13 @@ export async function discoverClickUpLists(tokenOverride?: string) {
   if (tokenOverride) {
     headers["x-clickup-token"] = tokenOverride;
   }
-  const res = await fetch("/api/tasks?action=discover", { headers });
+  const res = await fetch("/api/tasks?action=discover", { headers, cache: "no-store" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Failed to discover ClickUp workspaces/lists");
+    const error: any = new Error(err.error || "Failed to discover ClickUp workspaces/lists");
+    error.status = res.status;
+    error.needsAuth = err.needsAuth;
+    throw error;
   }
   return res.json();
 }

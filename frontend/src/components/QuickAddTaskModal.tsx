@@ -18,7 +18,8 @@ import {
   createClickUpTask,
   fetchClickUpTasks,
   getStoredClickUpToken,
-  getStoredClickUpListId
+  getStoredClickUpListId,
+  getStoredClickUpListName
 } from "@/lib/api";
 import { WORKSPACE_STATUS_CATEGORIES } from "@/app/api/tasks/route";
 import { SearchableMemberSelect } from "./SearchableMemberSelect";
@@ -168,6 +169,7 @@ export function QuickAddTaskModal({
         topic: initialData?.topic || initialData?.name,
         discussion: description.trim(),
         evidence: initialData?.evidence,
+        listId: getStoredClickUpListId() || undefined,
       });
 
       const taskId = res.id || res.task?.id;
@@ -272,6 +274,12 @@ export function QuickAddTaskModal({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Target List Info */}
+            <div className="flex items-center gap-2 text-[10px] text-gray-600 font-semibold bg-[#FAF9F7] px-2.5 py-1.5 border border-gray-200">
+              <FolderKanban size={13} className="text-[#c9ab4c] shrink-0" />
+              <span>Target ClickUp List: <strong className="text-[#003366]">{getStoredClickUpListName() || (getStoredClickUpListId() ? `List #${getStoredClickUpListId()}` : "Default Workspace List")}</strong></span>
+            </div>
+
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2 rounded-none">
                 <AlertCircle size={15} className="shrink-0 mt-0.5" />

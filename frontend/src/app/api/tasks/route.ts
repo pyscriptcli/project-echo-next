@@ -9,7 +9,9 @@ function getClickUpCredentials(req: NextRequest) {
     process.env.CLICKUP_API_TOKEN ||
     "";
   const listId =
+    req.nextUrl.searchParams.get("listId") ||
     req.headers.get("x-clickup-list-id") ||
+    req.cookies.get("echo_clickup_list_id")?.value ||
     process.env.CLICKUP_DEFAULT_LIST_ID ||
     "";
   return { token: token.trim(), listId: listId.trim() };
@@ -93,21 +95,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "ClickUp API Token not configured. Please verify your CLICKUP_API_TOKEN environment variable in Vercel.",
+            "ClickUp authentication required. Please sign in with ClickUp or provide an API token.",
           needsAuth: true,
         },
         { status: 401 }
       );
     }
 
-    // Discovery action: fetch all accessible teams, spaces, and lists
+    // Discovery action: fetch all accessible teams, spaces, folders, and lists in parallel
     if (action === "discover") {
       const teamsRes = await fetch("https://api.clickup.com/api/v2/team", {
         headers: { Authorization: token },
+        cache: "no-store",
       });
       if (!teamsRes.ok) {
         return NextResponse.json(
-          { error: `ClickUp authentication failed: ${teamsRes.statusText}` },
+          { error: `ClickUp authentication failed (${teamsRes.status}): ${teamsRes.statusText}`, needsAuth: true },
           { status: teamsRes.status }
         );
       }
@@ -116,57 +119,73 @@ export async function GET(req: NextRequest) {
         id: string;
         name: string;
         spaceName: string;
+        folderName?: string;
         teamName: string;
       }> = [];
 
       for (const team of teamsData.teams || []) {
         const spacesRes = await fetch(
           `https://api.clickup.com/api/v2/team/${team.id}/space`,
-          { headers: { Authorization: token } }
+          { headers: { Authorization: token }, cache: "no-store" }
         );
         if (!spacesRes.ok) continue;
         const spacesData = await spacesRes.json();
+        const spaces = spacesData.spaces || [];
 
-        for (const space of spacesData.spaces || []) {
-          // Folderless lists
-          const folderlessRes = await fetch(
-            `https://api.clickup.com/api/v2/space/${space.id}/list`,
-            { headers: { Authorization: token } }
-          );
-          if (folderlessRes.ok) {
-            const folderlessData = await folderlessRes.json();
-            for (const list of folderlessData.lists || []) {
-              discoveredLists.push({
-                id: list.id,
-                name: list.name,
-                spaceName: space.name,
-                teamName: team.name,
-              });
-            }
-          }
+        // Parallelize fetching lists and folders across all spaces in this team
+        await Promise.all(
+          spaces.map(async (space: any) => {
+            const [folderlessRes, foldersRes] = await Promise.all([
+              fetch(`https://api.clickup.com/api/v2/space/${space.id}/list`, {
+                headers: { Authorization: token },
+                cache: "no-store",
+              }).catch(() => null),
+              fetch(`https://api.clickup.com/api/v2/space/${space.id}/folder`, {
+                headers: { Authorization: token },
+                cache: "no-store",
+              }).catch(() => null),
+            ]);
 
-          // Folders and their lists
-          const foldersRes = await fetch(
-            `https://api.clickup.com/api/v2/space/${space.id}/folder`,
-            { headers: { Authorization: token } }
-          );
-          if (foldersRes.ok) {
-            const foldersData = await foldersRes.json();
-            for (const folder of foldersData.folders || []) {
-              for (const list of folder.lists || []) {
+            if (folderlessRes && folderlessRes.ok) {
+              const folderlessData = await folderlessRes.json().catch(() => ({}));
+              for (const list of folderlessData.lists || []) {
                 discoveredLists.push({
-                  id: list.id,
-                  name: `${folder.name} / ${list.name}`,
+                  id: String(list.id),
+                  name: list.name,
                   spaceName: space.name,
                   teamName: team.name,
                 });
               }
             }
-          }
-        }
+
+            if (foldersRes && foldersRes.ok) {
+              const foldersData = await foldersRes.json().catch(() => ({}));
+              for (const folder of foldersData.folders || []) {
+                for (const list of folder.lists || []) {
+                  discoveredLists.push({
+                    id: String(list.id),
+                    name: list.name,
+                    folderName: folder.name,
+                    spaceName: space.name,
+                    teamName: team.name,
+                  });
+                }
+              }
+            }
+          })
+        );
       }
 
-      return NextResponse.json({ lists: discoveredLists });
+      // Sort discovered lists by spaceName, then folderName, then list name
+      discoveredLists.sort((a, b) => {
+        const spaceCompare = (a.spaceName || "").localeCompare(b.spaceName || "");
+        if (spaceCompare !== 0) return spaceCompare;
+        const folderCompare = (a.folderName || "").localeCompare(b.folderName || "");
+        if (folderCompare !== 0) return folderCompare;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+
+      return NextResponse.json({ lists: discoveredLists, count: discoveredLists.length });
     }
 
     // Default action: Fetch tasks from targetListId
@@ -174,8 +193,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "ClickUp List ID not configured. Please select or verify your ClickUp List ID in Vercel.",
-          needsListId: true,
+            "No ClickUp List selected. Please select a ClickUp list from your workspace.",
+          needsListSelection: true,
         },
         { status: 400 }
       );
@@ -206,7 +225,16 @@ export async function GET(req: NextRequest) {
         const errJson = await tasksRes.json();
         errMsg = errJson.err || errJson.error || errMsg;
       } catch (e) {}
-      return NextResponse.json({ error: errMsg }, { status: tasksRes.status });
+      const isNotFound = tasksRes.status === 404 || errMsg.toLowerCase().includes("list not found");
+      return NextResponse.json(
+        {
+          error: isNotFound
+            ? "ClickUp list not found. Please select a valid list from your workspace."
+            : errMsg,
+          needsListSelection: isNotFound,
+        },
+        { status: tasksRes.status }
+      );
     }
 
     const tasksData = await tasksRes.json();
@@ -215,11 +243,19 @@ export async function GET(req: NextRequest) {
     // Parse list statuses & space ID
     let listStatuses: any[] = [];
     let spaceId: string | null = null;
+    let listName = "";
+    let spaceName = "";
+    let folderName = "";
     if (listInfoRes && listInfoRes.ok) {
       try {
         const listData = await listInfoRes.json();
+        listName = listData.name || "";
         if (listData.space && listData.space.id) {
           spaceId = String(listData.space.id);
+          spaceName = listData.space.name || "";
+        }
+        if (listData.folder && listData.folder.name) {
+          folderName = listData.folder.name || "";
         }
         if (listData.statuses && Array.isArray(listData.statuses)) {
           listStatuses = listData.statuses.map((s: any) => ({
@@ -371,6 +407,9 @@ export async function GET(req: NextRequest) {
       tasks,
       total: tasks.length,
       listId: targetListId,
+      listName: listName || "Active List",
+      spaceName: spaceName || "",
+      folderName: folderName || "",
       members,
       statuses: finalStatuses,
       categories: WORKSPACE_STATUS_CATEGORIES,
