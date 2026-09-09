@@ -63,7 +63,8 @@ import {
   CheckCircle,
   CheckCircle2,
   Clock,
-  ListOrdered
+  ListOrdered,
+  RotateCcw
 } from "lucide-react";
 
 const VENUE_OPTIONS = [
@@ -400,7 +401,9 @@ export default function Home() {
     e.stopPropagation();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      handleUnifiedSourceSubmission(file);
     }
   };
 
@@ -480,10 +483,22 @@ export default function Home() {
     }
   };
 
-  // File Selection
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelProcessing = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  };
+
+  // File Selection (Auto-processed immediately upon selection)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      handleUnifiedSourceSubmission(file);
     }
   };
 
@@ -498,15 +513,25 @@ export default function Home() {
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setShowStudio(false);
     setIsLoading(true);
     setLoadingText("Analyzing source content...");
 
     try {
-      const res = await processSource({
-        file: fileToUse,
-        text: !fileToUse && hasText ? pastedText : undefined,
-      });
+      const res = await processSource(
+        {
+          file: fileToUse,
+          text: !fileToUse && hasText ? pastedText : undefined,
+        },
+        (status) => setLoadingText(status),
+        abortController.signal
+      );
 
       setTranscript(res.transcript || "");
       if (res.metadata) {
@@ -546,9 +571,14 @@ export default function Home() {
       setOtherDiscussions(momRes.other_discussions || "");
       setStage("Review");
     } catch (err: any) {
+      if (err?.name === "AbortError" || abortController.signal.aborted) {
+        console.log("Audio processing aborted by user");
+        return;
+      }
       alert(`Source processing notice:\n\n${err.message}`);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -726,7 +756,14 @@ export default function Home() {
       {isLoading && (
         <div className="fixed inset-0 bg-white/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
           <Loader2 className="w-12 h-12 animate-spin text-[#003366] mb-4" />
-          <p className="font-bold tracking-widest uppercase text-sm text-[#003366]">{loadingText}</p>
+          <p className="font-bold tracking-widest uppercase text-sm text-[#003366] mb-4 px-6 text-center max-w-lg">{loadingText}</p>
+          <button
+            type="button"
+            onClick={handleCancelProcessing}
+            className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-all rounded-none cursor-pointer"
+          >
+            Cancel Processing
+          </button>
         </div>
       )}
 
@@ -891,15 +928,17 @@ export default function Home() {
             <div className="bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">1. Meeting Source</span>
-                <button 
-                  type="button"
-                  onClick={() => handleUnifiedSourceSubmission()}
-                  disabled={!selectedFile && !pastedText.trim()}
-                  className="btn-primary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 shadow-2xs shrink-0 rounded-none"
-                >
-                  <Sparkles size={12} />
-                  <span>Process & Generate</span>
-                </button>
+                {selectedFile && (
+                  <button 
+                    type="button"
+                    onClick={() => handleUnifiedSourceSubmission()}
+                    disabled={isLoading}
+                    className="btn-primary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 shadow-2xs shrink-0 rounded-none cursor-pointer"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Re-process File</span>
+                  </button>
+                )}
               </div>
               
               <div className="flex flex-col flex-1">
@@ -935,7 +974,7 @@ export default function Home() {
                 {sourceTab === "source" && (
                   <div className="flex flex-col gap-3.5">
                     
-                    {/* Drag-and-Drop Area */}
+                    {/* Drag-and-Drop Area (Auto-processes upon drop/selection) */}
                     <div 
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
@@ -966,10 +1005,10 @@ export default function Home() {
                             )}
                           </div>
                           <p className="text-xs font-bold text-[#003366] uppercase tracking-wide mb-0.5">
-                            {isDragging ? "Drop your file here" : "Drag and drop your meeting file here"}
+                            {isDragging ? "Drop your file here to process immediately" : "Drag and drop your meeting file here"}
                           </p>
                           <p className="text-[11px] text-gray-500 mb-2">
-                            or <span className="text-[#003366] font-bold underline">Browse files</span> from your computer
+                            or <span className="text-[#003366] font-bold underline">Browse files</span> to automatically transcribe & generate
                           </p>
                           <div className="flex flex-wrap justify-center gap-1.5 text-[9px] text-gray-400 uppercase font-semibold">
                             <span className="bg-white border border-gray-200 px-1.5 py-0.5">Audio: MP3, WAV, M4A</span>
@@ -984,7 +1023,7 @@ export default function Home() {
                             <div className="truncate">
                               <p className="truncate font-bold text-xs text-[#003366]">{selectedFile.name}</p>
                               <p className="text-gray-400 text-[10px]">
-                                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to process
+                                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-processed
                               </p>
                             </div>
                           </div>
@@ -998,7 +1037,7 @@ export default function Home() {
                                 e.stopPropagation();
                                 setSelectedFile(null);
                               }}
-                              className="text-gray-400 hover:text-red-500 p-1 hover:bg-gray-100 rounded-none"
+                              className="text-gray-400 hover:text-red-500 p-1 hover:bg-gray-100 rounded-none cursor-pointer"
                               title="Remove file"
                             >
                               <X size={14} />
@@ -1027,7 +1066,7 @@ export default function Home() {
                           <button 
                             type="button" 
                             onClick={() => setPastedText("")}
-                            className="text-[10px] text-gray-400 hover:text-red-500"
+                            className="text-[10px] text-gray-400 hover:text-red-500 cursor-pointer"
                           >
                             Clear Text
                           </button>
@@ -1040,6 +1079,17 @@ export default function Home() {
                         placeholder="Paste raw transcript, meeting notes, chat logs, or key bullet points directly here..."
                         className="w-full border border-gray-200 p-2 text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed rounded-none"
                       />
+                      {pastedText.trim().length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnifiedSourceSubmission()}
+                          disabled={isLoading}
+                          className="mt-2.5 w-full btn-primary !py-1.5 !text-xs flex items-center justify-center gap-1.5 rounded-none cursor-pointer"
+                        >
+                          <Sparkles size={13} />
+                          <span>Process Text & Generate Minutes</span>
+                        </button>
+                      )}
                     </div>
 
                   </div>

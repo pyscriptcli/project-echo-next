@@ -220,6 +220,51 @@ async function transcribeWithGemini(
   }
 }
 
+async function transcribeAudioBuffer(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string,
+  keys: { openaiKey: string; openrouterKey: string; geminiKey: string }
+): Promise<{ text: string; tempPath?: string; errors: string[] }> {
+  let audioTranscript = "";
+  let tempFilePath: string | undefined;
+  const errors: string[] = [];
+
+  // Provider 1: OpenAI Whisper (Standard industry meeting audio transcription)
+  if (keys.openaiKey) {
+    try {
+      audioTranscript = await transcribeWithOpenAI(buffer, fileName, mimeType, keys.openaiKey);
+    } catch (e: any) {
+      console.warn("OpenAI transcription failed, attempting fallbacks:", e.message);
+      errors.push(`OpenAI Whisper: ${e.message}`);
+    }
+  }
+
+  // Provider 2: OpenRouter Multimodal Audio
+  if (!audioTranscript && keys.openrouterKey) {
+    try {
+      audioTranscript = await transcribeWithOpenRouter(buffer, fileName, mimeType, keys.openrouterKey);
+    } catch (e: any) {
+      console.warn("OpenRouter transcription failed, attempting fallbacks:", e.message);
+      errors.push(`OpenRouter: ${e.message}`);
+    }
+  }
+
+  // Provider 3: Google Gemini Audio
+  if (!audioTranscript && keys.geminiKey) {
+    try {
+      const gemRes = await transcribeWithGemini(buffer, fileName, mimeType, keys.geminiKey);
+      if (gemRes.tempPath) tempFilePath = gemRes.tempPath;
+      audioTranscript = gemRes.text;
+    } catch (e: any) {
+      console.warn("Gemini transcription failed:", e.message);
+      errors.push(`Gemini: ${e.message}`);
+    }
+  }
+
+  return { text: audioTranscript, tempPath: tempFilePath, errors };
+}
+
 export async function POST(req: NextRequest) {
   let tempFilePath: string | null = null;
   try {
@@ -232,6 +277,30 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const directText = formData.get("text") as string | null;
+    const action = formData.get("action") as string | null;
+
+    // CASE 0: Parallel Audio Chunk Transcription (bypasses metadata extraction for intermediate segments)
+    if (action === "transcribe_chunk" && file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const fileName = file.name || "chunk.wav";
+      const mimeType = file.type || "audio/wav";
+
+      const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
+        openaiKey,
+        openrouterKey,
+        geminiKey,
+      });
+      if (tempPath) tempFilePath = tempPath;
+
+      if (!text) {
+        return NextResponse.json({
+          error: `Audio chunk transcription failed: ${errors.join(" | ") || "No audio transcription API key configured"}`
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({ transcript: text });
+    }
 
     if (!file && (!directText || directText.trim().length === 0)) {
       return NextResponse.json({ error: "Please upload a file or paste meeting text." }, { status: 400 });
@@ -240,7 +309,7 @@ export async function POST(req: NextRequest) {
     let transcript = "";
     let metadata: any = {};
 
-    // CASE 1: Direct Pasted Text
+    // CASE 1: Direct Pasted Text (or combined transcript from client chunking)
     if (!file && directText) {
       transcript = directText;
       metadata = await extractMetadataWithAI(transcript, aiKey);
@@ -306,42 +375,14 @@ export async function POST(req: NextRequest) {
     }
 
     // CASE 5: Audio / Video recording (OpenAI Whisper -> OpenRouter -> Gemini cascade)
-    let audioTranscript = "";
-    const errors: string[] = [];
+    const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, file.name, mimeType, {
+      openaiKey,
+      openrouterKey,
+      geminiKey,
+    });
+    if (tempPath) tempFilePath = tempPath;
 
-    // Provider 1: OpenAI Whisper (Standard industry meeting audio transcription)
-    if (openaiKey) {
-      try {
-        audioTranscript = await transcribeWithOpenAI(buffer, file.name, mimeType, openaiKey);
-      } catch (e: any) {
-        console.warn("OpenAI transcription failed, attempting fallbacks:", e.message);
-        errors.push(`OpenAI Whisper: ${e.message}`);
-      }
-    }
-
-    // Provider 2: OpenRouter Multimodal Audio
-    if (!audioTranscript && openrouterKey) {
-      try {
-        audioTranscript = await transcribeWithOpenRouter(buffer, file.name, mimeType, openrouterKey);
-      } catch (e: any) {
-        console.warn("OpenRouter transcription failed, attempting fallbacks:", e.message);
-        errors.push(`OpenRouter: ${e.message}`);
-      }
-    }
-
-    // Provider 3: Google Gemini Audio
-    if (!audioTranscript && geminiKey) {
-      try {
-        const gemRes = await transcribeWithGemini(buffer, file.name, mimeType, geminiKey);
-        if (gemRes.tempPath) tempFilePath = gemRes.tempPath;
-        audioTranscript = gemRes.text;
-      } catch (e: any) {
-        console.warn("Gemini transcription failed:", e.message);
-        errors.push(`Gemini: ${e.message}`);
-      }
-    }
-
-    if (!audioTranscript) {
+    if (!text) {
       if (errors.length > 0) {
         return NextResponse.json({
           error: `Audio transcription failed: ${errors.join(" | ")}`
@@ -352,7 +393,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    transcript = audioTranscript;
+    transcript = text;
     metadata = await extractMetadataWithAI(transcript, aiKey);
     return NextResponse.json({ transcript, metadata });
   } catch (error: any) {

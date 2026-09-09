@@ -1,3 +1,5 @@
+import { isAudioFile, decodeAndChunkAudio, processChunksInPool } from "./audioCompressor";
+
 export function getStoredApiKey(): string {
   if (typeof window !== "undefined") {
     return localStorage.getItem("project_echo_api_key") || "";
@@ -95,15 +97,7 @@ export function setStoredClickUpListName(name: string) {
   }
 }
 
-export async function processSource(fileOrText: { file?: File | null; text?: string }) {
-  const formData = new FormData();
-  if (fileOrText.file) {
-    formData.append("file", fileOrText.file);
-  }
-  if (fileOrText.text) {
-    formData.append("text", fileOrText.text);
-  }
-
+function getAudioApiHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const storedKey = getStoredApiKey();
   if (storedKey) headers["x-api-key"] = storedKey;
@@ -117,10 +111,113 @@ export async function processSource(fileOrText: { file?: File | null; text?: str
   const storedGemini = getStoredGeminiKey();
   if (storedGemini) headers["x-gemini-api-key"] = storedGemini;
 
+  return headers;
+}
+
+async function transcribeSingleChunk(
+  chunkBlob: Blob,
+  chunkIndex: number,
+  totalChunks: number,
+  headers: Record<string, string>,
+  signal?: AbortSignal
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", chunkBlob, `chunk_${chunkIndex + 1}.wav`);
+  formData.append("action", "transcribe_chunk");
+
   const res = await fetch("/api/process-audio", {
     method: "POST",
     headers,
     body: formData,
+    signal,
+  });
+
+  if (!res.ok) {
+    let errMsg = `Failed to transcribe chunk ${chunkIndex + 1}`;
+    try {
+      const err = await res.json();
+      errMsg = err.error || errMsg;
+    } catch (e) {
+      errMsg = `Server error (${res.status} ${res.statusText})`;
+    }
+    throw new Error(errMsg);
+  }
+
+  const data = await res.json();
+  return data.transcript || "";
+}
+
+export async function processSource(
+  fileOrText: { file?: File | null; text?: string },
+  onProgress?: (message: string) => void,
+  signal?: AbortSignal
+): Promise<{ transcript: string; metadata: any }> {
+  const headers = getAudioApiHeaders();
+
+  // 1. Audio Processing with Client-Side Downsampling & Parallel Threadpool
+  if (fileOrText.file && isAudioFile(fileOrText.file) && typeof window !== "undefined") {
+    try {
+      onProgress?.("Optimizing audio for transcription (16kHz mono)...");
+      const chunks = await decodeAndChunkAudio(fileOrText.file, 90, onProgress, signal);
+
+      if (chunks.length === 1) {
+        onProgress?.("Transcribing audio recording...");
+        const chunkText = await transcribeSingleChunk(chunks[0], 0, 1, headers, signal);
+        onProgress?.("Extracting meeting metadata with AI...");
+        return await processSource({ text: chunkText }, onProgress, signal);
+      } else {
+        onProgress?.(`Starting parallel transcription (2 workers, ${chunks.length} parts)...`);
+        const chunkTranscripts = await processChunksInPool<Blob, string>(
+          chunks,
+          2, // Concurrency = 2 workers (safe for rate limits)
+          (chunkBlob, idx) => transcribeSingleChunk(chunkBlob, idx, chunks.length, headers, signal),
+          (completed, total) => {
+            const pct = Math.round((completed / total) * 100);
+            onProgress?.(`Transcribing audio: ${completed} of ${total} parts (${pct}%)...`);
+          },
+          signal
+        );
+
+        const fullTranscript = chunkTranscripts.filter(Boolean).join(" ");
+        onProgress?.("Extracting meeting metadata with AI...");
+        return await processSource({ text: fullTranscript }, onProgress, signal);
+      }
+    } catch (decodeErr: any) {
+      if (signal?.aborted || decodeErr?.name === "AbortError") {
+        throw decodeErr;
+      }
+      console.warn("Client-side audio downsampling failed, checking fallback:", decodeErr);
+
+      if (fileOrText.file.size > 4.2 * 1024 * 1024) {
+        throw new Error(
+          `Audio file (${(fileOrText.file.size / (1024 * 1024)).toFixed(1)}MB) exceeds Vercel's 4.5MB upload limit and could not be decoded in this browser. Please export as MP3/WAV or paste meeting text.`
+        );
+      }
+      // Fallback: file is under 4.2MB, continue to direct upload below
+    }
+  }
+
+  // 2. Large Non-Audio File Guard (Avoids cryptic 413 from Vercel)
+  if (fileOrText.file && !isAudioFile(fileOrText.file) && fileOrText.file.size > 4.2 * 1024 * 1024) {
+    throw new Error(
+      `Document (${(fileOrText.file.size / (1024 * 1024)).toFixed(1)}MB) exceeds Vercel's 4.5MB serverless upload limit. Please upload a smaller document or paste the text directly.`
+    );
+  }
+
+  // 3. Direct Upload / Text Processing
+  const formData = new FormData();
+  if (fileOrText.file) {
+    formData.append("file", fileOrText.file);
+  }
+  if (fileOrText.text) {
+    formData.append("text", fileOrText.text);
+  }
+
+  const res = await fetch("/api/process-audio", {
+    method: "POST",
+    headers,
+    body: formData,
+    signal,
   });
 
   if (!res.ok) {
