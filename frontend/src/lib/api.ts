@@ -50,6 +50,32 @@ export function setStoredGeminiKey(key: string) {
   }
 }
 
+export function getStoredClickUpToken(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_clickup_token") || "";
+  }
+  return "";
+}
+
+export function setStoredClickUpToken(token: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_clickup_token", token.trim());
+  }
+}
+
+export function getStoredClickUpListId(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("project_echo_clickup_list_id") || "";
+  }
+  return "";
+}
+
+export function setStoredClickUpListId(listId: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("project_echo_clickup_list_id", listId.trim());
+  }
+}
+
 export async function processSource(fileOrText: { file?: File | null; text?: string }) {
   const formData = new FormData();
   if (fileOrText.file) {
@@ -212,4 +238,102 @@ export async function exportPdf(metadata: any, items: any[], other_discussions: 
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// ─── ClickUp Tasks API ────────────────────────────────────────────────────────
+
+function getClickUpHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getStoredClickUpToken();
+  const listId = getStoredClickUpListId();
+  if (token) headers["x-clickup-token"] = token;
+  if (listId) headers["x-clickup-list-id"] = listId;
+  return headers;
+}
+
+export async function fetchClickUpTasks(customListId?: string) {
+  const headers = getClickUpHeaders();
+  let url = "/api/tasks";
+  if (customListId) {
+    url += `?listId=${encodeURIComponent(customListId)}`;
+  }
+  const res = await fetch(url, { headers, cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to fetch ClickUp tasks");
+  }
+  return res.json();
+}
+
+export async function createClickUpTask(taskData: {
+  name: string;
+  description?: string;
+  meetingTitle?: string;
+  meetingDate?: string;
+  status?: string;
+  priority?: string | number;
+  dueDate?: string | null;
+  assignees?: any[];
+  listId?: string;
+}) {
+  const headers = getClickUpHeaders();
+  const res = await fetch("/api/tasks", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(taskData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to create task in ClickUp");
+  }
+  return res.json();
+}
+
+export async function updateClickUpTask(updateData: {
+  taskId: string;
+  status?: string;
+  name?: string;
+  description?: string;
+  priority?: string | number;
+  dueDate?: string | null;
+}) {
+  const headers = getClickUpHeaders();
+  const res = await fetch("/api/tasks", {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(updateData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to update task in ClickUp");
+  }
+  return res.json();
+}
+
+export async function deleteClickUpTask(taskId: string) {
+  const headers = getClickUpHeaders();
+  const res = await fetch(`/api/tasks?taskId=${encodeURIComponent(taskId)}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete task from ClickUp");
+  }
+  return res.json();
+}
+
+export async function discoverClickUpLists(tokenOverride?: string) {
+  const headers = getClickUpHeaders();
+  if (tokenOverride) {
+    headers["x-clickup-token"] = tokenOverride;
+  }
+  const res = await fetch("/api/tasks?action=discover", { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to discover ClickUp workspaces/lists");
+  }
+  return res.json();
 }

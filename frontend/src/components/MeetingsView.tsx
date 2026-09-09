@@ -20,10 +20,12 @@ import {
   Trash2,
   CheckCircle,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  CheckSquare
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho } from "@/lib/api";
+import { QuickAddTaskModal } from "./QuickAddTaskModal";
 
 const VENUE_OPTIONS = [
   "GreatWork Mega Tower 32F - Secret Room",
@@ -181,6 +183,23 @@ export function MeetingsView({
 
   const [isExporting, setIsExporting] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+
+  // Quick Add ClickUp Task state
+  const [quickAddTaskData, setQuickAddTaskData] = useState<{
+    isOpen: boolean;
+    data: {
+      name?: string;
+      description?: string;
+      meetingTitle?: string;
+      meetingDate?: string;
+      dueDate?: string;
+      priority?: string;
+      assigneeName?: string;
+    };
+  }>({
+    isOpen: false,
+    data: {},
+  });
 
   // Filter master list
   const filteredList = meetings.filter((m) => {
@@ -777,6 +796,37 @@ export function MeetingsView({
                         />
                       </div>
                     </div>
+
+                    {/* Quick Task Action Bar */}
+                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100">
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        Topic #{idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickAddTaskData({
+                            isOpen: true,
+                            data: {
+                              name:
+                                item.action_plan && item.action_plan !== "None"
+                                  ? item.action_plan
+                                  : item.topic || `Action from Topic #${idx + 1}`,
+                              description: `**Topic:** ${item.topic || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence || ""}`,
+                              meetingTitle: activeMeeting?.title || "Meeting Archive",
+                              meetingDate: activeMeeting?.date,
+                              dueDate: item.target_date || "",
+                              priority: "normal",
+                              assigneeName: item.person_in_charge || "",
+                            },
+                          });
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                      >
+                        <CheckSquare size={13} className="text-[#c9ab4c]" />
+                        <span>Add to Tasks</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -789,6 +839,13 @@ export function MeetingsView({
         </div>
 
       </div>
+
+      {/* Quick Add Task to ClickUp Modal */}
+      <QuickAddTaskModal
+        isOpen={quickAddTaskData.isOpen}
+        onClose={() => setQuickAddTaskData({ isOpen: false, data: {} })}
+        initialData={quickAddTaskData.data}
+      />
     </div>
   );
 }

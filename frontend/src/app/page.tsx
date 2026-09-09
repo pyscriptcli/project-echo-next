@@ -17,13 +17,19 @@ import {
   getStoredOpenRouterKey,
   setStoredOpenRouterKey,
   getStoredGeminiKey,
-  setStoredGeminiKey
+  setStoredGeminiKey,
+  getStoredClickUpToken,
+  setStoredClickUpToken,
+  getStoredClickUpListId,
+  setStoredClickUpListId
 } from "@/lib/api";
 import { Sidebar, NavView } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
 import { DashboardView } from "@/components/DashboardView";
 import { MeetingsView } from "@/components/MeetingsView";
+import TasksView from "@/components/TasksView";
+import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { ArchivedMeeting } from "@/types/meeting";
 import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
 import { 
@@ -33,6 +39,7 @@ import {
   ChevronDown, 
   Plus, 
   FileText, 
+  CheckSquare,
   Download, 
   Loader2, 
   Sparkles, 
@@ -181,6 +188,25 @@ export default function Home() {
   const [openaiKeyInput, setOpenaiKeyInput] = useState("");
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState("");
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [clickupTokenInput, setClickupTokenInput] = useState("");
+  const [clickupListIdInput, setClickupListIdInput] = useState("");
+
+  // Quick Add ClickUp Task state
+  const [quickAddTaskData, setQuickAddTaskData] = useState<{
+    isOpen: boolean;
+    data: {
+      name?: string;
+      description?: string;
+      meetingTitle?: string;
+      meetingDate?: string;
+      dueDate?: string;
+      priority?: string;
+      assigneeName?: string;
+    };
+  }>({
+    isOpen: false,
+    data: {},
+  });
 
   useEffect(() => {
     const key = getStoredApiKey();
@@ -191,6 +217,8 @@ export default function Home() {
     setOpenaiKeyInput(getStoredOpenAiKey());
     setOpenrouterKeyInput(getStoredOpenRouterKey());
     setGeminiKeyInput(getStoredGeminiKey());
+    setClickupTokenInput(getStoredClickUpToken());
+    setClickupListIdInput(getStoredClickUpListId());
   }, []);
 
   const saveKey = () => {
@@ -199,6 +227,8 @@ export default function Home() {
     setStoredOpenAiKey(openaiKeyInput.trim());
     setStoredOpenRouterKey(openrouterKeyInput.trim());
     setStoredGeminiKey(geminiKeyInput.trim());
+    setStoredClickUpToken(clickupTokenInput.trim());
+    setStoredClickUpListId(clickupListIdInput.trim());
     setShowKeyModal(false);
   };
 
@@ -666,6 +696,34 @@ export default function Home() {
                   className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
                 />
               </div>
+
+              {/* ClickUp Personal API Token & List */}
+              <div className="pt-2 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                    ClickUp Personal API Token (Tasks Portal)
+                  </label>
+                  <span className="text-[9px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5">ClickUp v2</span>
+                </div>
+                <input 
+                  type="password"
+                  placeholder="pk_12345678_..."
+                  value={clickupTokenInput}
+                  onChange={(e) => setClickupTokenInput(e.target.value)}
+                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none mb-2"
+                />
+                
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700 block mb-1">
+                  Default ClickUp List ID
+                </label>
+                <input 
+                  type="text"
+                  placeholder="e.g. 9012345678"
+                  value={clickupListIdInput}
+                  onChange={(e) => setClickupListIdInput(e.target.value)}
+                  className="w-full border border-gray-300 p-2 text-xs focus:outline-none focus:border-[#C9AB4C] font-mono bg-gray-50 focus:bg-white rounded-none"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -735,6 +793,20 @@ export default function Home() {
                 onNewMinutes={() => {
                   setCurrentView("minutes");
                   setStage("Input");
+                }}
+              />
+            )}
+
+            {/* VIEW: TASKS (CLICKUP PORTAL) */}
+            {currentView === "tasks" && (
+              <TasksView
+                onNavigateToMeetings={() => setCurrentView("meetings")}
+                onSelectMeeting={(meetingTitle) => {
+                  const match = archivedMeetings.find((m) =>
+                    m.title.toLowerCase().includes(meetingTitle.toLowerCase())
+                  );
+                  if (match) setSelectedMeetingId(match.id);
+                  setCurrentView("meetings");
                 }}
               />
             )}
@@ -1510,6 +1582,37 @@ export default function Home() {
                         </div>
 
                       </div>
+
+                      {/* Quick Task Action Bar */}
+                      <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-gray-100">
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          Topic #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickAddTaskData({
+                              isOpen: true,
+                              data: {
+                                name:
+                                  item.action_plan && item.action_plan !== "None"
+                                    ? item.action_plan
+                                    : item.topic_title || `Action from Topic #${idx + 1}`,
+                                description: `**Topic:** ${item.topic_title || ""}\n\n**Discussion:**\n${item.discussion_point || ""}\n\n**Evidence:**\n${item.evidence_quote || ""}`,
+                                meetingTitle: metadata.client_name || "Executive Meeting",
+                                meetingDate: metadata.date,
+                                dueDate: item.indicative_delivery_date || "",
+                                priority: "normal",
+                                assigneeName: item.person_in_charge || "",
+                              },
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                        >
+                          <CheckSquare size={13} className="text-[#c9ab4c]" />
+                          <span>Add to Tasks</span>
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -1592,6 +1695,13 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {/* Quick Add Task to ClickUp Modal */}
+      <QuickAddTaskModal
+        isOpen={quickAddTaskData.isOpen}
+        onClose={() => setQuickAddTaskData({ isOpen: false, data: {} })}
+        initialData={quickAddTaskData.data}
+      />
 
       {/* Universal Slide-Over AI Assistant Drawer */}
       <UniversalEchoDrawer

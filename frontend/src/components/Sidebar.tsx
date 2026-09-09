@@ -8,10 +8,11 @@ import {
   ChevronLeft, 
   ChevronRight, 
   LogOut,
-  Sparkles
+  Sparkles,
+  CheckSquare
 } from "lucide-react";
 
-export type NavView = "dashboard" | "meetings" | "minutes";
+export type NavView = "dashboard" | "tasks" | "meetings" | "minutes";
 
 interface SidebarProps {
   currentView: NavView;
@@ -50,13 +51,19 @@ export function Sidebar({
   // Auto-collapsed when pointer is not hovering; auto-expanded when hovering
   const effectiveCollapsed = isPinned ? false : !isHovered;
 
-  // Ordered strictly as: dashboard -> meetings -> Notetaker
+  // Ordered strictly as: dashboard -> tasks -> meetings -> Notetaker
   const navItems = [
     {
       id: "dashboard" as NavView,
       label: "Dashboard",
       icon: LayoutDashboard,
       badge: null
+    },
+    {
+      id: "tasks" as NavView,
+      label: "Tasks",
+      icon: CheckSquare,
+      badge: "ClickUp"
     },
     {
       id: "meetings" as NavView,
