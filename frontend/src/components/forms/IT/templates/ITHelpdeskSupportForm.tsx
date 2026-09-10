@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Send } from "lucide-react";
+import { readJsonResponse } from "@/lib/forms/clientResponse";
 
 export default function ITHelpdeskSupportForm({ listId, user }: { listId: string; user?: { name?: string; email?: string } | null }) {
   const [saving, setSaving] = useState(false);
@@ -12,7 +13,7 @@ export default function ITHelpdeskSupportForm({ listId, user }: { listId: string
       const payload = new FormData(formElement);
       payload.append("listId", listId); payload.append("requestorName", user?.name || "");
       const response = await fetch("/api/forms/it-helpdesk-support", { method: "POST", body: payload });
-      const data = await response.json(); if (!response.ok) throw new Error(data.error || "Unable to submit support request.");
+      const data = await readJsonResponse<{ error?: string; taskUrl?: string; taskId?: string; formRequestId?: string }>(response); if (!response.ok) throw new Error(data.error || "Unable to submit support request.");
       setNotice(`Submitted to ClickUp: ${data.taskUrl || data.taskId}`); window.dispatchEvent(new CustomEvent("echo-form-submitted", { detail: data })); formElement.reset();
     } catch (error: any) { setNotice(error.message || "Unable to submit support request."); }
     finally { setSaving(false); }

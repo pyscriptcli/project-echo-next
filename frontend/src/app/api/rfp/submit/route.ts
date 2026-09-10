@@ -9,6 +9,7 @@ import { sendApproverNotification } from "@/lib/forms/email";
 import { getTokenFromRequest } from "@/lib/auth";
 import { getUserFromRequest } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
+import { createFormRequestId } from "@/lib/forms/requestId";
 
 export const maxDuration = 60;
 
@@ -31,6 +32,15 @@ export async function POST(req: NextRequest) {
     const data: any = JSON.parse(dataStr);
     data.__clickupToken = token;
     if (mappedListId) data.__clickupListId = mappedListId;
+    if (!data.taskId && mappedListId) {
+      const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
+      data.formRequestId = await createFormRequestId({
+        token,
+        listId: mappedListId,
+        department: data.department || "Finance",
+        formName,
+      });
+    }
     const sessionUser = getUserFromRequest(req);
     if (sessionUser?.email) {
       data.requestedByName = sessionUser.username || data.requestedByName;
@@ -113,6 +123,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId: taskResult.id,
+      formRequestId: data.formRequestId,
       taskUrl: taskResult.url,
       isMock: taskResult.isMock || false,
       message: isRevision

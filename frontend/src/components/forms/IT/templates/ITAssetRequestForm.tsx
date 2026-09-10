@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Paperclip, Send } from "lucide-react";
+import { readJsonResponse } from "@/lib/forms/clientResponse";
 
 const ASSET_TYPES = ["Phone", "Laptop / Desktop", "Monitor", "iPad", "Other Peripherals", "Digital Asset"];
 
@@ -17,7 +18,7 @@ export default function ITAssetRequestForm({ listId, user }: { listId: string; u
       payload.append("requestorName", user?.name || "");
       payload.append("requestorEmail", user?.email || "");
       const response = await fetch("/api/forms/it-asset-request", { method: "POST", body: payload });
-      const data = await response.json();
+      const data = await readJsonResponse<{ error?: string; taskUrl?: string; taskId?: string; formRequestId?: string }>(response);
       if (!response.ok) throw new Error(data.error || "Unable to submit request.");
       setNotice(`Submitted to ClickUp: ${data.taskUrl || data.taskId}`);
       window.dispatchEvent(new CustomEvent("echo-form-submitted", { detail: data }));
