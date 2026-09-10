@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
-import { GoogleGenAI } from "@google/genai";
+import { createCanvas } from "@napi-rs/canvas";
 
 export const maxDuration = 60;
+
+async function toVisionImages(buffer: Buffer, mimeType: string) {
+  if (mimeType !== "application/pdf") return [`data:${mimeType};base64,${buffer.toString("base64")}`];
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const images: string[] = [];
+  for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, 5); pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.8 });
+    const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+    await page.render({ canvasContext: canvas.getContext("2d") as any, viewport } as any).promise;
+    images.push(`data:image/jpeg;base64,${canvas.toBuffer("image/jpeg", 85).toString("base64")}`);
+  }
+  return images;
+}
 
 export async function POST(req: NextRequest) {
   if (!getTokenFromRequest(req)) return NextResponse.json({ success: false, message: "ClickUp authentication required" }, { status: 401 });
@@ -17,21 +32,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
 
     if (!apiKey || apiKey === "mock" || apiKey.startsWith("your_")) {
       return NextResponse.json(
         {
           success: false,
           message:
-            "GEMINI_API_KEY is not configured in .env.local. Please provide a valid Gemini API key to enable live quotation scanning.",
+            "DEEPSEEK_API_KEY is not configured. Please configure it to enable quotation scanning.",
         },
         { status: 500 }
       );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const base64Data = buffer.toString("base64");
 
     // Strictly normalize MIME type for Gemini Vision
     let mimeType = file.type || "";
@@ -51,8 +65,6 @@ export async function POST(req: NextRequest) {
     } else {
       mimeType = "image/jpeg";
     }
-
-    const ai = new GoogleGenAI({ apiKey });
 
     const systemPrompt = `You are an expert financial and procurement document intelligence model.
 Your task is to analyze the attached supplier quotation, price quote, invoice, pro-forma invoice, billing statement, or official receipt and extract all relevant procurement fields needed to populate a Request for Payment (RFP) into strict JSON format.
@@ -86,57 +98,17 @@ Strict Rules:
 - 'totalAmount' must accurately match the grand total payable indicated on the document.
 - Return ONLY valid raw JSON with no Markdown backticks or extra commentary.`;
 
-    // Attempt Gemini call with retry for transient 503 / 429 demand spikes
-    let response: any = null;
-    let delay = 1000;
-    const maxRetries = 3;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  inlineData: {
-                    data: base64Data,
-                    mimeType,
-                  },
-                },
-                {
-                  text: "Extract all supplier quotation line items, vendor name, bank info, and total amount into strict JSON according to the schema.",
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-          },
-        });
-        break; // Successfully received response
-      } catch (geminiErr: any) {
-        const isTransient =
-          geminiErr?.status === 503 ||
-          geminiErr?.status === 429 ||
-          geminiErr?.message?.includes("503") ||
-          geminiErr?.message?.includes("high demand") ||
-          geminiErr?.message?.includes("UNAVAILABLE") ||
-          geminiErr?.message?.includes("rate");
-
-        if (isTransient && attempt < maxRetries) {
-          console.warn(`Gemini Vision attempt ${attempt} transient error; retrying in ${delay}ms...`);
-          await new Promise((r) => setTimeout(r, delay));
-          delay *= 1.5;
-        } else {
-          throw geminiErr;
-        }
-      }
-    }
-
-    let rawText = (response?.text || "{}").trim();
+    const images = await toVisionImages(buffer, mimeType);
+    const content: any[] = [{ type: "text", text: `${systemPrompt}\n\nExtract the document into the required JSON schema.` }];
+    for (const image of images) content.push({ type: "image_url", image_url: { url: image, detail: "high" } });
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: process.env.DEEPSEEK_VISION_MODEL || "deepseek-v4-flash-vision-exp", messages: [{ role: "user", content }], response_format: { type: "json_object" }, temperature: 0 }),
+    });
+    if (!response.ok) throw new Error(`DeepSeek Vision failed (${response.status}): ${await response.text()}`);
+    const responseJson = await response.json();
+    let rawText = String(responseJson?.choices?.[0]?.message?.content || "{}").trim();
     if (rawText.startsWith("```json")) {
       rawText = rawText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
     } else if (rawText.startsWith("```")) {
@@ -190,11 +162,11 @@ Strict Rules:
       data: extractedData,
     });
   } catch (error: any) {
-    console.error("Gemini Vision extraction error:", error);
+    console.error("DeepSeek Vision extraction error:", error);
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to process quotation document with Gemini Vision.",
+        message: error.message || "Failed to process quotation document with DeepSeek Vision.",
       },
       { status: 500 }
     );

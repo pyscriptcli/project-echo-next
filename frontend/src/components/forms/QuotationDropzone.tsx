@@ -15,7 +15,7 @@ export function QuotationDropzone({ onDataExtracted }: QuotationDropzoneProps) {
 
   const processFile = async (file: File) => {
     setIsScanning(true);
-    setScanStatus("Analyzing quotation document layout with Gemini Flash Vision...");
+    setScanStatus("Analyzing quotation document with DeepSeek Vision...");
 
     try {
       const formData = new FormData();
@@ -39,7 +39,7 @@ export function QuotationDropzone({ onDataExtracted }: QuotationDropzoneProps) {
       }, 400);
     } catch (err: any) {
       console.error("Extraction error:", err);
-      alert(err.message || "Error scanning quotation document with Gemini.");
+      alert(err.message || "Error scanning quotation document with DeepSeek Vision.");
       setIsScanning(false);
       setScanStatus(null);
     }

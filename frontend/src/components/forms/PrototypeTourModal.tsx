@@ -40,7 +40,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     targetId: "quotation-dropzone-section",
     title: "2. Fast Fill or AI Auto-Fill",
-    description: "Drop a vendor quotation PDF here to let Gemini AI read the items and prices automatically. Or click 'Pre-fill Demo' to load sample data in 1 click.",
+    description: "Drop a vendor quotation PDF here to let DeepSeek Vision read the items and prices automatically. Or click 'Pre-fill Demo' to load sample data in 1 click.",
     tip: "Tip: You can also edit any table cell manually.",
   },
   {
