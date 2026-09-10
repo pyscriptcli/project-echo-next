@@ -879,7 +879,7 @@ export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
                 </div>
               </div>
             ) : null}
-            {listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}>{category === "IT" ? itFormKey === "it-helpdesk-support-form" ? <ITHelpdeskSupportForm listId={listId} user={user} /> : itFormKey === "it-bug-error-report-form" ? <ITBugErrorReportForm listId={listId} user={user} /> : <ITAssetRequestForm listId={listId} user={user} /> : <RfpAppContent user={user} listId={listId} />}</Suspense> : <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Not configured yet — please contact IT department.</div>}
+            {listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}>{category === "IT" ? itFormKey === "it-helpdesk-support-form" ? <ITHelpdeskSupportForm listId={listId} user={user} /> : itFormKey === "it-bug-error-report-form" ? <ITBugErrorReportForm listId={listId} user={user} /> : <ITAssetRequestForm listId={listId} user={user} /> : <RfpAppContent user={user} listId={listId} />}</Suspense> : <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">No forms available.</div>}
           </section>
         </div>
       </div>
