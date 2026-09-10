@@ -89,7 +89,7 @@ function TrackContent() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2">
       {/* Header Banner */}
       <div className="mb-6 bg-white border border-slate-300 p-6 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#C9AB4C]" />

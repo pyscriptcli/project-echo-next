@@ -859,10 +859,8 @@ export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
   }, []);
   const listId = mappings.find((mapping) => mapping.department === category && mapping.formType === (category === "IT" ? itFormKey : "rfp"))?.listId;
   return (
-    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6">
+    <div className="bg-bg-primary text-[#0C0C0E] py-0 px-3 sm:px-6">
       <div className="max-w-[1500px] mx-auto">
-        <h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2>
-        <p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p>
         <div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6">
           <aside className="border border-gray-200 bg-white p-5 self-start">
             <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div>

@@ -276,7 +276,6 @@ export async function createClickUpTask(
   }
 
   const priority = isUrgent ? 1 : 3;
-  const isFinance = ["rfp", "po", "pcv"].includes(String(formType || data.formType || "").toLowerCase());
 
   const body: any = {
     name: taskName,
@@ -285,10 +284,6 @@ export async function createClickUpTask(
     priority,
     notify_all: true,
   };
-
-  if (isFinance) {
-    body.status = "for approval";
-  }
 
   // Sync Due Date to ClickUp if dateNeeded is provided
   if (data.dateNeeded) {
@@ -610,21 +605,24 @@ export async function approveTaskByApprover(
       `- [x] $1 (Approved by ${approverName})`
     );
 
-    const updateRes = await fetch(`${CLICKUP_API_BASE}/task/${taskId}`, {
+    const updateTask = async (body: Record<string, unknown>) => fetch(`${CLICKUP_API_BASE}/task/${taskId}`, {
       method: "PUT",
-      headers: {
-        Authorization: token,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "on going",
-        description: updatedDescription,
-        markdown_description: updatedDescription,
-      }),
+      headers: { Authorization: token, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
-
+    let updateRes = await updateTask({ status: "on going", description: updatedDescription, markdown_description: updatedDescription });
     if (!updateRes.ok) {
-      console.error("Failed to update task status:", await updateRes.text());
+      // Status labels are list-specific in ClickUp. Try the standard equivalent
+      // before preserving the approval in the description only.
+      await updateRes.text();
+      updateRes = await updateTask({ status: "in progress", description: updatedDescription, markdown_description: updatedDescription });
+    }
+    if (!updateRes.ok) {
+      await updateRes.text();
+      updateRes = await updateTask({ description: updatedDescription, markdown_description: updatedDescription });
+    }
+    if (!updateRes.ok) {
+      console.error("Failed to update ClickUp task approval status:", await updateRes.text());
       return false;
     }
 
