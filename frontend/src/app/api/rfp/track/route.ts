@@ -8,7 +8,7 @@ export interface TrackedRfp {
   taskId: string;
   taskName: string;
   taskUrl: string;
-  formType: "rfp" | "po" | "pcv";
+  formType: string;
   payee: string;
   department: string;
   totalAmount: number;
@@ -39,7 +39,7 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
   const desc = task.markdown_description || task.description || "";
 
   // Identify form type
-  let formType: "rfp" | "po" | "pcv" = "rfp";
+  let formType = "rfp";
   if (task.name.includes("[PO]") || desc.includes("Purchase Order (PO)")) {
     formType = "po";
   } else if (task.name.includes("[PCV]") || desc.includes("Petty Cash Voucher (PCV)")) {
@@ -91,7 +91,14 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     const reqMatch = desc.match(/\|\s*\*\*(?:Requested By|Prepared By)\*\*\s*\|\s*\*\*?(.+?)\*\*?\s*(?:\(|$)/);
     if (reqMatch) requestedBy = reqMatch[1].trim();
   }
-  const requestedEmailMatch = desc.match(/\|\s*\*\*Requested By\*\*\s*\|\s*\*\*?[^|]+\(([^)@\s]+@[^)\s]+)\)/i);
+
+  // Custom department forms store their metadata in the task description.
+  const descriptionDepartment = desc.match(/\*\*Department:\*\*\s*([^\n|]+)/i)?.[1]?.trim();
+  if (!department && descriptionDepartment) department = descriptionDepartment;
+  if (/IT Asset Request/i.test(task.name) || /# IT Asset Request/i.test(desc)) formType = "it-asset-request-form";
+  else if (/IT Helpdesk/i.test(task.name) || /# Helpdesk Support Request/i.test(desc)) formType = "it-helpdesk-support-form";
+  else if (/Bug Report/i.test(task.name) || /# Bug\/Error Report/i.test(desc)) formType = "it-bug-error-report-form";
+  const requestedEmailMatch = desc.match(/\|\s*\*\*Requested By\*\*\s*\|\s*\*\*?[^|]+\(([^)@\s]+@[^)\s]+)\)/i) || desc.match(/\*\*Email:\*\*\s*([^\s|\n]+)/i);
   if (requestedEmailMatch) requestedByEmail = requestedEmailMatch[1].trim();
   if (!dateNeeded) {
     const dateMatch = desc.match(/\|\s*\*\*Date Needed\*\*\s*\|\s*\*\*?(.+?)\*\*?\s*(?:\(|$)/);
@@ -241,8 +248,22 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Fetch list of tasks
-    const allTasks = await getListTasks(true, { token });
+    // 2. Fetch tasks from every form-specific list configured by the admin.
+    // ClickUp remains the source of truth; Supabase only supplies the routing map.
+    let config: any = null;
+    const supabaseUrl = process.env.SUPABASE_URL || "";
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const configRes = await supabase.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
+      config = configRes.data?.config || null;
+    }
+    const configuredListIds = Array.from(new Set(
+      (config?.mappings || []).map((mapping: any) => String(mapping.listId || "").trim()).filter(Boolean)
+    )) as string[];
+    const listIds = configuredListIds.length ? configuredListIds : [undefined];
+    const taskPages = await Promise.all(listIds.map((listId) => getListTasks(true, { token, listId })));
+    const allTasks = Array.from(new Map(taskPages.flat().map((task: any) => [String(task.id), task])).values());
     let parsed = allTasks.map(parseTaskToTrackedRfp);
 
     // Apply filters
@@ -275,14 +296,6 @@ export async function GET(req: NextRequest) {
     // requests assigned to their current stage; admins and the Owner see everything.
     const user = getUserFromRequest(req);
     const userEmail = (user?.email || "").toLowerCase();
-    let config: any = null;
-    const supabaseUrl = process.env.SUPABASE_URL || "";
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
-    if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      const configRes = await supabase.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
-      config = configRes.data?.config || null;
-    }
     const isAdmin = userEmail === "dave.policarpio@primephilippines.com" || Boolean(config?.admins?.some((admin: any) => admin.active !== false && String(admin.email).toLowerCase() === userEmail));
     if (!isAdmin && userEmail) {
       const prefix = userEmail.split("@")[0];
