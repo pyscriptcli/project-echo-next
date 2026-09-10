@@ -67,7 +67,8 @@ import {
   CheckCircle2,
   Clock,
   ListOrdered,
-  RotateCcw
+  RotateCcw,
+  Lock
 } from "lucide-react";
 
 const VENUE_OPTIONS = [
@@ -333,10 +334,65 @@ export default function Home() {
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
+  // Page Access Governance state
+  const [allowedPages, setAllowedPages] = useState<NavView[]>([
+    "dashboard",
+    "tasks",
+    "meetings",
+    "minutes",
+    "forms",
+  ]);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
     if (view === "forms") setCurrentView("forms");
   }, []);
+
+  // Fetch page governance and role access
+  useEffect(() => {
+    fetch("/api/forms/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        if (data.isAdmin) {
+          setIsAdminUser(true);
+        }
+        if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
+          setAllowedPages(data.allowedPages);
+          const isOwner = authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+          if (!data.isAdmin && !isOwner) {
+            setCurrentView((prev) => {
+              if (prev === "forms-admin") return data.allowedPages[0] || "forms";
+              if (!data.allowedPages.includes(prev)) {
+                return data.allowedPages[0] || "forms";
+              }
+              return prev;
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, [authUser]);
+
+  const isPageAllowed = (view: NavView) => {
+    if (authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") return true;
+    if (isAdminUser) return true;
+    if (view === "forms-admin") return false;
+    return allowedPages.includes(view);
+  };
+
+  const handleSelectView = (view: NavView) => {
+    if (view === "forms-admin") {
+      if (isAdminUser || authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") {
+        setCurrentView("forms-admin");
+      }
+      return;
+    }
+    if (isPageAllowed(view)) {
+      setCurrentView(view);
+    }
+  };
 
   // Load and sync archives
   useEffect(() => {
@@ -815,11 +871,13 @@ export default function Home() {
       {/* Collapsible Sidebar (Deep Charcoal & Gold, Expanded by default) */}
       <Sidebar
         currentView={currentView}
-        onSelectView={(view) => setCurrentView(view)}
+        onSelectView={(view) => handleSelectView(view)}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         user={authUser}
         onSignOut={handleSignOut}
+        allowedPages={allowedPages}
+        isAdmin={isAdminUser}
       />
 
       {/* Main Content Area */}
@@ -830,27 +888,67 @@ export default function Home() {
           tasks={tasks}
           onOpenUniversalEcho={() => setIsUniversalEchoOpen(true)}
           onSelectMeeting={(meetingId) => {
-            setSelectedMeetingId(meetingId);
-            setCurrentView("meetings");
+            if (isPageAllowed("meetings")) {
+              setSelectedMeetingId(meetingId);
+              setCurrentView("meetings");
+            }
           }}
           onSelectTask={(taskId) => {
-            setFocusedTaskId(taskId);
-            setCurrentView("tasks");
+            if (isPageAllowed("tasks")) {
+              setFocusedTaskId(taskId);
+              setCurrentView("tasks");
+            }
           }}
           onNewMeeting={() => {
-            setCurrentView("minutes");
-            setStage("Input");
+            if (isPageAllowed("minutes")) {
+              setCurrentView("minutes");
+              setStage("Input");
+            }
           }}
-          onOpenStudio={() => setShowStudio(true)}
+          onOpenStudio={() => {
+            if (isPageAllowed("minutes")) {
+              setShowStudio(true);
+            }
+          }}
           onGoToNotetaker={() => {
-            setCurrentView("minutes");
-            setStage("Input");
+            if (isPageAllowed("minutes")) {
+              setCurrentView("minutes");
+              setStage("Input");
+            }
           }}
-          onNavigateToPage={(page) => setCurrentView(page)}
+          onNavigateToPage={(page) => handleSelectView(page as NavView)}
+          allowedPages={allowedPages as any}
+          isAdmin={isAdminUser}
         />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5">
+          {!isPageAllowed(currentView) ? (
+            <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
+              <div className="max-w-md w-full bg-white border border-slate-200 p-8 text-center shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4 text-amber-600">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800">Access Restricted</h2>
+                <p className="text-xs text-slate-600 mt-2">
+                  Your account ({authUser?.email || "current user"}) does not have permission to access the <strong>{currentView.toUpperCase()}</strong> page.
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Please contact your administrator to request access.
+                </p>
+                {allowedPages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView(allowedPages[0])}
+                    className="mt-6 px-4 py-2 bg-[#003366] text-white text-xs font-bold hover:bg-[#002244] transition-colors cursor-pointer"
+                  >
+                    Go to {allowedPages[0].toUpperCase()}
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="w-full pb-12">
             
             {/* VIEW 1: DASHBOARD */}
@@ -1831,6 +1929,8 @@ export default function Home() {
           </div>
           {(currentView === "forms" || currentView === "forms-admin") && (
             <FormsPortal initialTab={currentView === "forms-admin" ? "admin" : "track"} user={authUser ? { username: authUser.username, email: authUser.email } : null} />
+          )}
+            </>
           )}
         </main>
       </div>

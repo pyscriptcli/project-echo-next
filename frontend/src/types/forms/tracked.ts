@@ -2,7 +2,7 @@ export interface TrackedRfp {
   taskId: string;
   taskName: string;
   taskUrl: string;
-  formType: "rfp" | "po" | "pcv";
+  formType: "rfp" | "po" | "pcv" | string;
   payee: string;
   department: string;
   totalAmount: number;
@@ -18,7 +18,9 @@ export interface TrackedRfp {
     | "disbursement_prep"
     | "executive_signoff"
     | "completed"
-    | "revision_requested";
+    | "revision_requested"
+    | "ongoing"
+    | string;
   stageLabel: string;
   stageIndex: number;
   isRevisionRequested: boolean;

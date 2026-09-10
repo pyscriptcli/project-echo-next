@@ -22,13 +22,19 @@ import { DEPARTMENT_NAMES } from "@/types/forms/rfp";
 
 const DEPARTMENTS = ["All Departments", ...DEPARTMENT_NAMES];
 
-const STAGES = [
+const FINANCE_STAGES = [
   { label: "Submitted", desc: "Pending Endorsement" },
   { label: "Endorsed", desc: "TL / Dept Head Approved" },
   { label: "Finance Verification", desc: "Zoho & Top Sheet Prepared" },
   { label: "Disbursement Prep", desc: "UnionBank / Check Prepared" },
   { label: "Executive Sign-Off", desc: "CFO & CEO Signed Off" },
   { label: "Completed", desc: "Payment Released & Filed" },
+];
+
+const NON_FINANCE_STAGES = [
+  { label: "Submitted", desc: "To Do / Queue" },
+  { label: "On Going", desc: "In Progress / Active" },
+  { label: "Completed", desc: "Resolved / Closed" },
 ];
 
 function TrackContent() {
@@ -185,6 +191,8 @@ function TrackContent() {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             });
+            const isFinance = ["rfp", "po", "pcv"].includes((req.formType || "rfp").toLowerCase());
+            const stages = isFinance ? FINANCE_STAGES : NON_FINANCE_STAGES;
 
             return (
               <div
@@ -242,6 +250,15 @@ function TrackContent() {
                       <span className="text-[11px] text-slate-400">
                         Submitted: {new Date(req.dateCreated).toLocaleDateString()}
                       </span>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 border ${
+                        req.currentStage === "completed"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                          : req.currentStage === "ongoing"
+                          ? "bg-blue-50 text-blue-700 border-blue-300"
+                          : "bg-slate-100 text-slate-700 border-slate-300"
+                      }`}>
+                        Status: {req.stageLabel}
+                      </span>
                     </div>
 
                     <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight mt-1">
@@ -253,25 +270,48 @@ function TrackContent() {
                     </p>
                   </div>
 
-                  <div className="text-left sm:text-right shrink-0">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                      TOTAL AMOUNT
-                    </span>
-                    <span className="font-bebas text-2xl text-[#003366] tracking-wider block">
-                      ₱{formattedTotal}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block">
-                      Needed by: <strong className="text-slate-800">{req.dateNeeded || "N/A"}</strong>
-                    </span>
-                  </div>
+                  {isFinance || Number(req.totalAmount || 0) > 0 ? (
+                    <div className="text-left sm:text-right shrink-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        TOTAL AMOUNT
+                      </span>
+                      <span className="font-bebas text-2xl text-[#003366] tracking-wider block">
+                        ₱{formattedTotal}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Needed by: <strong className="text-slate-800">{req.dateNeeded || "N/A"}</strong>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-left sm:text-right shrink-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        STATUS
+                      </span>
+                      <span className={`font-bold text-base block mt-0.5 ${
+                        req.currentStage === "completed"
+                          ? "text-emerald-700"
+                          : req.currentStage === "ongoing"
+                          ? "text-blue-700"
+                          : "text-slate-700"
+                      }`}>
+                        {req.stageLabel}
+                      </span>
+                      {req.dateNeeded && (
+                        <span className="text-[11px] text-slate-500 block mt-0.5">
+                          Target: <strong className="text-slate-800">{req.dateNeeded}</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* E-Commerce 6-Stage Stepper */}
+                {/* Workflow Stepper: 6 stages for finance, 3 stages for non-finance */}
                 <div className="py-6 border-b border-slate-200">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 relative">
-                    {STAGES.map((stage, idx) => {
-                      const isComplete = req.stageIndex > idx;
-                      const isCurrent = req.stageIndex === idx;
+                  <div className={`grid ${isFinance ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" : "grid-cols-3"} gap-3 relative`}>
+                    {stages.map((stage, idx) => {
+                      const isCompletedState = req.currentStage === "completed";
+                      const isComplete = req.stageIndex > idx || (isCompletedState && idx === stages.length - 1);
+                      const isCurrent = req.stageIndex === idx && !isCompletedState;
 
                       let badgeColor = "bg-slate-100 text-slate-400 border-slate-300";
                       let textColor = "text-slate-400";

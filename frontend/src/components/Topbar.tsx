@@ -31,6 +31,8 @@ interface TopbarProps {
   onOpenStudio: () => void;
   onGoToNotetaker: () => void;
   onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "minutes" | "forms" | "forms-admin") => void;
+  allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "minutes" | "forms">;
+  isAdmin?: boolean;
 }
 
 export function Topbar({
@@ -42,7 +44,9 @@ export function Topbar({
   onNewMeeting,
   onOpenStudio,
   onGoToNotetaker,
-  onNavigateToPage
+  onNavigateToPage,
+  allowedPages,
+  isAdmin
 }: TopbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -93,13 +97,20 @@ export function Topbar({
   ];
 
   const matchedPages = query
-    ? APP_PAGES.filter(
-        (p) => p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query) || p.id.includes(query)
-      )
+    ? APP_PAGES.filter((p) => {
+        if (p.id === "forms-admin" && !isAdmin) return false;
+        if (!isAdmin && allowedPages && allowedPages.length > 0 && !allowedPages.includes(p.id as any)) return false;
+        return (
+          p.name.toLowerCase().includes(query) ||
+          p.description.toLowerCase().includes(query) ||
+          p.id.includes(query)
+        );
+      })
     : [];
 
   // 2. ClickUp Tasks
-  const matchedTasks = query
+  const canAccessTasks = isAdmin || !allowedPages || allowedPages.includes("tasks");
+  const matchedTasks = query && canAccessTasks
     ? tasks.filter(
         (t) =>
           t.name.toLowerCase().includes(query) ||
@@ -111,7 +122,8 @@ export function Topbar({
     : [];
 
   // 3. Meetings
-  const matchedMeetings = query
+  const canAccessMeetings = isAdmin || !allowedPages || allowedPages.includes("meetings");
+  const matchedMeetings = query && canAccessMeetings
     ? meetings.filter(
         (m) =>
           m.title.toLowerCase().includes(query) ||
@@ -340,6 +352,7 @@ export function Topbar({
       <div className="flex items-center gap-2.5 shrink-0">
         
         {/* New Meeting Integrated Control Group */}
+        {(isAdmin || !allowedPages || allowedPages.includes("meetings") || allowedPages.includes("minutes")) && (
         <div className="inline-flex items-center rounded-none border border-[#C9AB4C] bg-transparent shadow-2xs overflow-hidden">
           {/* Main "New Meeting" Transparent Button with Gold Border */}
           <button
@@ -380,6 +393,7 @@ export function Topbar({
             <Upload size={14} className="text-[#003366]" />
           </button>
         </div>
+        )}
 
         {/* Ask Echo Trigger Button (#1b1d1e deep charcoal) */}
         <button

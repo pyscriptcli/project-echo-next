@@ -30,6 +30,8 @@ interface SidebarProps {
     workspaceName?: string;
   } | null;
   onSignOut?: () => void;
+  allowedPages?: NavView[];
+  isAdmin?: boolean;
 }
 
 export function Sidebar({
@@ -38,7 +40,9 @@ export function Sidebar({
   isCollapsed: externalCollapsed,
   onToggleCollapse,
   user,
-  onSignOut
+  onSignOut,
+  allowedPages,
+  isAdmin
 }: SidebarProps) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
@@ -64,8 +68,11 @@ export function Sidebar({
   // Auto-collapsed when pointer is not hovering; auto-expanded when hovering
   const effectiveCollapsed = isPinned ? false : !isHovered;
 
-  // Ordered strictly as: dashboard -> tasks -> meetings -> Notetaker
-  const navItems = [
+  const isOwner = user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+  const isProjectAdmin = isOwner || Boolean(isAdmin);
+
+  // Ordered strictly as: dashboard -> tasks -> meetings -> Notetaker -> forms
+  const allNavItems = [
     {
       id: "dashboard" as NavView,
       label: "Dashboard",
@@ -97,7 +104,12 @@ export function Sidebar({
       badge: null
     }
   ];
-  const isProjectAdmin = user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+
+  const navItems = allNavItems.filter((item) => {
+    if (isProjectAdmin) return true;
+    if (!allowedPages || allowedPages.length === 0) return true;
+    return allowedPages.includes(item.id);
+  });
 
   return (
     <div

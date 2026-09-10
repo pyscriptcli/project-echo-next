@@ -24,7 +24,9 @@ export interface TrackedRfp {
     | "disbursement_prep"
     | "executive_signoff"
     | "completed"
-    | "revision_requested";
+    | "revision_requested"
+    | "ongoing"
+    | string;
   stageLabel: string;
   stageIndex: number; // 0 to 5
   isRevisionRequested: boolean;
@@ -115,8 +117,22 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
   const isBox4Checked = /\[[xX]\]\s*(?:\*\*)?4\./.test(desc);
   const isBox5Checked = /\[[xX]\]\s*(?:\*\*)?5\./.test(desc);
 
-  const isDone = statusStr === "done" || statusStr === "complete" || statusStr === "closed";
-  const isOngoing = statusStr === "on going" || statusStr === "in progress";
+  const isDone =
+    statusStr === "done" ||
+    statusStr === "complete" ||
+    statusStr === "completed" ||
+    statusStr === "closed" ||
+    statusStr === "resolved" ||
+    task.status?.type === "closed" ||
+    task.status?.type === "done";
+  const isOngoing =
+    statusStr === "on going" ||
+    statusStr === "ongoing" ||
+    statusStr === "in progress" ||
+    statusStr === "in-progress" ||
+    statusStr === "active" ||
+    statusStr === "working" ||
+    statusStr === "in review";
 
   let isRevisionRequested = false;
   let revisionReason = "";
@@ -176,22 +192,21 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     }
   }
 
-  // Non-finance forms use a simple ClickUp status lifecycle rather than the
-  // six-stage finance approval workflow.
+  // Non-finance forms strictly use a 3-status lifecycle: Submitted, On Going, Completed.
   if (!(["rfp", "po", "pcv"] as string[]).includes(formType)) {
     isRevisionRequested = false;
     revisionReason = "";
     if (isDone) {
       currentStage = "completed";
       stageLabel = "Completed";
-      stageIndex = 5;
-    } else if (["on going", "in progress", "active", "working"].includes(statusStr)) {
-      currentStage = "endorsed";
+      stageIndex = 2;
+    } else if (isOngoing) {
+      currentStage = "ongoing";
       stageLabel = "On Going";
       stageIndex = 1;
     } else {
       currentStage = "submitted";
-      stageLabel = "Submitted (To Do)";
+      stageLabel = "Submitted";
       stageIndex = 0;
     }
   }

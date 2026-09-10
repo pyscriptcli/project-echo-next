@@ -273,15 +273,19 @@ export async function createClickUpTask(
   }
 
   const priority = isUrgent ? 1 : 3;
+  const isFinance = ["rfp", "po", "pcv"].includes(String(formType || data.formType || "").toLowerCase());
 
   const body: any = {
     name: taskName,
     description: desc,
     markdown_description: desc,
-    status: "for approval",
     priority,
     notify_all: true,
   };
+
+  if (isFinance) {
+    body.status = "for approval";
+  }
 
   // Sync Due Date to ClickUp if dateNeeded is provided
   if (data.dateNeeded) {
