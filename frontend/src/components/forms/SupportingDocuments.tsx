@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef } from "react";
-import { Paperclip, UploadCloud, Trash2, FileText, Image as ImageIcon, Eye } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Paperclip, UploadCloud, Trash2, FileText, Image as ImageIcon, Eye, AlertTriangle } from "lucide-react";
 import { SupportingFile } from "@/types/forms/rfp";
 
 interface SupportingDocumentsProps {
@@ -20,16 +20,34 @@ export function SupportingDocuments({
   hasError = false,
 }: SupportingDocumentsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [sizeWarning, setSizeWarning] = useState<string | null>(null);
+
+  const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5 MB maximum per attachment
 
   const handleFileSelection = (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const newFilesList = Array.from(selectedFiles);
-    const updatedRaw = [...rawFiles, ...newFilesList];
+    const allSelected = Array.from(selectedFiles);
+    const oversized = allSelected.filter((file) => file.size > MAX_FILE_SIZE);
+
+    if (oversized.length > 0) {
+      const names = oversized.map((f) => `"${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB)`).join(", ");
+      setSizeWarning(`Attachment exceeds 4.5MB limit: ${names}. Please compress or choose a smaller file.`);
+    } else {
+      setSizeWarning(null);
+    }
+
+    const validFiles = allSelected.filter((file) => file.size <= MAX_FILE_SIZE);
+    if (validFiles.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const updatedRaw = [...rawFiles, ...validFiles];
     onRawFilesChange(updatedRaw);
 
     // Convert to previewable SupportingFile list
-    const filePromises = newFilesList.map((file) => {
+    const filePromises = validFiles.map((file: File) => {
       return new Promise<SupportingFile>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -112,6 +130,22 @@ export function SupportingDocuments({
         </div>
       )}
 
+      {sizeWarning && (
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span>{sizeWarning}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSizeWarning(null)}
+            className="text-amber-700 hover:text-amber-900 text-xs font-bold underline ml-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Dropzone */}
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -135,7 +169,7 @@ export function SupportingDocuments({
           Click to upload or drag & drop supporting files here
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          Supports PDF, PNG, JPG, and DOCX (up to 25MB each)
+          Supports PDF, PNG, JPG, and DOCX (up to 4.5MB each)
         </p>
         <input
           ref={fileInputRef}

@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { toPng } from "html-to-image";
+import { toJpeg } from "html-to-image";
 
 export interface GeneratedPdfResult {
   blob: Blob;
@@ -8,7 +8,7 @@ export interface GeneratedPdfResult {
 
 /**
  * Generates an official high-resolution A4 PDF from the printable RFP DOM element.
- * Uses html-to-image which natively supports modern CSS (oklch, CSS variables, flexbox, SVGs).
+ * Uses html-to-image toJpeg for crisp clarity and ultra-efficient file size.
  */
 export async function generateRfpPdf(elementId: string = "rfp-printable-sheet"): Promise<GeneratedPdfResult> {
   const element = document.getElementById(elementId);
@@ -16,10 +16,10 @@ export async function generateRfpPdf(elementId: string = "rfp-printable-sheet"):
     throw new Error(`Element with id "${elementId}" not found for PDF generation.`);
   }
 
-  // Capture high-DPI image via browser's native SVG/foreignObject rendering
-  const imgData = await toPng(element, {
-    quality: 0.98,
-    pixelRatio: 2,
+  // Capture optimized image via browser's native SVG/foreignObject rendering
+  const imgData = await toJpeg(element, {
+    quality: 0.88,
+    pixelRatio: 1.5,
     backgroundColor: "#ffffff",
     filter: (node) => {
       if (node instanceof HTMLElement) {
@@ -62,19 +62,19 @@ export async function generateRfpPdf(elementId: string = "rfp-printable-sheet"):
     const renderWidth = imgWidth * scale;
     const renderHeight = imgHeight * scale;
     const xOffset = (pdfWidth - renderWidth) / 2;
-    pdf.addImage(imgData, "PNG", xOffset, 0, renderWidth, renderHeight);
+    pdf.addImage(imgData, "JPEG", xOffset, 0, renderWidth, renderHeight);
   } else {
     // Multi-page pagination: paginate across sequential A4 pages
     let heightLeft = imgHeight;
     let position = 0;
 
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
     heightLeft -= pdfHeight;
 
     while (heightLeft > 0) {
       position = -(imgHeight - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
     }
   }
@@ -100,7 +100,7 @@ export function downloadPdfBlob(blob: Blob, filename: string = "Request_For_Paym
 }
 
 /**
- * Generates a high-resolution PNG image Blob of the printable RFP sheet for embedding in ClickUp tasks.
+ * Generates an optimized JPEG image Blob of the printable RFP sheet for embedding in ClickUp tasks.
  */
 export async function generateRfpImageBlob(elementId: string = "rfp-printable-sheet"): Promise<Blob> {
   const element = document.getElementById(elementId);
@@ -108,9 +108,9 @@ export async function generateRfpImageBlob(elementId: string = "rfp-printable-sh
     throw new Error(`Element with id "${elementId}" not found for image generation.`);
   }
 
-  const dataUrl = await toPng(element, {
-    quality: 0.95,
-    pixelRatio: 2,
+  const dataUrl = await toJpeg(element, {
+    quality: 0.85,
+    pixelRatio: 1.2,
     backgroundColor: "#ffffff",
     filter: (node) => {
       if (node instanceof HTMLElement) {

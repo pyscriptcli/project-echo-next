@@ -604,25 +604,17 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
 
       // Advance stage to packaging attachments
       setSubmissionStage("packaging_attachments");
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 200));
 
-      // 2. Prepare multipart FormData payload
+      // Advance stage to ClickUp upload
+      setSubmissionStage("uploading_clickup");
+
+      // 2. Transmit metadata to ClickUp to create/update task (ultra-lightweight payload)
       const submissionData = new FormData();
       submissionData.append("formType", selectedForm);
       submissionData.append("data", JSON.stringify(activeData));
       if (listId) submissionData.append("listId", listId);
 
-      submissionData.append("pdf", pdfBlob, `${prefix}_${sanitizedEntity}_${dateStr || "document"}.pdf`);
-      submissionData.append("previewImage", previewImageBlob, `${prefix}_${sanitizedEntity}_Preview.png`);
-
-      rawSupportingFiles.forEach((file) => {
-        submissionData.append("supportingFiles", file);
-      });
-
-      // Advance stage to ClickUp upload
-      setSubmissionStage("uploading_clickup");
-
-      // 3. Post to backend ClickUp route
       const res = await fetch("/api/rfp/submit", {
         method: "POST",
         body: submissionData,
@@ -634,8 +626,70 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
         throw new Error(json.message || `Failed to submit ${prefix} to ClickUp`);
       }
 
-      setSubmissionStage("finalizing");
-      await new Promise((r) => setTimeout(r, 450));
+      // 3. Upload attachments sequentially to ClickUp
+      const createdTaskId = json.taskId;
+      if (createdTaskId && !json.isMock) {
+        setSubmissionStage("finalizing");
+
+        // 3a. Upload form preview image (JPEG)
+        try {
+          const previewForm = new FormData();
+          previewForm.append("taskId", createdTaskId);
+          previewForm.append("file", previewImageBlob, `${prefix}_${sanitizedEntity}_Preview.jpg`);
+          previewForm.append("filename", `${prefix}_${sanitizedEntity}_Preview.jpg`);
+          const previewRes = await fetch("/api/rfp/upload", {
+            method: "POST",
+            body: previewForm,
+          });
+          if (!previewRes.ok) {
+            console.warn("Preview upload returned status:", previewRes.status);
+          }
+        } catch (previewErr) {
+          console.warn("Could not upload preview image attachment:", previewErr);
+        }
+
+        // 3b. Upload PDF document
+        try {
+          const pdfForm = new FormData();
+          pdfForm.append("taskId", createdTaskId);
+          pdfForm.append("file", pdfBlob, `${prefix}_${sanitizedEntity}_${dateStr || "document"}.pdf`);
+          pdfForm.append("filename", `${prefix}_${sanitizedEntity}_${dateStr || "document"}.pdf`);
+          const pdfRes = await fetch("/api/rfp/upload", {
+            method: "POST",
+            body: pdfForm,
+          });
+          if (!pdfRes.ok) {
+            console.warn("PDF upload returned status:", pdfRes.status);
+          }
+        } catch (pdfErr) {
+          console.warn("Could not upload PDF document attachment:", pdfErr);
+        }
+
+        // 3c. Upload supporting files sequentially
+        if (rawSupportingFiles.length > 0) {
+          for (let i = 0; i < rawSupportingFiles.length; i++) {
+            const file = rawSupportingFiles[i];
+            try {
+              const docForm = new FormData();
+              docForm.append("taskId", createdTaskId);
+              docForm.append("file", file, file.name);
+              docForm.append("filename", file.name);
+              const docRes = await fetch("/api/rfp/upload", {
+                method: "POST",
+                body: docForm,
+              });
+              if (!docRes.ok) {
+                console.warn(`Supporting document ${file.name} upload returned status:`, docRes.status);
+              }
+            } catch (fileErr) {
+              console.warn(`Could not upload supporting file ${file.name}:`, fileErr);
+            }
+          }
+        }
+      } else {
+        setSubmissionStage("finalizing");
+        await new Promise((r) => setTimeout(r, 300));
+      }
 
       setSubmissionResponse(json);
       setIsModalOpen(true);

@@ -3,8 +3,8 @@ export async function readJsonResponse<T = any>(response: Response): Promise<T> 
   try {
     return body ? JSON.parse(body) : ({} as T);
   } catch {
-    if (/request entity too large/i.test(body)) {
-      throw new Error("The selected attachment is too large to upload. Please use a smaller file and try again.");
+    if (response.status === 413 || /request entity too large/i.test(body)) {
+      throw new Error("The selected attachment exceeds the maximum upload limit (4.5MB). Please compress or choose a smaller file and try again.");
     }
     throw new Error("The submission service returned an invalid response. Please try again.");
   }

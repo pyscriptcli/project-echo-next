@@ -52,6 +52,7 @@ export function buildTaskDescription(data: RfpFormData): string {
     "",
     `| Field | Details |`,
     `| :--- | :--- |`,
+    ...((data as any).formRequestId ? [`| **Form ID** | **${(data as any).formRequestId}** |`] : []),
     `| **Total Payable** | **₱${formattedTotal}** |`,
     `| **Payee** | **${data.payee || "N/A"}** |`,
     `| **Department** | ${data.department || "N/A"} |`,
@@ -101,6 +102,7 @@ export function buildPoTaskDescription(data: PoFormData): string {
     "",
     `| Field | Details |`,
     `| :--- | :--- |`,
+    ...((data as any).formRequestId ? [`| **Form ID** | **${(data as any).formRequestId}** |`] : []),
     `| **Total Amount Due** | **₱${formattedTotal}** |`,
     `| **Vendor Name** | **${data.vendorName || "N/A"}** |`,
     `| **PO Number** | **${data.poNumber || "N/A"}** |`,
@@ -151,6 +153,7 @@ export function buildPcvTaskDescription(data: PcvFormData): string {
     "",
     `| Field | Details |`,
     `| :--- | :--- |`,
+    ...((data as any).formRequestId ? [`| **Form ID** | **${(data as any).formRequestId}** |`] : []),
     `| **Amount** | **₱${formattedAmount}** |`,
     `| **Payee (Employee)** | **${data.payee || "N/A"}** |`,
     `| **Department** | ${data.department || "N/A"} |`,
@@ -243,21 +246,21 @@ export async function createClickUpTask(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    taskName = `${data.formRequestId ? `${data.formRequestId} — ` : ""}${priorityPrefix}[PO] ${data.vendorName || "Untitled Vendor"} — ₱${formattedTotal} (${data.department || "Procurement"})`;
+    taskName = `${priorityPrefix}[PO] ${data.vendorName || "Untitled Vendor"} — ₱${formattedTotal} (${data.department || "Procurement"})`;
     desc = buildPoTaskDescription(data as PoFormData);
   } else if (formType === "pcv" || data.formType === "pcv") {
     const formattedTotal = Number(data.amount || 0).toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    taskName = `${data.formRequestId ? `${data.formRequestId} — ` : ""}${priorityPrefix}[PCV] ${data.payee || "Employee"} — ₱${formattedTotal} (${data.department || "General"})`;
+    taskName = `${priorityPrefix}[PCV] ${data.payee || "Employee"} — ₱${formattedTotal} (${data.department || "General"})`;
     desc = buildPcvTaskDescription(data as PcvFormData);
   } else {
     const formattedTotal = Number(data.totalAmount || 0).toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    taskName = `${data.formRequestId ? `${data.formRequestId} — ` : ""}${priorityPrefix}[RFP] ${data.payee || "Untitled Payee"} — ₱${formattedTotal} (${data.department || "General"})`;
+    taskName = `${priorityPrefix}[RFP] ${data.payee || "Untitled Payee"} — ₱${formattedTotal} (${data.department || "General"})`;
     desc = buildTaskDescription(data as RfpFormData);
   }
 

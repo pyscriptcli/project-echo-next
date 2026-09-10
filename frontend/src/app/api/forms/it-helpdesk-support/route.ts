@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const value = (name: string) => String(form.get(name) || "");
     const formRequestId = await createFormRequestId({ token, listId, department: value("department") || "IT", formName: "Helpdesk Support Form" });
     const description = [`# Helpdesk Support Request`, `**Form ID:** ${formRequestId}`, `**Email:** ${value("email")}`, `**Department:** ${value("department")}`, `**Request type:** ${value("jobRequestType")}`, `\n## IT concern\n${value("details")}`, `\n## Remarks\n${value("remarks") || "—"}`, `\n---\nSubmitted by ${value("requestorName")}`].join("\n");
-    const taskRes = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ name: `${formRequestId} — IT Helpdesk — ${value("subject")}`, description, assignees: [] }) });
+    const taskRes = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ name: `IT Helpdesk — ${value("subject")}`, description, assignees: [] }) });
     if (!taskRes.ok) return NextResponse.json({ error: `ClickUp task creation failed: ${await taskRes.text()}` }, { status: taskRes.status });
     const task = await taskRes.json();
     for (const entry of form.getAll("attachments")) if (entry instanceof File && entry.size) { const upload = new FormData(); upload.append("attachment", entry, entry.name); await fetch(`https://api.clickup.com/api/v2/task/${task.id}/attachment`, { method: "POST", headers: { Authorization: token }, body: upload }); }
