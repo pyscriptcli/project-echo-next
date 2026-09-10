@@ -10,7 +10,8 @@ import {
   LogOut,
   Sparkles,
   CheckSquare,
-  ClipboardList
+  ClipboardList,
+  Settings
 } from "lucide-react";
 
 export type NavView = "dashboard" | "tasks" | "meetings" | "minutes" | "forms" | "forms-admin";
@@ -97,7 +98,7 @@ export function Sidebar({
       badge: "ClickUp"
     }
   ];
-  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Settings", icon: ClipboardList, badge: null });
+  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Settings", icon: Settings, badge: null });
 
   return (
     <div

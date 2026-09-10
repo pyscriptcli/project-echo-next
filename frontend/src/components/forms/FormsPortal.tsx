@@ -86,6 +86,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
 export default function FormsPortal({ user, initialTab = "track" }: { user?: { username?: string; email?: string } | null; initialTab?: PortalTab }) {
   const [tab, setTab] = useState<PortalTab>(initialTab);
   const searchParams = useSearchParams();
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
   useEffect(() => { const requested = searchParams.get("tab") as PortalTab | null; if (requested && ["create", "track", "approvals", "admin"].includes(requested)) setTab(requested); }, [searchParams]);
   const [configuredAdmins, setConfiguredAdmins] = useState<AdminUser[]>([]);
   useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setConfiguredAdmins(data?.config?.admins || [])).catch(() => {}); }, []);
