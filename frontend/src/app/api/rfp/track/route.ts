@@ -176,6 +176,26 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     }
   }
 
+  // Non-finance forms use a simple ClickUp status lifecycle rather than the
+  // six-stage finance approval workflow.
+  if (!(["rfp", "po", "pcv"] as string[]).includes(formType)) {
+    isRevisionRequested = false;
+    revisionReason = "";
+    if (isDone) {
+      currentStage = "completed";
+      stageLabel = "Completed";
+      stageIndex = 5;
+    } else if (["on going", "in progress", "active", "working"].includes(statusStr)) {
+      currentStage = "endorsed";
+      stageLabel = "On Going";
+      stageIndex = 1;
+    } else {
+      currentStage = "submitted";
+      stageLabel = "Submitted (To Do)";
+      stageIndex = 0;
+    }
+  }
+
   // Attachments
   const attachments = Array.isArray(task.attachments)
     ? task.attachments.map((att: any) => ({
