@@ -580,6 +580,9 @@ export async function approveTaskByApprover(
       new RegExp(`-\\s*\\[\\s*\\]\\s*(\\*\\*${checklistNumber}\\.[^*]+\\*\\*)`, "i"),
       `- [x] $1 (Approved by ${approverName})`
     );
+    const nextStage = Math.max(1, Math.min(5, Number(context.stageIndex ?? 0) + 1));
+    updatedDescription = updatedDescription.replace(/\n?<!--\s*echo-finance-stage:\d+\s*-->/gi, "");
+    updatedDescription += `\n<!-- echo-finance-stage:${nextStage} -->`;
 
     const updateTask = async (body: Record<string, unknown>) => fetch(`${CLICKUP_API_BASE}/task/${taskId}`, {
       method: "PUT",

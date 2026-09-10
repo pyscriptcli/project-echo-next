@@ -192,6 +192,23 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     }
   }
 
+  // Finance approval progress is stored as an invisible Markdown marker so
+  // requestors do not see a ClickUp checklist, while Echo can still render it.
+  const stageMarker = desc.match(/<!--\s*echo-finance-stage:(\d+)\s*-->/i);
+  if (stageMarker && ["rfp", "po", "pcv"].includes(formType)) {
+    stageIndex = Math.max(0, Math.min(5, Number(stageMarker[1])));
+    const financeStages = [
+      ["submitted", "Submitted (Pending Endorsement)"],
+      ["endorsed", "Endorsed by Team Leader"],
+      ["finance_verification", "Finance Verification"],
+      ["disbursement_prep", "Disbursement Preparation"],
+      ["executive_signoff", "Executive Sign-Off"],
+      ["completed", "Payment Released & Completed"],
+    ] as const;
+    currentStage = financeStages[stageIndex][0];
+    stageLabel = financeStages[stageIndex][1];
+  }
+
   // Non-finance forms strictly use a 3-status lifecycle: Submitted, On Going, Completed.
   if (!(["rfp", "po", "pcv"] as string[]).includes(formType)) {
     isRevisionRequested = false;

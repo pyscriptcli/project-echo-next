@@ -31,6 +31,7 @@ function ApprovalsContent() {
   const [searchQuery, setSearchQuery] = useState(directTaskId);
   const [selectedDept, setSelectedDept] = useState("All Departments");
   const [requests, setRequests] = useState<TrackedRfp[]>([]);
+  const [approvalTab, setApprovalTab] = useState<"pending" | "approved">("pending");
   const [isLoading, setIsLoading] = useState(true);
   const [activeRequest, setActiveRequest] = useState<TrackedRfp | null>(null);
 
@@ -65,15 +66,17 @@ function ApprovalsContent() {
         const pending = all.filter(
           (r) => r.currentStage === "submitted" || r.currentStage === "revision_requested"
         );
-        setRequests(pending);
+        const approved = all.filter((r) => !pending.some((item) => item.taskId === r.taskId));
+        const visible = approvalTab === "pending" ? pending : approved;
+        setRequests(all);
 
         // If directTaskId provided in URL, auto-select it
         if (directTaskId) {
           const direct = all.find((r) => r.taskId === directTaskId);
           if (direct) setActiveRequest(direct);
-          else if (pending.length > 0) setActiveRequest(pending[0]);
-        } else if (pending.length > 0 && !activeRequest) {
-          setActiveRequest(pending[0]);
+          else if (visible.length > 0) setActiveRequest(visible[0]);
+        } else if (visible.length > 0 && !activeRequest) {
+          setActiveRequest(visible[0]);
         }
       }
     } catch (err) {
@@ -81,7 +84,11 @@ function ApprovalsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedDept, directTaskId, activeRequest]);
+  }, [searchQuery, selectedDept, directTaskId, activeRequest, approvalTab]);
+
+  const pendingRequests = requests.filter((r) => r.currentStage === "submitted" || r.currentStage === "revision_requested");
+  const approvedRequests = requests.filter((r) => !pendingRequests.some((item) => item.taskId === r.taskId));
+  const visibleRequests = approvalTab === "pending" ? pendingRequests : approvedRequests;
 
   useEffect(() => {
     fetchPendingRequests();
@@ -225,6 +232,11 @@ function ApprovalsContent() {
             </button>
           </div>
         )}
+
+        <div className="mt-4 flex gap-1 border-t border-slate-200 pt-3">
+          <button type="button" onClick={() => { setApprovalTab("pending"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "pending" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-300"}`}>Pending ({pendingRequests.length})</button>
+          <button type="button" onClick={() => { setApprovalTab("approved"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "approved" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-300"}`}>Approved ({approvedRequests.length})</button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -232,14 +244,14 @@ function ApprovalsContent() {
           <Loader2 className="w-6 h-6 animate-spin text-[#003366] mx-auto mb-2" />
           <p className="text-xs font-semibold text-slate-500">Loading pending requests...</p>
         </div>
-      ) : requests.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <div className="bg-white border border-slate-300 p-12 text-center shadow-sm">
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <h3 className="font-serif italic font-bold text-xl text-slate-800">All caught up!</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            There are currently no payment requests awaiting your approval in {selectedDept}.
+            There are currently no {approvalTab} requests in {selectedDept}.
           </p>
         </div>
       ) : (
@@ -247,10 +259,10 @@ function ApprovalsContent() {
           {/* Left Column: Request List */}
           <div className="lg:col-span-4 space-y-3">
             <h2 className="text-xs uppercase tracking-wider font-bold text-slate-400 px-1">
-              Pending Approval ({requests.length})
+              {approvalTab === "pending" ? "Pending Approval" : "Approved Requests"} ({visibleRequests.length})
             </h2>
             <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
-              {requests.map((req) => {
+              {visibleRequests.map((req) => {
                 const isSelected = activeRequest?.taskId === req.taskId;
                 const formattedTotal = Number(req.totalAmount || 0).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
@@ -440,7 +452,7 @@ function ApprovalsContent() {
               </div>
 
               {/* Approver Name & Action Controls */}
-              <div className="pt-4 border-t border-slate-200">
+              {approvalTab === "pending" ? <div className="pt-4 border-t border-slate-200">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-4">
                   <div className="sm:col-span-6">
                     <label className="text-[11px] font-bold text-slate-600 block mb-1">
@@ -500,7 +512,7 @@ function ApprovalsContent() {
                     </span>
                   </button>
                 </div>
-              </div>
+              </div> : <div className="pt-4 border-t border-slate-200 text-xs font-semibold text-emerald-700">This request has already been endorsed and is now in the approved history.</div>}
             </div>
           )}
         </div>
