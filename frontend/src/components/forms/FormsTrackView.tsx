@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
+  Mail,
   Building2,
   CheckCircle2,
   Clock,
@@ -15,7 +16,6 @@ import {
   Edit3,
   Loader2,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 import { TrackedRfp } from "@/types/forms/tracked";
 import { DEPARTMENT_NAMES } from "@/types/forms/rfp";
@@ -42,9 +42,8 @@ function TrackContent() {
   const initialId = searchParams.get("id") || "";
 
   const [searchQuery, setSearchQuery] = useState(initialId);
+  const [emailFilter, setEmailFilter] = useState("");
   const [selectedDept, setSelectedDept] = useState("All Departments");
-  const [statusFilter, setStatusFilter] = useState("All Statuses");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [requests, setRequests] = useState<TrackedRfp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -72,6 +71,7 @@ function TrackContent() {
           params.append("query", searchQuery.trim());
         }
       }
+      if (emailFilter.trim()) params.append("email", emailFilter.trim());
       if (selectedDept !== "All Departments") params.append("dept", selectedDept);
 
       const res = await fetch(`/api/rfp/track?${params.toString()}`);
@@ -87,7 +87,7 @@ function TrackContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedDept]);
+  }, [searchQuery, emailFilter, selectedDept]);
 
   useEffect(() => {
     fetchRequests();
@@ -98,14 +98,10 @@ function TrackContent() {
     fetchRequests();
   };
 
-  const visibleRequests = requests.filter((request) =>
-    statusFilter === "All Statuses" || request.stageLabel === statusFilter
-  );
-
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2">
       {/* Header Banner */}
-      <div className="mb-4 bg-white border border-slate-300 p-5 shadow-sm relative overflow-hidden">
+      <div className="mb-6 bg-white border border-slate-300 p-6 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#C9AB4C]" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -128,15 +124,27 @@ function TrackContent() {
         </div>
 
         {/* Search & Filters */}
-        <form onSubmit={handleSearchSubmit} className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <form onSubmit={handleSearchSubmit} className="mt-6 grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Tracking Code / Payee Search */}
-          <div className="sm:col-span-6 relative">
+          <div className="sm:col-span-5 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search requests"
+              placeholder="Search by Tracking ID / Task # / Payee..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 focus:border-[#003366] text-xs pl-9 pr-3 h-9 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* Work Email Lookup */}
+          <div className="sm:col-span-4 relative">
+            <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Enter work email (e.g. dave@...)"
+              value={emailFilter}
+              onChange={(e) => setEmailFilter(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 focus:border-[#003366] text-xs pl-9 pr-3 h-9 focus:outline-none transition-colors"
             />
           </div>
@@ -154,12 +162,6 @@ function TrackContent() {
                   {dept}
                 </option>
               ))}
-            </select>
-          </div>
-          <div className="sm:col-span-3 relative">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-300 focus:border-[#003366] text-xs px-3 h-9 focus:outline-none cursor-pointer">
-              <option>All Statuses</option>
-              {[...new Set(requests.map((request) => request.stageLabel))].map((status) => <option key={status}>{status}</option>)}
             </select>
           </div>
         </form>
@@ -193,8 +195,8 @@ function TrackContent() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {visibleRequests.map((req) => {
+        <div className="space-y-6">
+          {requests.map((req) => {
             const formattedTotal = Number(req.totalAmount || 0).toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -211,7 +213,7 @@ function TrackContent() {
                     : req.currentStage === "completed"
                     ? "border-emerald-400"
                     : "border-slate-300"
-                } shadow-sm p-5 relative`}
+                } shadow-sm p-6 relative`}
               >
                 {/* Revision Alert Header */}
                 {req.isRevisionRequested && (
@@ -313,14 +315,8 @@ function TrackContent() {
                   )}
                 </div>
 
-                <button type="button" onClick={() => setExpanded((current) => ({ ...current, [req.taskId]: !current[req.taskId] }))} className="mt-3 flex w-full items-center justify-between border-t border-slate-200 pt-3 text-xs font-bold text-[#003366]">
-                  <span>{expanded[req.taskId] ? "Hide progress details" : "View progress details"}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${expanded[req.taskId] ? "rotate-180" : ""}`} />
-                </button>
-
-                {expanded[req.taskId] && <>
                 {/* Workflow Stepper: 6 stages for finance, 3 stages for non-finance */}
-                <div className="py-5 border-b border-slate-200">
+                <div className="py-6 border-b border-slate-200">
                   <div className={`grid ${isFinance ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" : "grid-cols-3"} gap-3 relative`}>
                     {stages.map((stage, idx) => {
                       const isCompletedState = req.currentStage === "completed";
@@ -395,7 +391,6 @@ function TrackContent() {
                     )}
                   </div>
                 </div>
-                </>}
               </div>
             );
           })}
