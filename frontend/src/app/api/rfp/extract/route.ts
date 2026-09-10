@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const preparedPages = formData.getAll("pages").filter((entry): entry is File => entry instanceof File);
 
-    if (!file) {
+    if (!file && preparedPages.length === 0) {
       return NextResponse.json(
         { success: false, message: "No quotation document provided" },
         { status: 400 }
@@ -45,11 +46,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = file ? Buffer.from(await file.arrayBuffer()) : Buffer.alloc(0);
 
     // Strictly normalize MIME type for Gemini Vision
-    let mimeType = file.type || "";
-    const ext = file.name.toLowerCase().split(".").pop() || "";
+    let mimeType = file?.type || "image/jpeg";
+    const ext = file?.name.toLowerCase().split(".").pop() || "jpg";
     if (ext === "pdf" || mimeType.includes("pdf")) {
       mimeType = "application/pdf";
     } else if (ext === "png" || mimeType.includes("png")) {
@@ -98,7 +99,9 @@ Strict Rules:
 - 'totalAmount' must accurately match the grand total payable indicated on the document.
 - Return ONLY valid raw JSON with no Markdown backticks or extra commentary.`;
 
-    const images = await toVisionImages(buffer, mimeType);
+    const images = preparedPages.length > 0
+      ? await Promise.all(preparedPages.slice(0, 5).map(async (page) => `data:image/jpeg;base64,${Buffer.from(await page.arrayBuffer()).toString("base64")}`))
+      : await toVisionImages(buffer, mimeType);
     const content: any[] = [{ type: "text", text: `${systemPrompt}\n\nExtract the document into the required JSON schema.` }];
     for (const image of images) content.push({ type: "image_url", image_url: { url: image, detail: "high" } });
     const response = await fetch("https://api.deepseek.com/chat/completions", {

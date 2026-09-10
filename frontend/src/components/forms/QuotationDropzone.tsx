@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { Sparkles, UploadCloud, Loader2 } from "lucide-react";
 import { RfpFormData } from "@/types/forms/rfp";
+import { readJsonResponse } from "@/lib/forms/clientResponse";
 
 interface QuotationDropzoneProps {
   onDataExtracted: (extractedData: Partial<RfpFormData>, file: File) => void;
@@ -19,21 +20,40 @@ export function QuotationDropzone({ onDataExtracted }: QuotationDropzoneProps) {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        setScanStatus("Preparing PDF pages for DeepSeek Vision...");
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+        for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, 5); pageNumber++) {
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1.35 });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          await page.render({ canvas, canvasContext: canvas.getContext("2d")!, viewport }).promise;
+          const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Unable to prepare PDF page")), "image/jpeg", 0.72));
+          formData.append("pages", blob, `page-${pageNumber}.jpg`);
+        }
+        formData.append("fileName", file.name);
+      } else {
+        if (file.size > 4_000_000) throw new Error("Image is too large. Please upload an image smaller than 4 MB.");
+        formData.append("file", file);
+      }
 
       const res = await fetch("/api/rfp/extract", {
         method: "POST",
         body: formData,
       });
 
-      const json = await res.json();
+      const json = await readJsonResponse<{ success?: boolean; message?: string; data?: Partial<RfpFormData> }>(res);
       if (!res.ok || !json.success) {
         throw new Error(json.message || "Failed to extract quotation data.");
       }
 
       setScanStatus("Quotation data extracted successfully!");
       setTimeout(() => {
-        onDataExtracted(json.data, file);
+        onDataExtracted(json.data || {}, file);
         setIsScanning(false);
         setScanStatus(null);
       }, 400);
