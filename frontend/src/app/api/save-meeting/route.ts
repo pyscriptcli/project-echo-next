@@ -15,8 +15,11 @@ export async function POST(req: NextRequest) {
     const lists = await listsRes.json();
     let list = (lists.lists || []).find((item: any) => item.name.toLowerCase() === "echo meetings");
     if (!list) {
-      const createList = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { method: "POST", headers, body: JSON.stringify({ name: "Echo Meetings", content: "Echo meeting archive", due_date: null, priority: null, assignee: null, status: "to do" }) });
-      if (!createList.ok) throw new Error("Unable to create Echo Meetings list in ClickUp.");
+      const createList = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { method: "POST", headers, body: JSON.stringify({ name: "Echo Meetings", content: "Echo meeting archive", status: "blue" }) });
+      if (!createList.ok) {
+        const detail = await createList.text();
+        throw new Error(`Unable to create Echo Meetings list in ClickUp (${createList.status}): ${detail || createList.statusText}`);
+      }
       list = await createList.json();
     }
     const description = [`# Meeting Minutes`, `Date: ${meeting_details.date || ""}`, `Department: ${meeting_details.department || meeting_details.workspace || "Unassigned"}`, `Location: ${meeting_details.location || ""}`, `\n## Summary\n${other_discussions || ""}`, `\n## Transcript\n${(transcript || "").substring(0, 20000)}`, `\n## Action Items\n${JSON.stringify(items || [], null, 2)}`].join("\n");
