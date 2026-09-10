@@ -9,10 +9,11 @@ import {
   ChevronRight, 
   LogOut,
   Sparkles,
-  CheckSquare
+  CheckSquare,
+  ClipboardList
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "meetings" | "minutes";
+export type NavView = "dashboard" | "tasks" | "meetings" | "minutes" | "forms";
 
 interface SidebarProps {
   currentView: NavView;
@@ -88,6 +89,12 @@ export function Sidebar({
       label: "Notetaker",
       icon: FileEdit,
       badge: "AI"
+    },
+    {
+      id: "forms" as NavView,
+      label: "Forms Portal",
+      icon: ClipboardList,
+      badge: "ClickUp"
     }
   ];
 

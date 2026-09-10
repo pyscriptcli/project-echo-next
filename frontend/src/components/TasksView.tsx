@@ -42,7 +42,7 @@ import {
   setStoredClickUpListName,
   discoverClickUpLists
 } from "@/lib/api";
-import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/app/api/tasks/route";
+import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 import { SearchableMemberSelect } from "./SearchableMemberSelect";
 import { formatEchoDate } from "@/lib/dateUtils";
 

@@ -34,3 +34,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Forms Portal configuration
+
+The Forms Portal is available from Echo's sidebar after signing in with ClickUp. Run `supabase/forms_rbac.sql` in the project Supabase database, then provide `SUPABASE_SERVICE_ROLE_KEY` to persist the protected Owner/Admin configuration. Dave's ClickUp email (`dave.policarpio@primephilippines.com`) is the protected Owner. Without the Supabase table, Admin configuration remains available in local browser storage for local review.

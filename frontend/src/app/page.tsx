@@ -33,6 +33,7 @@ import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { LoginView } from "@/components/LoginView";
+import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
 import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -312,6 +313,11 @@ export default function Home() {
   const [isUniversalEchoOpen, setIsUniversalEchoOpen] = useState(false);
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const view = new URLSearchParams(window.location.search).get("view");
+    if (view === "forms") setCurrentView("forms");
+  }, []);
 
   // Load and sync archives
   useEffect(() => {
@@ -1442,7 +1448,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            
+
             {/* Potential Missed Topic Detection Banner (Compact, Edgy) */}
             <div className="bg-white border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
               <div className="flex items-start gap-3">
@@ -1786,6 +1792,9 @@ export default function Home() {
             </div>
           )}
           </div>
+          {currentView === "forms" && (
+            <FormsPortal user={authUser ? { username: authUser.username, email: authUser.email } : null} />
+          )}
         </main>
       </div>
 

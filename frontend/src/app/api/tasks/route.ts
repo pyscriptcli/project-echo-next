@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { formatEchoDate } from "@/lib/dateUtils";
+import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 
 function getClickUpCredentials(req: NextRequest) {
   const cookieToken = req.cookies.get("echo_clickup_token")?.value || "";
@@ -18,7 +19,7 @@ function getClickUpCredentials(req: NextRequest) {
 }
 
 // Map ClickUp priority numbers (1: Urgent, 2: High, 3: Normal, 4: Low)
-export function priorityToNumber(priority: string | number): number | null {
+function priorityToNumber(priority: string | number): number | null {
   if (typeof priority === "number") return priority;
   const p = priority?.toLowerCase() || "";
   if (p.includes("urgent")) return 1;
@@ -28,7 +29,7 @@ export function priorityToNumber(priority: string | number): number | null {
   return 3;
 }
 
-export function numberToPriority(num: number | null | undefined): string {
+function numberToPriority(num: number | null | undefined): string {
   switch (num) {
     case 1:
       return "urgent";
@@ -44,44 +45,6 @@ export function numberToPriority(num: number | null | undefined): string {
 }
 
 // User-specified workspace status categories
-export const WORKSPACE_STATUS_CATEGORIES = [
-  {
-    category: "Not started",
-    statuses: [
-      { status: "to do", label: "TO DO", color: "#f59e0b", type: "open" },
-    ],
-  },
-  {
-    category: "Active",
-    statuses: [
-      { status: "ongoing", label: "ONGOING", color: "#eab308", type: "custom" },
-      { status: "delayed", label: "DELAYED", color: "#dc2626", type: "custom" },
-      { status: "recovery meeting", label: "RECOVERY MEETING", color: "#16a34a", type: "custom" },
-    ],
-  },
-  {
-    category: "Done",
-    statuses: [
-      { status: "completed 5 days ahead", label: "COMPLETED 5 DAYS AHEAD", color: "#7c3aed", type: "done" },
-      { status: "completed 1 day ahead", label: "COMPLETED 1 DAY AHEAD", color: "#2563eb", type: "done" },
-      { status: "completed on-time", label: "COMPLETED ON-TIME", color: "#0284c7", type: "done" },
-      { status: "delayed completion", label: "DELAYED COMPLETION", color: "#db2777", type: "done" },
-      { status: "onhold", label: "ONHOLD", color: "#ea580c", type: "done" },
-      { status: "shelved", label: "SHELVED", color: "#6b7280", type: "done" },
-    ],
-  },
-  {
-    category: "Closed",
-    statuses: [
-      { status: "closed", label: "CLOSED", color: "#059669", type: "closed" },
-    ],
-  },
-];
-
-// Flat array of all statuses
-export const ALL_WORKSPACE_STATUSES = WORKSPACE_STATUS_CATEGORIES.flatMap(
-  (cat) => cat.statuses
-);
 
 // GET: Fetch tasks, members, list statuses, or discover lists
 export async function GET(req: NextRequest) {

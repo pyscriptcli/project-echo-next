@@ -25,7 +25,7 @@ import {
   setStoredClickUpListName,
   discoverClickUpLists
 } from "@/lib/api";
-import { WORKSPACE_STATUS_CATEGORIES } from "@/app/api/tasks/route";
+import { WORKSPACE_STATUS_CATEGORIES } from "@/lib/clickupStatuses";
 import { SearchableMemberSelect } from "./SearchableMemberSelect";
 import { formatEchoDate } from "@/lib/dateUtils";
 
