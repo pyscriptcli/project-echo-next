@@ -8,7 +8,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   LogOut,
-  Sparkles,
   CheckSquare,
   ClipboardList,
   Settings
@@ -77,7 +76,7 @@ export function Sidebar({
       id: "tasks" as NavView,
       label: "Tasks",
       icon: CheckSquare,
-      badge: "ClickUp"
+      badge: null
     },
     {
       id: "meetings" as NavView,
@@ -89,16 +88,16 @@ export function Sidebar({
       id: "minutes" as NavView,
       label: "Notetaker",
       icon: FileEdit,
-      badge: "AI"
+      badge: null
     },
     {
       id: "forms" as NavView,
       label: "Forms",
       icon: ClipboardList,
-      badge: "ClickUp"
+      badge: null
     }
   ];
-  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Settings", icon: Settings, badge: null });
+  const isProjectAdmin = user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
 
   return (
     <div
@@ -157,16 +156,7 @@ export function Sidebar({
                   } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon size={18} className={`shrink-0 ${isActive ? "text-[#C9AB4C]" : "text-gray-400"}`} />
-                  {!effectiveCollapsed && (
-                    <div className="flex items-center justify-between flex-1 whitespace-nowrap overflow-hidden">
-                      <span className="truncate">{item.label}</span>
-                      {item.badge && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-[#C9AB4C]/15 text-[#C9AB4C] border border-[#C9AB4C]/30 flex items-center gap-0.5 shrink-0">
-                          <Sparkles size={8} /> {item.badge}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {!effectiveCollapsed && <span className="truncate">{item.label}</span>}
                 </button>
               );
             })}
@@ -175,6 +165,7 @@ export function Sidebar({
 
         {/* Bottom Workspace & User Profile Section (#1b1d1e) */}
         <div className="border-t border-[#2c2f32] bg-[#161819]">
+          {isProjectAdmin && <button type="button" onClick={() => onSelectView("forms-admin")} title="Settings" className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-[#2c2f32] text-xs font-semibold transition-colors ${currentView === "forms-admin" ? "text-[#C9AB4C] bg-[#25282a]" : "text-gray-400 hover:text-white hover:bg-[#25282a]"} ${effectiveCollapsed ? "justify-center px-0" : ""}`}><Settings size={17} />{!effectiveCollapsed && <span>Settings</span>}</button>}
           {/* Workspace Name Header */}
           {!effectiveCollapsed ? (
             <div className="px-3.5 pt-2.5 pb-2 border-b border-[#2c2f32]/80 flex items-center justify-between overflow-hidden">
