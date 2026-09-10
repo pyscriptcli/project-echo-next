@@ -178,11 +178,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(next),
     });
-    setNotice(
-      res.ok
-        ? "Configuration saved."
-        : "Configuration saved on this device. Connect project storage in Settings to sync it."
-    );
+    setNotice(res.ok ? "Configuration saved." : "Could not sync configuration to the server. It remains saved on this device.");
     window.setTimeout(() => setNotice(""), 3500);
   };
 
