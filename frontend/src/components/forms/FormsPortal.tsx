@@ -11,7 +11,7 @@ type PortalTab = "create" | "track" | "approvals" | "admin";
 type Role = "owner" | "admin" | "approver" | "requestor";
 type FormType = "rfp" | "po" | "pcv";
 const OWNER_EMAIL = "dave.policarpio@primephilippines.com";
-const FORM_LABELS: Record<FormType, string> = { rfp: "Request for Payment", po: "Purchase Order", pcv: "Petty Cash Voucher" };
+const FORM_LABELS: Record<string, string> = { rfp: "Request for Payment", po: "Purchase Order", pcv: "Petty Cash Voucher", "it-helpdesk-support-form": "Helpdesk Support Form", "it-bug-error-report-form": "Bug/Error Report Form" };
 const STAGES = ["Team Leader Endorsement", "Finance Verification", "Disbursement Preparation", "Executive Sign-Off", "Payment Released", "Completed"];
 
 interface AdminUser { email: string; name: string; role: Exclude<Role, "owner">; department: string; active: boolean; }
@@ -70,7 +70,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
     setNewAdminEmail(""); setNewAdminName("");
   };
   const addDepartment = () => { const value = newDepartment.trim(); if (value && !config.departments.includes(value)) save({ ...config, departments: [...config.departments, value] }); setNewDepartment(""); };
-  const addCustomForm = () => { const name = newFormName.trim(); const listId = newFormListId.trim(); if (!name || !listId) return; const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, "-"); const key = selectedDepartment === "IT" && normalized === "helpdesk-support-form" ? "it-helpdesk-support-form" : normalized; const next = { id: `${selectedDepartment}-${key}`, department: selectedDepartment, formType: key, formLabel: name, listId, approvers: STAGES.map((_, stage) => ({ stage, emails: [], requireAll: false })) }; save({ ...config, mappings: [...config.mappings.filter((item) => item.id !== next.id), next] }); setNewFormName(""); setNewFormListId(""); };
+  const addCustomForm = () => { const name = newFormName.trim(); const listId = newFormListId.trim(); if (!name || !listId) return; const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, "-"); const key = selectedDepartment === "IT" && normalized === "helpdesk-support-form" ? "it-helpdesk-support-form" : selectedDepartment === "IT" && normalized === "bug-error-report-form" ? "it-bug-error-report-form" : normalized; const next = { id: `${selectedDepartment}-${key}`, department: selectedDepartment, formType: key, formLabel: name, listId, approvers: STAGES.map((_, stage) => ({ stage, emails: [], requireAll: false })) }; save({ ...config, mappings: [...config.mappings.filter((item) => item.id !== next.id), next] }); setNewFormName(""); setNewFormListId(""); };
   const addMember = () => { const email = normalizeEmail(newMemberEmail); if (!email || config.members.some((member) => normalizeEmail(member.email) === email) || email === OWNER_EMAIL) return; const member = { email, name: newMemberName.trim() || email, role: newMemberRole, department: newMemberDepartment, active: true }; save({ ...config, members: [...config.members, member], admins: newMemberRole === "admin" ? [...config.admins, member] : config.admins }); setNewMemberEmail(""); setNewMemberName(""); };
   const current = ensureMapping();
 
