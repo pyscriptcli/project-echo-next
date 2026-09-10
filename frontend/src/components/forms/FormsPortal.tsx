@@ -1052,15 +1052,21 @@ export default function FormsPortal({
   }, [searchParams]);
 
   const [configuredAdmins, setConfiguredAdmins] = useState<AdminUser[]>([]);
+  const [configuredMembers, setConfiguredMembers] = useState<AdminUser[]>([]);
+  const [serverAdmin, setServerAdmin] = useState(false);
   useEffect(() => {
     fetch("/api/forms/config")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setConfiguredAdmins(data?.config?.admins || []))
+      .then((data) => {
+        setConfiguredAdmins(data?.config?.admins || []);
+        setConfiguredMembers(data?.config?.members || []);
+        setServerAdmin(Boolean(data?.isAdmin));
+      })
       .catch(() => {});
   }, []);
 
   const isAdmin =
-    normalizeEmail(user?.email) === OWNER_EMAIL ||
+    serverAdmin || normalizeEmail(user?.email) === OWNER_EMAIL ||
     configuredAdmins.some((admin) => admin.active && normalizeEmail(admin.email) === normalizeEmail(user?.email));
 
   // Do not render Settings at all for non-admin accounts, including direct URL attempts.
@@ -1071,19 +1077,9 @@ export default function FormsPortal({
     { id: "create", label: "New Form", icon: FileEdit },
   ];
 
-  const canApprove = isAdmin || Boolean(user?.email && configApproverEmails().includes(normalizeEmail(user.email)));
-
-  function configApproverEmails() {
-    try {
-      const raw = localStorage.getItem("echo_forms_config");
-      const c = raw ? JSON.parse(raw) : null;
-      return (c?.members || [])
-        .filter((m: AdminUser) => m.role === "approver" && m.active)
-        .map((m: AdminUser) => normalizeEmail(m.email));
-    } catch {
-      return [];
-    }
-  }
+  const canApprove = isAdmin || Boolean(user?.email && configuredMembers.some((member) =>
+    member.active !== false && member.role === "approver" && normalizeEmail(member.email) === normalizeEmail(user.email)
+  ));
 
   return (
     <div className="-mt-5 space-y-4">
