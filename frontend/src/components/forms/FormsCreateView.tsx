@@ -130,7 +130,7 @@ export interface FormsUser {
   email?: string;
 }
 
-function RfpAppContent({ user }: { user?: FormsUser | null }) {
+function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: string }) {
   const searchParams = useSearchParams();
   const taskIdParam = searchParams.get("taskId");
   const prefillParam = searchParams.get("prefill");
@@ -606,6 +606,7 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
       const submissionData = new FormData();
       submissionData.append("formType", selectedForm);
       submissionData.append("data", JSON.stringify(activeData));
+      if (listId) submissionData.append("listId", listId);
 
       submissionData.append("pdf", pdfBlob, `${prefix}_${sanitizedEntity}_${dateStr || "document"}.pdf`);
       submissionData.append("previewImage", previewImageBlob, `${prefix}_${sanitizedEntity}_Preview.png`);
@@ -788,8 +789,11 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
 
 export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
   const [category, setCategory] = useState("Finance");
+  const [mappings, setMappings] = useState<Array<{ department: string; formType: string; listId?: string }>>([]);
   const departments = ["Finance", "Marketing", "IT", "Research & Advisory"];
+  useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setMappings(data?.config?.mappings || [])).catch(() => {}); }, []);
+  const listId = mappings.find((mapping) => mapping.department === category && mapping.formType === "rfp")?.listId;
   return (
-    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6"><div className="max-w-[1500px] mx-auto"><h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2><p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p><div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6"><aside className="border border-gray-200 bg-white p-5 self-start"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div><div className="space-y-2">{departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-4 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}</div></aside><section className="border border-gray-200 bg-white p-5 min-w-0"><div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-5"><div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div><span className="text-xs text-gray-400">Choose a form from the selector below</span></div><Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}><RfpAppContent user={user} /></Suspense></section></div></div></div>
+    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6"><div className="max-w-[1500px] mx-auto"><h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2><p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p><div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6"><aside className="border border-gray-200 bg-white p-5 self-start"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div><div className="space-y-2">{departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-4 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}</div></aside><section className="border border-gray-200 bg-white p-5 min-w-0"><div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-5"><div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div><span className="text-xs text-gray-400">Choose a form from the selector below</span></div>{listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}><RfpAppContent user={user} listId={listId} /></Suspense> : <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Not configured yet — please contact IT department.</div>}</section></div></div></div>
   );
 }

@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const dataStr = formData.get("data") as string;
     const formType = ((formData.get("formType") as string) || "rfp") as FormType;
+    const mappedListId = formData.get("listId")?.toString();
 
     if (!dataStr) {
       return NextResponse.json(
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
 
     const data: any = JSON.parse(dataStr);
     data.__clickupToken = token;
+    if (mappedListId) data.__clickupListId = mappedListId;
     const sessionUser = getUserFromRequest(req);
     if (sessionUser?.email) {
       data.requestedByName = sessionUser.username || data.requestedByName;
