@@ -179,7 +179,7 @@ export function Topbar({
               setIsOpen(true);
             }}
             onFocus={() => setIsOpen(true)}
-            placeholder="Search all pages, tasks, meetings, topics... (Ctrl+K)"
+            placeholder="Search"
             className="w-full pl-10 pr-9 py-1.5 text-xs bg-white border border-gray-300/80 rounded-none shadow-2xs focus:outline-none focus:border-[#C9AB4C] focus:ring-1 focus:ring-[#C9AB4C] transition-all text-[#1b1d1e] placeholder:text-gray-400"
           />
           {searchQuery ? (
@@ -396,14 +396,16 @@ export function Topbar({
         )}
 
         {/* Ask Echo Trigger Button (#1b1d1e deep charcoal) */}
-        <button
-          type="button"
-          onClick={onOpenUniversalEcho}
-          className="flex items-center gap-1.5 bg-[#1b1d1e] text-[#FAF9F7] hover:bg-[#25282a] border border-[#C9AB4C]/60 hover:border-[#C9AB4C] px-3.5 py-1.5 rounded-none text-xs font-semibold tracking-wide shadow-2xs transition-all group"
-        >
-          <Sparkles size={13} className="text-[#C9AB4C] group-hover:rotate-12 transition-transform" />
-          <span>Ask Echo</span>
-        </button>
+        {(!allowedPages || allowedPages.includes("minutes")) && (
+          <button
+            type="button"
+            onClick={onOpenUniversalEcho}
+            className="flex items-center gap-1.5 bg-[#1b1d1e] text-[#FAF9F7] hover:bg-[#25282a] border border-[#C9AB4C]/60 hover:border-[#C9AB4C] px-3.5 py-1.5 rounded-none text-xs font-semibold tracking-wide shadow-2xs transition-all group"
+          >
+            <Sparkles size={13} className="text-[#C9AB4C] group-hover:rotate-12 transition-transform" />
+            <span>Ask Echo</span>
+          </button>
+        )}
       </div>
     </header>
   );
