@@ -58,6 +58,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      if (!userProfile.email.toLowerCase().endsWith("@primephilippines.com")) {
+        return NextResponse.redirect(new URL("/?auth_error=company_email_required", req.url));
+      }
+
       const res = NextResponse.redirect(new URL("/", req.url));
       setAuthCookies(res, apiToken, userProfile);
       return res;

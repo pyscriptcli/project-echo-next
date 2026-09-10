@@ -109,6 +109,10 @@ export async function GET(req: NextRequest) {
       console.warn("[ClickUp OAuth] Error fetching user profile:", err);
     }
 
+    if (!userProfile?.email.toLowerCase().endsWith("@primephilippines.com")) {
+      return NextResponse.redirect(new URL("/?auth_error=company_email_required", req.url));
+    }
+
     // 3. Set session cookies and redirect to home
     const response = NextResponse.redirect(new URL("/", req.url));
     setAuthCookies(response, accessToken, userProfile);

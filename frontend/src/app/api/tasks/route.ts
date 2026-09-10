@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
         folderName?: string;
         teamName: string;
       }> = [];
+      const discoveredSpaces: Array<{ id: string; name: string; teamName: string }> = [];
 
       for (const team of teamsData.teams || []) {
         const spacesRes = await fetch(
@@ -94,6 +95,7 @@ export async function GET(req: NextRequest) {
         if (!spacesRes.ok) continue;
         const spacesData = await spacesRes.json();
         const spaces = spacesData.spaces || [];
+        spaces.forEach((space: any) => discoveredSpaces.push({ id: String(space.id), name: space.name, teamName: team.name }));
 
         // Parallelize fetching lists and folders across all spaces in this team
         await Promise.all(
@@ -148,7 +150,7 @@ export async function GET(req: NextRequest) {
         return (a.name || "").localeCompare(b.name || "");
       });
 
-      return NextResponse.json({ lists: discoveredLists, count: discoveredLists.length });
+      return NextResponse.json({ lists: discoveredLists, spaces: discoveredSpaces, count: discoveredLists.length });
     }
 
     // Default action: Fetch tasks from targetListId

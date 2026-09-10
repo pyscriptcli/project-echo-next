@@ -23,6 +23,7 @@ import {
   setStoredClickUpToken,
   getStoredClickUpListId,
   setStoredClickUpListId,
+  discoverClickUpLists,
   AudioTelemetry
 } from "@/lib/api";
 import { Sidebar, NavView } from "@/components/Sidebar";
@@ -230,9 +231,25 @@ export default function Home() {
   const [showStudio, setShowStudio] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveSpaceId, setArchiveSpaceId] = useState("");
+  const [archiveSpaces, setArchiveSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
+  const [loadingArchiveSpaces, setLoadingArchiveSpaces] = useState(false);
   const [audioTelemetry, setAudioTelemetry] = useState<AudioTelemetry | null>(null);
+
+  useEffect(() => {
+    if (!isLoading) { setLoadingProgress(0); return; }
+    setLoadingProgress(12);
+    const timer = window.setInterval(() => setLoadingProgress((value) => Math.min(value + 8, 92)), 700);
+    return () => window.clearInterval(timer);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (!showArchiveModal) return;
+    setLoadingArchiveSpaces(true);
+    discoverClickUpLists().then((data) => setArchiveSpaces(data.spaces || [])).catch(() => setArchiveSpaces([])).finally(() => setLoadingArchiveSpaces(false));
+  }, [showArchiveModal]);
 
   // System Key state
   const [apiKey, setApiKey] = useState("");
@@ -773,8 +790,8 @@ export default function Home() {
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-white/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
-          <Loader2 className="w-12 h-12 animate-spin text-[#003366] mb-4" />
-          <p className="font-bold tracking-widest uppercase text-sm text-[#003366] mb-4 px-6 text-center max-w-lg">{loadingText}</p>
+          <div className="relative w-20 h-20 mb-4"><svg viewBox="0 0 36 36" className="w-full h-full -rotate-90"><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#e5e7eb" strokeWidth="3" /><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#003366" strokeWidth="3" strokeDasharray={`${loadingProgress}, 100`} /></svg><span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#003366]">{loadingProgress}%</span></div>
+          <p className="font-bold tracking-widest uppercase text-sm text-[#003366] mb-4 px-6 text-center max-w-lg">Processing minutes of the meeting</p>
           <button
             type="button"
             onClick={handleCancelProcessing}
@@ -785,7 +802,7 @@ export default function Home() {
         </div>
       )}
 
-      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Select the Space where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mt-5">ClickUp Space ID<input autoFocus value={archiveSpaceId} onChange={(e) => setArchiveSpaceId(e.target.value)} placeholder="Enter Space ID" className="mt-1 w-full border border-gray-300 px-3 py-2 text-sm" /></label><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
+      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-gray-50"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
 
       {/* Full Recording Studio Modal */}
       {showStudio && (
@@ -918,12 +935,6 @@ export default function Home() {
                     {stage === "Review" && (
                       <button onClick={() => setStage("Export")} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
                         <span>Proceed to Export</span>
-                      </button>
-                    )}
-                    {stage === "Export" && (
-                      <button onClick={handleSaveToDb} className="btn-outline !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
-                        <Save size={14} />
-                        <span>Save to DB</span>
                       </button>
                     )}
                   </div>
