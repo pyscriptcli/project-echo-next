@@ -117,12 +117,13 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const requestorEmail = sessionUser?.email || data.requestedByEmail || "";
+      const requestorEmail = sessionUser?.email || data.requestedByEmail || data.requestorEmail || data.email || "";
+      console.info(`[Email] Requestor notification queued for ${requestorEmail || "<missing email>"} on task ${taskId}`);
       if (requestorEmail) {
         try {
           const now = new Date();
           const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
-          await sendRequestorStatusNotification({
+          const emailResult = await sendRequestorStatusNotification({
             recipient: requestorEmail,
             event: "submitted",
             department: "Finance",
@@ -145,9 +146,12 @@ export async function POST(req: NextRequest) {
               track_status_url: `${appUrl}/?view=forms&tab=track`,
             },
           });
+          if (!emailResult.success) console.error(`[Email] Requestor notification failed for task ${taskId}: ${emailResult.error || "unknown error"}`);
         } catch (emailErr) {
           console.warn("Could not dispatch requestor status email:", emailErr);
         }
+      } else {
+        console.error(`[Email] Requestor notification skipped for task ${taskId}: no requestor email was present in the authenticated session or form payload.`);
       }
     }
 
