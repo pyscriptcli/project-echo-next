@@ -117,12 +117,13 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (data.requestedByEmail) {
+      const requestorEmail = sessionUser?.email || data.requestedByEmail || "";
+      if (requestorEmail) {
         try {
           const now = new Date();
           const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
           await sendRequestorStatusNotification({
-            recipient: data.requestedByEmail,
+            recipient: requestorEmail,
             event: "submitted",
             department: "Finance",
             formType,

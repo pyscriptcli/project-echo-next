@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromRequest } from "@/lib/auth";
+import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { createFormRequestId } from "@/lib/forms/requestId";
 import { sendSubmittedStatusEmail } from "@/lib/forms/email";
 
@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
     for (const entry of form.getAll("attachments")) if (entry instanceof File && entry.size) { const upload = new FormData(); upload.append("attachment", entry, entry.name); await fetch(`https://api.clickup.com/api/v2/task/${task.id}/attachment`, { method: "POST", headers: { Authorization: token }, body: upload }); }
     const host = req.headers.get("host") || "localhost:3000";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https")}://${host}`;
-    try { await sendSubmittedStatusEmail({ recipient: value("email"), requestorName: value("requestorName"), department: "IT", formType: "it-helpdesk-support-form", formName: "Helpdesk Support Form", formId: formRequestId, requestTitle: value("subject"), appUrl }); } catch (emailError) { console.warn("Could not send helpdesk confirmation:", emailError); }
+    const requestor = getUserFromRequest(req);
+    try { await sendSubmittedStatusEmail({ recipient: requestor?.email || value("email"), requestorName: requestor?.username || value("requestorName"), department: "IT", formType: "it-helpdesk-support-form", formName: "Helpdesk Support Form", formId: formRequestId, requestTitle: value("subject"), appUrl }); } catch (emailError) { console.warn("Could not send helpdesk confirmation:", emailError); }
     return NextResponse.json({ taskId: task.id, taskUrl: task.url, formRequestId });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Unable to submit helpdesk request." }, { status: 500 }); }
 }
