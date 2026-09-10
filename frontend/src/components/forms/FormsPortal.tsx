@@ -21,6 +21,7 @@ import {
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
 import FormsApprovalsView from "./FormsApprovalsView";
+import { isFormsOwner } from "@/lib/forms/owner";
 
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
@@ -35,7 +36,7 @@ export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> 
   { id: "forms", label: "Forms", desc: "Submit, track & approve company requests" },
 ];
 
-export const OWNER_EMAIL = "dave.policarpio@primephilippines.com";
+export const OWNER_EMAIL = "admin@primephilippines.com";
 const FORM_LABELS: Record<string, string> = {
   rfp: "Request for Payment",
   po: "Purchase Order",
@@ -110,7 +111,7 @@ function normalizeEmail(email?: string) {
   return (email || "").trim().toLowerCase();
 }
 
-function AdminConfiguration({ userEmail }: { userEmail: string }) {
+export function AdminConfiguration({ userEmail, username }: { userEmail: string; username?: string }) {
   const [config, setConfig] = useState<FormsConfig>(DEFAULT_CONFIG);
   const [selectedDepartment, setSelectedDepartment] = useState(DEFAULT_CONFIG.departments[0]);
   const [selectedForm, setSelectedForm] = useState<string>("rfp");
@@ -136,7 +137,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
     "forms",
   ]);
 
-  const isOwner = normalizeEmail(userEmail) === OWNER_EMAIL;
+  const isOwner = isFormsOwner({ email: userEmail, username });
 
   useEffect(() => {
     const local = localStorage.getItem("echo_forms_config");
