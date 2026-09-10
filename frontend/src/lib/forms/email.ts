@@ -8,6 +8,8 @@ export interface EmailConfig {
   host: string;
   port: number;
   fromName: string;
+  resendKey: string;
+  fromAddress: string;
   isConfigured: boolean;
 }
 
@@ -17,9 +19,12 @@ export function getEmailConfig(): EmailConfig {
   const host = process.env.OUTLOOK_SMTP_HOST || process.env.SMTP_HOST || "smtp-mail.outlook.com";
   const port = parseInt(process.env.OUTLOOK_SMTP_PORT || process.env.SMTP_PORT || "587", 10);
   const fromName = process.env.EMAIL_FROM_NAME || "Forms Portal";
+  const resendKey = process.env.RESEND_API_KEY || "";
+  const fromAddress = process.env.EMAIL_FROM || user;
 
-  const isConfigured = Boolean(user && pass && user !== "mock" && !user.includes("example.com"));
-  return { user, pass, host, port, fromName, isConfigured };
+  const smtpConfigured = Boolean(user && pass && user !== "mock" && !user.includes("example.com"));
+  const isConfigured = smtpConfigured || Boolean(resendKey && fromAddress);
+  return { user, pass, host, port, fromName, resendKey, fromAddress, isConfigured };
 }
 
 function createTransporter() {
@@ -85,7 +90,21 @@ export async function sendRequestorStatusNotification({
   const body = renderTemplate(configured?.body || defaults.body, safeValues);
   const html = `<div style="background:#f4f4f6;padding:28px;font-family:Arial,sans-serif;color:#334155"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e2e8f0"><div style="background:#3f3f3f;color:#fff;padding:22px 30px;font-size:20px;font-weight:700">Request Status Update</div><div style="padding:30px;line-height:1.55;font-size:14px;white-space:normal">${body.replace(/\n/g, "<br>")}</div></div></div>`;
   const config = getEmailConfig();
-  if (!config.isConfigured) return { success: true, isMock: true };
+  if (!config.isConfigured) {
+    console.warn("[Email] Requestor notification not sent: configure OUTLOOK_EMAIL_USER/OUTLOOK_EMAIL_PASS or RESEND_API_KEY/EMAIL_FROM in Vercel.");
+    return { success: false, error: "Email delivery is not configured" };
+  }
+  if (config.resendKey && !config.user) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${config.resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: config.fromAddress, to: [recipient], subject, html }) });
+      if (!response.ok) return { success: false, error: `Resend delivery failed (${response.status})` };
+      const result = await response.json();
+      return { success: true, messageId: result.id };
+    } catch (error: any) {
+      console.error("[Email Error] Resend requestor notification failed:", error);
+      return { success: false, error: error.message };
+    }
+  }
   const transporter = createTransporter();
   if (!transporter) return { success: false, error: "Transporter unavailable" };
   try {
