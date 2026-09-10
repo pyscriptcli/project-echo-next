@@ -48,6 +48,16 @@ function TrackContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Submission links include an id so the new request is highlighted once.
+  // Remove it from browser history after capturing it, otherwise the stale
+  // query survives navigation away from Forms and re-pins the tracker on return.
+  useEffect(() => {
+    if (!initialId || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("id");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [initialId]);
+
   const fetchRequests = useCallback(async () => {
     setIsLoading(true);
     setErrorMsg("");
