@@ -33,7 +33,7 @@ import {
   ValidationErrorItem,
   scrollToFormField,
 } from "@/lib/forms/rfpValidation";
-import { AlertCircle, FileText } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, Send } from "lucide-react";
 
 const getInitialFormData = (): RfpFormData => {
   const today = new Date().toISOString().split("T")[0];
@@ -794,10 +794,42 @@ export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
   const [category, setCategory] = useState("Finance");
   const [itFormKey, setItFormKey] = useState("it-asset-request-form");
   const [mappings, setMappings] = useState<Array<{ department: string; formType: string; listId?: string }>>([]);
+  const [submissionResult, setSubmissionResult] = useState<{ taskUrl?: string; taskId?: string } | null>(null);
   const departments = ["Finance", "Marketing", "IT", "Research & Advisory"];
   useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setMappings(data?.config?.mappings || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    const showConfirmation = (event: Event) => setSubmissionResult((event as CustomEvent<{ taskUrl?: string; taskId?: string }>).detail || {});
+    window.addEventListener("echo-form-submitted", showConfirmation);
+    return () => window.removeEventListener("echo-form-submitted", showConfirmation);
+  }, []);
   const listId = mappings.find((mapping) => mapping.department === category && mapping.formType === (category === "IT" ? itFormKey : "rfp"))?.listId;
   return (
-    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6"><div className="max-w-[1500px] mx-auto"><h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2><p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p><div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6"><aside className="border border-gray-200 bg-white p-5 self-start"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div><div className="space-y-2">{departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-4 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}</div></aside><section className="border border-gray-200 bg-white p-5 min-w-0"><div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-5"><div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div>{category === "IT" ? <label className="relative flex items-center min-w-[270px] border border-[#003366] bg-[#f7fbff] text-[#003366]"><FileText size={15} className="ml-3 shrink-0" /><select value={itFormKey} onChange={(event) => setItFormKey(event.target.value)} className="w-full appearance-none bg-transparent py-2.5 pl-2 pr-8 text-xs font-bold outline-none"><option value="it-asset-request-form">IT Asset Request Form</option><option value="it-helpdesk-support-form">Helpdesk Support Form</option><option value="it-bug-error-report-form">Bug/Error Report Form</option></select><span className="pointer-events-none absolute right-3 text-xs">⌄</span></label> : <span className="text-xs text-gray-400">Choose a form from the selector below</span>}</div>{listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}>{category === "IT" ? itFormKey === "it-helpdesk-support-form" ? <ITHelpdeskSupportForm listId={listId} user={user} /> : itFormKey === "it-bug-error-report-form" ? <ITBugErrorReportForm listId={listId} user={user} /> : <ITAssetRequestForm listId={listId} user={user} /> : <RfpAppContent user={user} listId={listId} />}</Suspense> : <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Not configured yet — please contact IT department.</div>}</section></div></div></div>
+    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6">
+      <div className="max-w-[1500px] mx-auto">
+        <h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2>
+        <p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p>
+        <div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6">
+          <aside className="border border-gray-200 bg-white p-5 self-start">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div>
+            <div className="space-y-2">
+              {departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-4 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}
+            </div>
+          </aside>
+          <section className="border border-gray-200 bg-white p-5 min-w-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 mb-5">
+              <div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div>
+              {category === "IT" ? (
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <label className="relative flex items-center min-w-[270px] border border-[#003366] bg-[#f7fbff] text-[#003366]"><FileText size={15} className="ml-3 shrink-0" /><select value={itFormKey} onChange={(event) => setItFormKey(event.target.value)} className="w-full appearance-none bg-transparent py-2.5 pl-2 pr-8 text-xs font-bold outline-none"><option value="it-asset-request-form">IT Asset Request Form</option><option value="it-helpdesk-support-form">Helpdesk Support Form</option><option value="it-bug-error-report-form">Bug/Error Report Form</option></select><span className="pointer-events-none absolute right-3 text-xs">⌄</span></label>
+                  <button type="submit" form={itFormKey} disabled={!listId} className="inline-flex items-center justify-center gap-2 bg-[#003366] px-4 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><Send size={15} />Submit to ClickUp</button>
+                </div>
+              ) : <span className="text-xs text-gray-400">Choose a form from the selector below</span>}
+            </div>
+            {listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}>{category === "IT" ? itFormKey === "it-helpdesk-support-form" ? <ITHelpdeskSupportForm listId={listId} user={user} /> : itFormKey === "it-bug-error-report-form" ? <ITBugErrorReportForm listId={listId} user={user} /> : <ITAssetRequestForm listId={listId} user={user} /> : <RfpAppContent user={user} listId={listId} />}</Suspense> : <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Not configured yet — please contact IT department.</div>}
+          </section>
+        </div>
+      </div>
+      {submissionResult && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#001d3d]/55 px-4" role="dialog" aria-modal="true" aria-labelledby="submission-confirmation-title"><div className="w-full max-w-md border border-[#C9AB4C] bg-white p-7 shadow-2xl"><CheckCircle2 className="mx-auto text-emerald-600" size={42} /><h3 id="submission-confirmation-title" className="mt-3 text-center font-serif text-2xl font-bold italic text-[#003366]">Successfully submitted</h3><p className="mt-2 text-center text-sm text-slate-600">Your request has been created in ClickUp.</p>{submissionResult.taskUrl && <a className="mt-4 block text-center text-sm font-bold text-[#003366] underline" href={submissionResult.taskUrl} target="_blank" rel="noreferrer">Open in ClickUp</a>}<button onClick={() => setSubmissionResult(null)} className="mt-6 w-full bg-[#003366] py-3 text-sm font-bold text-white">Done</button></div></div>}
+    </div>
   );
 }
