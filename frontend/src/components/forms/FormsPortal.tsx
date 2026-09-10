@@ -127,6 +127,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
   const [preview, setPreview] = useState("requestor");
   const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
+  const [emailTestStatus, setEmailTestStatus] = useState("");
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -406,6 +407,18 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
     setConfig(updated);
     localStorage.setItem("echo_forms_config", JSON.stringify(updated));
     setNotice("Unsaved email template changes");
+  };
+
+  const sendTestEmail = async () => {
+    setEmailTestStatus("Sending test…");
+    try {
+      const response = await fetch("/api/forms/email-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ department: selectedDepartment, formType: selectedForm, event: emailEvent }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || result.error || "Test email failed");
+      setEmailTestStatus(`Sent to ${result.recipient || userEmail}. Check that inbox and Resend → Emails.`);
+    } catch (error: any) {
+      setEmailTestStatus(error.message || "Test email failed");
+    }
   };
 
   return (
@@ -1014,6 +1027,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
         <label className="block text-xs font-bold text-gray-600 mb-3">Subject<input className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal" value={emailTemplate.subject} onChange={(e) => updateEmailTemplate({ subject: e.target.value })} /></label>
         <label className="block text-xs font-bold text-gray-600">Email body<textarea rows={16} className="mt-1 w-full border border-gray-300 px-3 py-2 font-mono text-xs font-normal leading-relaxed" value={emailTemplate.body} onChange={(e) => updateEmailTemplate({ body: e.target.value })} /></label>
         <div className="mt-3 border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Dynamic fields</div><div className="flex flex-wrap gap-1.5">{["requestor_first_name", "form_name", "form_id", "department", "status_label", "request_title", "amount", "purpose", "submitted_at", "status_updated_at", "completed_stage", "approver_name", "completed_at", "current_stage", "current_stage_started_at", "status_message", "next_step_message", "track_status_url"].map((field) => <button type="button" key={field} onClick={() => updateEmailTemplate({ body: `${emailTemplate.body}{{${field}}}` })} className="border border-slate-300 bg-white px-2 py-1 text-[10px] text-[#003366]">{`{{${field}}}`}</button>)}</div></div>
+        <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={sendTestEmail} className="border border-[#003366] bg-white px-4 py-2 text-xs font-bold text-[#003366] hover:bg-slate-50">Send test email to my login</button>{emailTestStatus && <span className="text-xs text-slate-600">{emailTestStatus}</span>}</div>
       </section>
     </div>
   );
