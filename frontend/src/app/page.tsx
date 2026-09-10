@@ -230,6 +230,8 @@ export default function Home() {
   const [showStudio, setShowStudio] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveSpaceId, setArchiveSpaceId] = useState("");
   const [audioTelemetry, setAudioTelemetry] = useState<AudioTelemetry | null>(null);
 
   // System Key state
@@ -691,10 +693,11 @@ export default function Home() {
   };
 
   const handleSaveToDb = async () => {
+    if (!metadata.space_id && !archiveSpaceId) { setShowArchiveModal(true); return; }
     setIsLoading(true);
     setLoadingText("Archiving meeting to ClickUp...");
     try {
-      const res = await saveMeeting(getEffectiveMetadata(), momItems, otherDiscussions, transcript);
+      const res = await saveMeeting({ ...getEffectiveMetadata(), space_id: metadata.space_id || archiveSpaceId }, momItems, otherDiscussions, transcript);
       const effectiveMeta = getEffectiveMetadata();
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
       const newRecord: ArchivedMeeting = {
@@ -723,7 +726,7 @@ export default function Home() {
       setArchivedMeetings(updatedList);
       setSelectedMeetingId(newMeetingId);
       const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
-      alert((res.message || "Successfully archived meeting in ClickUp!") + target);
+      setShowArchiveModal(false); alert((res.message || "Successfully archived meeting in ClickUp!") + target);
     } catch (err: any) {
       alert(err?.message || "Unable to archive meeting in ClickUp.");
     } finally {
@@ -781,6 +784,8 @@ export default function Home() {
           </button>
         </div>
       )}
+
+      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Select the Space where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mt-5">ClickUp Space ID<input autoFocus value={archiveSpaceId} onChange={(e) => setArchiveSpaceId(e.target.value)} placeholder="Enter Space ID" className="mt-1 w-full border border-gray-300 px-3 py-2 text-sm" /></label><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
 
       {/* Full Recording Studio Modal */}
       {showStudio && (
@@ -1792,7 +1797,7 @@ export default function Home() {
                 Back to Review
               </button>
               <button onClick={handleSaveToDb} className="btn-primary !py-2.5 !px-6 text-xs flex items-center gap-2">
-                <Save size={15} /> Save to Supabase Database
+                <Save size={15} /> Archive to ClickUp
               </button>
             </div>
           </div>

@@ -89,7 +89,7 @@ export function Topbar({
     { id: "tasks", name: "Tasks Portal (ClickUp)", description: "Track & execute meeting action items", icon: CheckSquare },
     { id: "minutes", name: "Notetaker Studio", description: "Transcribe audio & synthesize notes", icon: Mic },
     { id: "forms", name: "Forms", description: "Submit, track & approve requests", icon: ClipboardList },
-    { id: "forms-admin", name: "Forms Admin", description: "Configure form access and routing", icon: ClipboardList },
+    { id: "forms-admin", name: "Settings", description: "Configure Echo access and routing", icon: ClipboardList },
   ];
 
   const matchedPages = query

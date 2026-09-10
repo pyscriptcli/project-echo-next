@@ -97,7 +97,7 @@ export function Sidebar({
       badge: "ClickUp"
     }
   ];
-  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Forms Admin", icon: ClipboardList, badge: null });
+  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Settings", icon: ClipboardList, badge: null });
 
   return (
     <div
