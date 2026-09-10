@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RfpFormData, FormType } from "@/types/forms/rfp";
+import { FormType } from "@/types/forms/rfp";
 import {
   createClickUpTask,
   updateClickUpTask,
   uploadAttachmentToTask,
 } from "@/lib/forms/clickup";
-import { sendApproverNotification } from "@/lib/forms/email";
+import { sendApproverNotification, sendRequestorStatusNotification } from "@/lib/forms/email";
 import { getTokenFromRequest } from "@/lib/auth";
 import { getUserFromRequest } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
@@ -114,6 +114,38 @@ export async function POST(req: NextRequest) {
           });
         } catch (emailErr) {
           console.warn("Could not dispatch approver notification email:", emailErr);
+        }
+      }
+
+      if (data.requestedByEmail) {
+        try {
+          const now = new Date();
+          const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
+          await sendRequestorStatusNotification({
+            recipient: data.requestedByEmail,
+            event: "submitted",
+            department: "Finance",
+            formType,
+            values: {
+              requestor_first_name: String(data.requestedByName || "Team Member").split(" ")[0],
+              form_name: formName,
+              form_id: data.formRequestId || taskId,
+              department: data.department || "Finance",
+              status_label: "Submitted",
+              request_title: data.payee || data.vendorName || formName,
+              amount: Number(data.totalAmount || 0).toLocaleString("en-PH", { style: "currency", currency: "PHP" }),
+              purpose: data.purpose || "",
+              submitted_at: now.toLocaleString("en-PH", { timeZone: "Asia/Manila" }),
+              status_updated_at: now.toLocaleString("en-PH", { timeZone: "Asia/Manila" }),
+              current_stage: "Submitted",
+              current_stage_started_at: now.toLocaleString("en-PH", { timeZone: "Asia/Manila" }),
+              status_message: "Your request was received and is awaiting review.",
+              next_step_message: "",
+              track_status_url: `${appUrl}/?view=forms&tab=track`,
+            },
+          });
+        } catch (emailErr) {
+          console.warn("Could not dispatch requestor status email:", emailErr);
         }
       }
     }

@@ -16,6 +16,7 @@ interface FormsConfigData {
   mappings: any[];
   pagePermissions: UserPagePermission[];
   defaultPageAccess?: string[];
+  emailTemplates?: any[];
 }
 
 const DEFAULT_CONFIG: FormsConfigData = {
@@ -25,6 +26,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   mappings: [],
   pagePermissions: [],
   defaultPageAccess: ["forms"],
+  emailTemplates: [],
 };
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "meetings", "minutes", "forms"];

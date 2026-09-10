@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { RfpFormData } from "@/types/forms/rfp";
+import { createClient } from "@supabase/supabase-js";
 
 export interface EmailConfig {
   user: string;
@@ -36,6 +37,105 @@ function createTransporter() {
     tls: {
       ciphers: "SSLv3",
       rejectUnauthorized: false,
+    },
+  });
+}
+
+type StatusEmailEvent = "submitted" | "approved" | "revision_requested" | "completed";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] || char));
+}
+
+function renderTemplate(template: string, values: Record<string, unknown>) {
+  return template.replace(/{{\s*([a-z0-9_]+)\s*}}/gi, (_, key) => String(values[key] ?? ""));
+}
+
+async function loadStatusTemplate(department: string, formType: string, event: StatusEmailEvent) {
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  if (!url || !key) return null;
+  const supabase = createClient(url, key);
+  const { data } = await supabase.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
+  return data?.config?.emailTemplates?.find((item: any) => item.department === department && item.formType === formType && item.event === event) || null;
+}
+
+export async function sendRequestorStatusNotification({
+  recipient,
+  event,
+  department,
+  formType,
+  values,
+}: {
+  recipient: string;
+  event: StatusEmailEvent;
+  department: string;
+  formType: string;
+  values: Record<string, unknown>;
+}) {
+  if (!recipient) return { success: false, error: "Requestor email unavailable" };
+  const configured = await loadStatusTemplate(department, formType, event);
+  if (configured?.enabled === false) return { success: true, skipped: true };
+  const defaults = {
+    subject: "Request Status Update ({{form_id}})",
+    body: "Hi {{requestor_first_name}},\n\nYour {{form_name}} request has been updated.\n\nRequest ID: {{form_id}}\nSubmitted: {{submitted_at}}\nLast updated: {{status_updated_at}}\nStatus: {{status_label}}\nDepartment: {{department}}\nRequest title: {{request_title}}\nAmount: {{amount}}\nPurpose: {{purpose}}\n\nCompleted stage: {{completed_stage}}\nApproved by: {{approver_name}}\nCompleted: {{completed_at}}\n\nCurrent stage: {{current_stage}}\nStarted: {{current_stage_started_at}}\n\n{{status_message}}\n{{next_step_message}}\n\nTrack request: {{track_status_url}}",
+  };
+  const safeValues = Object.fromEntries(Object.entries(values).map(([name, value]) => [name, escapeHtml(value)]));
+  const subject = renderTemplate(configured?.subject || defaults.subject, values);
+  const body = renderTemplate(configured?.body || defaults.body, safeValues);
+  const html = `<div style="background:#f4f4f6;padding:28px;font-family:Arial,sans-serif;color:#334155"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e2e8f0"><div style="background:#3f3f3f;color:#fff;padding:22px 30px;font-size:20px;font-weight:700">Request Status Update</div><div style="padding:30px;line-height:1.55;font-size:14px;white-space:normal">${body.replace(/\n/g, "<br>")}</div></div></div>`;
+  const config = getEmailConfig();
+  if (!config.isConfigured) return { success: true, isMock: true };
+  const transporter = createTransporter();
+  if (!transporter) return { success: false, error: "Transporter unavailable" };
+  try {
+    const info = await transporter.sendMail({ from: `"${config.fromName}" <${config.user}>`, to: recipient, subject, html });
+    return { success: true, messageId: info.messageId };
+  } catch (error: any) {
+    console.error("[Email Error] Failed to send requestor status email:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendSubmittedStatusEmail({
+  recipient,
+  requestorName,
+  department,
+  formType,
+  formName,
+  formId,
+  requestTitle,
+  appUrl,
+}: {
+  recipient: string;
+  requestorName: string;
+  department: string;
+  formType: string;
+  formName: string;
+  formId: string;
+  requestTitle: string;
+  appUrl: string;
+}) {
+  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+  return sendRequestorStatusNotification({
+    recipient,
+    event: "submitted",
+    department,
+    formType,
+    values: {
+      requestor_first_name: (requestorName || "Team Member").split(" ")[0],
+      form_name: formName,
+      form_id: formId,
+      department,
+      status_label: "Submitted",
+      request_title: requestTitle,
+      submitted_at: now,
+      status_updated_at: now,
+      current_stage: "Submitted",
+      current_stage_started_at: now,
+      status_message: "Your request was received and is now in the queue.",
+      next_step_message: "",
+      track_status_url: `${appUrl}/?view=forms&tab=track`,
     },
   });
 }

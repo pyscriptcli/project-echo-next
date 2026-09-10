@@ -4,8 +4,7 @@ import {
   rejectTaskForRevision,
   getClickUpTask,
 } from "@/lib/forms/clickup";
-import { sendRequestorRevisionNotification } from "@/lib/forms/email";
-import { RfpFormData } from "@/types/forms/rfp";
+import { sendRequestorStatusNotification } from "@/lib/forms/email";
 import { getTokenFromRequest } from "@/lib/auth";
 import { getUserFromRequest } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
@@ -61,6 +60,38 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      try {
+        const task = await getClickUpTask(taskId, { token });
+        const description = String(task?.description || task?.markdown_description || "");
+        const requestedByRow = description.match(/\|\s*\*\*Requested By\*\*\s*\|\s*\*\*([^*]+)\*\*\s*(?:\(([^)@]+@[^)]+)\))?/i);
+        const requestorEmail = requestedByRow?.[2]?.trim()
+          || description.match(/(?:Requested by email|Email):\*\*\s*([^\n]+)/i)?.[1]?.trim()
+          || description.match(/Submitted by[^\n(]*\(([^)]+@[^)]+)\)/i)?.[1]?.trim();
+        const requestorName = requestedByRow?.[1]?.trim() || description.match(/(?:Requested by|Employee):\*\*\s*([^\n]+)/i)?.[1]?.trim() || "Team Member";
+        const formId = description.match(/\|\s*\*\*Form ID\*\*\s*\|\s*\*\*([^*]+)\*\*/i)?.[1]?.trim() || description.match(/\*\*Form ID:\*\*\s*([^\n]+)/i)?.[1]?.trim() || taskId;
+        const department = description.match(/\*\*Department:\*\*\s*([^\n]+)/i)?.[1]?.trim() || "Finance";
+        const formType = String(task?.name || "").includes("[PO]") ? "po" : String(task?.name || "").includes("[PCV]") ? "pcv" : "rfp";
+        const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
+        const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+        if (requestorEmail) await sendRequestorStatusNotification({
+          recipient: requestorEmail,
+          event: "approved",
+          department: "Finance",
+          formType,
+          values: {
+            requestor_first_name: requestorName.split(" ")[0], form_name: formName, form_id: formId,
+            department, status_label: "Finance Verification", request_title: task?.name || formName,
+            submitted_at: task?.date_created ? new Date(Number(task.date_created)).toLocaleString("en-PH", { timeZone: "Asia/Manila" }) : "",
+            status_updated_at: now, completed_stage: "Approval Team Leader", approver_name: approverName || "Team Leader",
+            completed_at: now, current_stage: "Finance Verification", current_stage_started_at: now,
+            status_message: "Your request was approved by the Team Leader.", next_step_message: "It is now with Finance for verification.",
+            track_status_url: `${appUrl}/?view=forms&tab=track`,
+          },
+        });
+      } catch (emailErr) {
+        console.warn("Could not dispatch approval status email:", emailErr);
+      }
+
       return NextResponse.json({
         success: true,
         message: `Request #${taskId} endorsed successfully! Advanced to Finance Verification.`,
@@ -90,19 +121,27 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Fetch task details to notify requestor via Outlook email
+      // Fetch task details to notify the actual requestor via the configured template.
       try {
         const task = await getClickUpTask(taskId, { token });
         if (task) {
-          const dummyFormData: Partial<RfpFormData> = {
-            payee: task.name,
-          };
-          await sendRequestorRevisionNotification({
-            data: dummyFormData as RfpFormData,
-            taskId,
-            revisionReason,
-            appUrl,
-          });
+          const description = String(task.description || task.markdown_description || "");
+          const requestedByRow = description.match(/\|\s*\*\*Requested By\*\*\s*\|\s*\*\*([^*]+)\*\*\s*(?:\(([^)@]+@[^)]+)\))?/i);
+          const requestorEmail = requestedByRow?.[2]?.trim();
+          const requestorName = requestedByRow?.[1]?.trim() || "Team Member";
+          const department = description.match(/\|\s*\*\*Department\*\*\s*\|\s*\*\*?([^|*\n]+)\*\*?/i)?.[1]?.trim() || "Finance";
+          const formId = description.match(/\|\s*\*\*Form ID\*\*\s*\|\s*\*\*([^*]+)\*\*/i)?.[1]?.trim() || taskId;
+          const taskName = String(task.name || "");
+          const formType = taskName.includes("[PO]") ? "po" : taskName.includes("[PCV]") ? "pcv" : "rfp";
+          const formName = formType === "po" ? "Purchase Order" : formType === "pcv" ? "Petty Cash Voucher" : "Request for Payment";
+          const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+          if (requestorEmail) await sendRequestorStatusNotification({ recipient: requestorEmail, event: "revision_requested", department: "Finance", formType, values: {
+            requestor_first_name: requestorName.split(" ")[0], form_name: formName, form_id: formId, department,
+            status_label: "Revision Requested", request_title: taskName, status_updated_at: now,
+            current_stage: "Revision Requested", current_stage_started_at: now,
+            status_message: revisionReason, next_step_message: "Please update and resubmit your request.",
+            track_status_url: `${appUrl}/?view=forms&tab=track`,
+          } });
         }
       } catch (emailErr) {
         console.warn("Could not dispatch revision notification email:", emailErr);

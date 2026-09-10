@@ -582,8 +582,8 @@ export async function approveTaskByApprover(
     );
     // The approver's stage becomes complete; the following stage is now active.
     const nextStage = Math.max(1, Math.min(5, Number(context.stageIndex ?? 0) + 2));
-    updatedDescription = updatedDescription.replace(/\n?<!--\s*echo-finance-stage:\d+\s*-->/gi, "");
-    updatedDescription += `\n<!-- echo-finance-stage:${nextStage} -->`;
+    updatedDescription = updatedDescription.replace(/\n?<!--\s*echo-finance-stage:[^>]+-->/gi, "");
+    updatedDescription += `\n<!-- echo-finance-stage:${nextStage};at=${encodeURIComponent(new Date().toISOString())};by=${encodeURIComponent(approverName)} -->`;
 
     const updateTask = async (body: Record<string, unknown>) => fetch(`${CLICKUP_API_BASE}/task/${taskId}`, {
       method: "PUT",
@@ -607,8 +607,8 @@ export async function approveTaskByApprover(
     }
 
     const commentMsg = notes
-      ? `✅ **Endorsed by ${approverName}**\nNotes: ${notes}\n\n*Status advanced to Finance Verification.*`
-      : `✅ **Endorsed by ${approverName}**\n\n*Status advanced to Finance Verification.*`;
+      ? `✅ **Approved by ${approverName}**\nNotes: ${notes}\n\n*Status advanced to Finance Verification.*`
+      : `✅ **Approved by ${approverName}**\n\n*Status advanced to Finance Verification.*`;
 
     await postTaskComment(taskId, commentMsg, context);
     return true;

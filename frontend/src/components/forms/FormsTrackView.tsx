@@ -340,10 +340,12 @@ function TrackContent() {
                             {stage.label}
                           </span>
                           <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
-                            {idx === 1 && isFinance && isComplete
-                              ? `Approved by Team Leader${req.updatedAt ? ` · ${new Date(req.updatedAt).toLocaleString()}` : ""}`
+                            {idx === 0 && isComplete
+                              ? `Submitted · ${new Date(req.dateCreated).toLocaleString()}`
+                              : idx === 1 && isFinance && isComplete
+                              ? `Approved by ${req.stageApprovedBy || "Team Leader"}${req.updatedAt ? ` · ${new Date(req.updatedAt).toLocaleString()}` : ""}`
                               : isCurrent && !req.isRevisionRequested
-                              ? "On Going"
+                              ? `On Going${req.updatedAt ? ` · ${new Date(req.updatedAt).toLocaleString()}` : ""}`
                               : stage.desc}
                           </span>
                         </div>

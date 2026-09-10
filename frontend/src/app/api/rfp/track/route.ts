@@ -34,6 +34,7 @@ export interface TrackedRfp {
   revisionBy?: "tl" | "finance" | "approver";
   dateCreated: string;
   updatedAt?: string;
+  stageApprovedBy?: string;
   attachments: Array<{ id: string; name: string; url: string; type?: string }>;
 }
 
@@ -195,11 +196,16 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
 
   // Finance approval progress is stored as an invisible Markdown marker so
   // requestors do not see a ClickUp checklist, while Echo can still render it.
-  const stageMarker = desc.match(/<!--\s*echo-finance-stage:(\d+)\s*-->/i);
+  const stageMarker = desc.match(/<!--\s*echo-finance-stage:(\d+)(?:;at=([^;>]+))?(?:;by=([^>]+?))?\s*-->/i);
+  let stageUpdatedAt = task.date_updated ? new Date(Number(task.date_updated)).toISOString() : undefined;
+  let stageApprovedBy: string | undefined;
   if (stageMarker && ["rfp", "po", "pcv"].includes(formType)) {
     const savedStage = Number(stageMarker[1]);
+    const clickUpStageIndex = stageIndex;
     // Earlier markers used 1 for a completed Team Leader approval.
-    stageIndex = Math.max(0, Math.min(5, savedStage === 1 ? 2 : savedStage));
+    const savedStageIndex = Math.max(0, Math.min(5, savedStage === 1 ? 2 : savedStage));
+    // Never let an older Echo marker move a task behind a later ClickUp status.
+    stageIndex = Math.max(stageIndex, savedStageIndex);
     const financeStages = [
       ["submitted", "Submitted (Pending Endorsement)"],
       ["endorsed", "Approval Team Leader"],
@@ -210,6 +216,8 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     ] as const;
     currentStage = financeStages[stageIndex][0];
     stageLabel = financeStages[stageIndex][1];
+    try { if (stageMarker[2] && savedStageIndex >= clickUpStageIndex) stageUpdatedAt = decodeURIComponent(stageMarker[2]); } catch {}
+    try { if (stageMarker[3]) stageApprovedBy = decodeURIComponent(stageMarker[3].trim()); } catch {}
   }
 
   // Non-finance forms strictly use a 3-status lifecycle: Submitted, On Going, Completed.
@@ -260,7 +268,8 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     isRevisionRequested,
     revisionReason,
     dateCreated: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(),
-    updatedAt: task.date_updated ? new Date(Number(task.date_updated)).toISOString() : undefined,
+    updatedAt: stageUpdatedAt,
+    stageApprovedBy,
     attachments,
   };
 }

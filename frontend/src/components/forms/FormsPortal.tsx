@@ -15,7 +15,8 @@ import {
   Lock,
   Check,
   RotateCcw,
-  Users
+  Users,
+  Mail
 } from "lucide-react";
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
@@ -74,6 +75,17 @@ export interface UserPagePermission {
   allowedPages: AppPage[];
 }
 
+export type EmailEvent = "submitted" | "approved" | "revision_requested" | "completed";
+export interface FormEmailTemplate {
+  id: string;
+  department: string;
+  formType: string;
+  event: EmailEvent;
+  enabled: boolean;
+  subject: string;
+  body: string;
+}
+
 export interface FormsConfig {
   admins: AdminUser[];
   members: AdminUser[];
@@ -81,6 +93,7 @@ export interface FormsConfig {
   mappings: FormMapping[];
   pagePermissions?: UserPagePermission[];
   defaultPageAccess?: AppPage[];
+  emailTemplates?: FormEmailTemplate[];
 }
 
 const DEFAULT_CONFIG: FormsConfig = {
@@ -90,6 +103,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   mappings: [],
   pagePermissions: [],
   defaultPageAccess: ["forms"],
+  emailTemplates: [],
 };
 
 function normalizeEmail(email?: string) {
@@ -111,7 +125,8 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
-  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations">("rbac");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email">("rbac");
+  const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -131,6 +146,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
           ...DEFAULT_CONFIG,
           ...parsed,
           pagePermissions: parsed.pagePermissions || [],
+          emailTemplates: parsed.emailTemplates || [],
         });
       } catch {}
     }
@@ -144,6 +160,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
             members: data.config.members || [],
             pagePermissions: data.config.pagePermissions || [],
             defaultPageAccess: data.config.defaultPageAccess || ["forms"],
+            emailTemplates: data.config.emailTemplates || [],
           });
         }
       })
@@ -373,6 +390,23 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
   };
 
   const current = ensureMapping();
+  const emailTemplateId = `${selectedDepartment}-${selectedForm}-${emailEvent}`;
+  const emailTemplate = (config.emailTemplates || []).find((item) => item.id === emailTemplateId) || {
+    id: emailTemplateId,
+    department: selectedDepartment,
+    formType: selectedForm,
+    event: emailEvent,
+    enabled: true,
+    subject: "Request Status Update ({{form_id}})",
+    body: "Hi {{requestor_first_name}},\n\nYour {{form_name}} request has been updated.\n\nRequest ID: {{form_id}}\nSubmitted: {{submitted_at}}\nLast updated: {{status_updated_at}}\nStatus: {{status_label}}\nDepartment: {{department}}\nRequest title: {{request_title}}\nAmount: {{amount}}\nPurpose: {{purpose}}\n\nCompleted stage: {{completed_stage}}\nApproved by: {{approver_name}}\nCompleted: {{completed_at}}\n\nCurrent stage: {{current_stage}}\nStarted: {{current_stage_started_at}}\n\n{{status_message}}\n{{next_step_message}}\n\nTrack request: {{track_status_url}}",
+  };
+  const updateEmailTemplate = (patch: Partial<FormEmailTemplate>) => {
+    const next = { ...emailTemplate, ...patch };
+    const updated = { ...config, emailTemplates: [...(config.emailTemplates || []).filter((item) => item.id !== next.id), next] };
+    setConfig(updated);
+    localStorage.setItem("echo_forms_config", JSON.stringify(updated));
+    setNotice("Unsaved email template changes");
+  };
 
   return (
     <div className="space-y-5">
@@ -395,9 +429,9 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       )}
 
       <div className="flex gap-1 border-b border-gray-200 pb-2">
-        {(["rbac", "configurations"] as const).map((item) => (
+        {(["rbac", "configurations", "email"] as const).map((item) => (
           <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
-            {item === "rbac" ? "RBAC" : "Configurations"}
+            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : "Email"}
           </button>
         ))}
       </div>
@@ -966,6 +1000,20 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
             );
           })}
         </div>
+      </section>
+
+      <section className={`panel ${settingsTab !== "email" ? "hidden" : ""}`}>
+        <div className="flex items-center gap-2 mb-1"><Mail size={18} className="text-[#003366]" /><h2 className="text-lg font-bold text-slate-800">Automated Requestor Email</h2></div>
+        <p className="text-xs text-gray-500 mb-4">Configure a separate dynamic email for each department, form, and request event.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <label className="text-xs font-bold text-gray-600">Department<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>{config.departments.map((department) => <option key={department}>{department}</option>)}</select></label>
+          <label className="text-xs font-bold text-gray-600">Form<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={selectedForm} onChange={(e) => setSelectedForm(e.target.value)}>{Object.entries(FORM_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}{selectedDepartment === "IT" && <option value="it-asset-request-form">IT Asset Request Form</option>}{config.mappings.filter((item) => item.department === selectedDepartment && !FORM_LABELS[item.formType] && item.formType !== "it-asset-request-form").map((item) => <option key={item.formType} value={item.formType}>{item.formLabel || item.formType}</option>)}</select></label>
+          <label className="text-xs font-bold text-gray-600">Event<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={emailEvent} onChange={(e) => setEmailEvent(e.target.value as EmailEvent)}><option value="submitted">Submitted</option><option value="approved">Approved / Stage changed</option><option value="revision_requested">Revision requested</option><option value="completed">Completed</option></select></label>
+        </div>
+        <label className="mb-4 flex items-center gap-2 text-xs font-bold text-[#003366]"><input type="checkbox" checked={emailTemplate.enabled} onChange={(e) => updateEmailTemplate({ enabled: e.target.checked })} /> Send this email automatically</label>
+        <label className="block text-xs font-bold text-gray-600 mb-3">Subject<input className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal" value={emailTemplate.subject} onChange={(e) => updateEmailTemplate({ subject: e.target.value })} /></label>
+        <label className="block text-xs font-bold text-gray-600">Email body<textarea rows={16} className="mt-1 w-full border border-gray-300 px-3 py-2 font-mono text-xs font-normal leading-relaxed" value={emailTemplate.body} onChange={(e) => updateEmailTemplate({ body: e.target.value })} /></label>
+        <div className="mt-3 border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Dynamic fields</div><div className="flex flex-wrap gap-1.5">{["requestor_first_name", "form_name", "form_id", "department", "status_label", "request_title", "amount", "purpose", "submitted_at", "status_updated_at", "completed_stage", "approver_name", "completed_at", "current_stage", "current_stage_started_at", "status_message", "next_step_message", "track_status_url"].map((field) => <button type="button" key={field} onClick={() => updateEmailTemplate({ body: `${emailTemplate.body}{{${field}}}` })} className="border border-slate-300 bg-white px-2 py-1 text-[10px] text-[#003366]">{`{{${field}}}`}</button>)}</div></div>
       </section>
     </div>
   );
