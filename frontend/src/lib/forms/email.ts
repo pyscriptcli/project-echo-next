@@ -29,7 +29,7 @@ export function getEmailConfig(): EmailConfig {
 
 function createTransporter() {
   const config = getEmailConfig();
-  if (!config.isConfigured) return null;
+  if (!config.user || !config.pass) return null;
 
   return nodemailer.createTransport({
     host: config.host,
@@ -94,11 +94,18 @@ export async function sendRequestorStatusNotification({
     console.warn("[Email] Requestor notification not sent: configure OUTLOOK_EMAIL_USER/OUTLOOK_EMAIL_PASS or RESEND_API_KEY/EMAIL_FROM in Vercel.");
     return { success: false, error: "Email delivery is not configured" };
   }
-  if (config.resendKey && !config.user) {
+  // Resend is the primary provider whenever its API key is present. This is
+  // intentional even when stale SMTP variables remain in the deployment.
+  if (config.resendKey) {
     try {
       const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${config.resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: config.fromAddress, to: [recipient], subject, html }) });
-      if (!response.ok) return { success: false, error: `Resend delivery failed (${response.status})` };
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = result?.message || result?.name || `HTTP ${response.status}`;
+        console.error(`[Email Error] Resend rejected requestor notification: ${detail}`);
+        return { success: false, error: `Resend delivery failed: ${detail}` };
+      }
+      console.info(`[Email] Resend requestor notification accepted: ${result.id || "no-message-id"}`);
       return { success: true, messageId: result.id };
     } catch (error: any) {
       console.error("[Email Error] Resend requestor notification failed:", error);
