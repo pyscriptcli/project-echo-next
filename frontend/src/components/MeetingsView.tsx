@@ -142,7 +142,7 @@ interface MeetingsViewProps {
   meetings: ArchivedMeeting[];
   selectedMeetingId: string | null;
   onSelectMeeting: (id: string) => void;
-  onUpdateMeeting: (meeting: ArchivedMeeting) => void;
+  onUpdateMeeting: (meeting: ArchivedMeeting, previousMeeting?: ArchivedMeeting) => Promise<void>;
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
 }
@@ -295,11 +295,15 @@ export function MeetingsView({
   };
 
   // Save changes
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!activeMeeting) return;
-    onUpdateMeeting(activeMeeting);
-    setSaveSuccessMsg(true);
-    setTimeout(() => setSaveSuccessMsg(false), 3000);
+    try {
+      await onUpdateMeeting(activeMeeting, currentMeeting || undefined);
+      setSaveSuccessMsg(true);
+      setTimeout(() => setSaveSuccessMsg(false), 3000);
+    } catch (error: any) {
+      alert(error.message || "Unable to save changes to ClickUp.");
+    }
   };
 
   // Re-export Word

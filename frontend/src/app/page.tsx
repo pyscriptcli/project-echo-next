@@ -894,14 +894,18 @@ export default function Home() {
                   setFocusedTaskId(taskId);
                   setCurrentView("tasks");
                 }}
-                onUpdateMeeting={(updated) => {
-                  const saved = saveLocalMeeting(updated);
-                  setArchivedMeetings(saved);
-                  fetch("/api/meetings", {
+                onUpdateMeeting={async (updated, previousMeeting) => {
+                  const response = await fetch("/api/meetings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ meeting: updated }),
-                  }).catch(() => {});
+                    body: JSON.stringify({ meeting: updated, previousMeeting }),
+                  });
+                  if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || "Unable to save changes to ClickUp.");
+                  }
+                  const saved = saveLocalMeeting(updated);
+                  setArchivedMeetings(saved);
                 }}
                 onNewMinutes={() => {
                   setCurrentView("minutes");

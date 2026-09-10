@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       }
       list = await createList.json();
     }
-    const description = [`# Meeting Minutes`, `Date: ${meeting_details.date || ""}`, `Department: ${meeting_details.department || meeting_details.workspace || "Unassigned"}`, `Location: ${meeting_details.location || ""}`, `\n## Summary\n${other_discussions || ""}`, `\n## Transcript\n${(transcript || "").substring(0, 20000)}`, `\n## Action Items\n${JSON.stringify(items || [], null, 2)}`].join("\n");
+    const description = [`# Meeting Details`, `**Date:** ${meeting_details.date || ""}`, `**Department:** ${meeting_details.department || meeting_details.workspace || "Unassigned"}`, `**Location:** ${meeting_details.location || ""}`, `\n# Executive Summary\n${other_discussions || ""}`, `\n# Discussion Points\n${JSON.stringify(items || [], null, 2)}`, `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`].join("\n");
     const meetingDate = meeting_details.date || new Date().toISOString().slice(0, 10);
     const meetingName = meeting_details.client_name || "Echo Meeting";
     const taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify({ name: `${meetingDate} — ${meetingName}`, description, assignees: [], tags: ["echo", "meeting-archive"] }) });
