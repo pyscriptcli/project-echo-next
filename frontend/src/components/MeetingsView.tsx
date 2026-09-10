@@ -24,7 +24,7 @@ import {
   CheckSquare
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
-import { exportWord, exportPdf, askEcho } from "@/lib/api";
+import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
 import { formatEchoDate } from "@/lib/dateUtils";
 
@@ -145,6 +145,7 @@ interface MeetingsViewProps {
   onUpdateMeeting: (meeting: ArchivedMeeting, previousMeeting?: ArchivedMeeting) => Promise<void>;
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
+  onSelectMeetingSpace?: (spaceId: string) => void;
 }
 
 export function MeetingsView({
@@ -153,11 +154,15 @@ export function MeetingsView({
   onSelectMeeting,
   onUpdateMeeting,
   onNewMinutes,
-  onNavigateToTasks
+  onNavigateToTasks,
+  onSelectMeetingSpace
 }: MeetingsViewProps) {
   // Search & Filter state
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External">("All");
+  const [meetingSpaces, setMeetingSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
+  const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("");
+  useEffect(() => { discoverClickUpLists().then((data) => setMeetingSpaces(data.spaces || [])).catch(() => setMeetingSpaces([])); }, []);
 
   // Selected meeting working draft (for in-place editing)
   const currentMeeting = meetings.find((m) => m.id === selectedMeetingId) || meetings[0];
@@ -360,6 +365,7 @@ export function MeetingsView({
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
+        <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">Echo Meetings Space<select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId) onSelectMeetingSpace?.(spaceId); }} className="bg-white border border-gray-300 px-3 py-2 text-xs font-normal text-[#003366]"><option value="">Select a ClickUp Space</option>{meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}</select></label>
       </div>
 
       {/* Master-Detail Split Layout */}

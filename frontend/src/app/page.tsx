@@ -890,6 +890,13 @@ export default function Home() {
                 meetings={archivedMeetings}
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
+                onSelectMeetingSpace={async (spaceId) => {
+                  const response = await fetch(`/api/meetings?spaceId=${encodeURIComponent(spaceId)}`);
+                  const data = await response.json().catch(() => ({}));
+                  if (!response.ok) { alert(data.error || "Unable to load meetings from the selected ClickUp Space."); return; }
+                  setArchivedMeetings(data.meetings || []);
+                  setSelectedMeetingId(data.meetings?.[0]?.id || null);
+                }}
                 onNavigateToTasks={(taskId) => {
                   setFocusedTaskId(taskId);
                   setCurrentView("tasks");

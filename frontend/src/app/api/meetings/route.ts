@@ -30,8 +30,29 @@ function changeSummary(before: any, after: any) {
   return changes.length ? changes.join(", ") : "meeting archive";
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const spaceId = new URL(req.url).searchParams.get("spaceId");
+    if (spaceId) {
+      const token = getTokenFromRequest(req);
+      if (!token) return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
+      const headers = { Authorization: token };
+      const listsRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { headers, cache: "no-store" });
+      if (!listsRes.ok) return NextResponse.json({ error: "Unable to read lists in the selected ClickUp Space." }, { status: listsRes.status });
+      const lists = await listsRes.json();
+      const echoList = (lists.lists || []).find((list: any) => String(list.name).toLowerCase() === "echo meetings");
+      if (!echoList) return NextResponse.json({ status: "success", meetings: [], message: "No Echo Meetings list exists in this Space yet." });
+      const tasksRes = await fetch(`https://api.clickup.com/api/v2/list/${echoList.id}/task?include_closed=true&subtasks=true`, { headers, cache: "no-store" });
+      if (!tasksRes.ok) return NextResponse.json({ error: "Unable to read meetings from ClickUp." }, { status: tasksRes.status });
+      const tasks = await tasksRes.json();
+      const meetings = (tasks.tasks || []).map((task: any) => {
+        const match = String(task.name || "").match(/^(\d{4}-\d{2}-\d{2})\s+—\s+(.*)$/);
+        const description = task.description || "";
+        const section = (name: string, next?: string) => { const pattern = new RegExp(`# ${name}\\n([\\s\\S]*?)${next ? `(?=\\n# ${next})` : "$"}`); return description.match(pattern)?.[1]?.trim() || ""; };
+        return { id: String(task.id), meeting_id: String(task.id), title: match?.[2] || task.name || "Echo Meeting", date: match?.[1] || new Date().toISOString().slice(0, 10), meeting_type: "Internal", location: description.match(/\*\*Location:\*\*\s*(.*)/)?.[1]?.trim() || "", attendees_prime: [], attendees_external: [], summary: section("Executive Summary", "Discussion Points"), items: [], transcript: section("Full Transcript"), created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString() };
+      });
+      return NextResponse.json({ status: "success", meetings, list: { id: echoList.id, name: echoList.name } });
+    }
     const url = process.env.SUPABASE_URL || "";
     const key = process.env.SUPABASE_KEY || "";
 
