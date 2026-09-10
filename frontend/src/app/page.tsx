@@ -362,6 +362,9 @@ export default function Home() {
     client_name: "",
     prepared_by: "Dave Policarpio",
     prep_designation: "Executive Member",
+    workspace: "",
+    department: "",
+    space_id: "",
     confirmed_by: "Client Rep or Lead",
     conf_designation: "Designation / Title"
   });
@@ -689,7 +692,7 @@ export default function Home() {
 
   const handleSaveToDb = async () => {
     setIsLoading(true);
-    setLoadingText("Archiving to Supabase Database...");
+    setLoadingText("Archiving meeting to ClickUp...");
     try {
       const res = await saveMeeting(getEffectiveMetadata(), momItems, otherDiscussions, transcript);
       const effectiveMeta = getEffectiveMetadata();
@@ -719,9 +722,10 @@ export default function Home() {
       const updatedList = saveLocalMeeting(newRecord);
       setArchivedMeetings(updatedList);
       setSelectedMeetingId(newMeetingId);
-      alert(res.message || "Successfully saved to meeting archive!");
+      const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
+      alert((res.message || "Successfully archived meeting in ClickUp!") + target);
     } catch (err: any) {
-      alert("Database save completed.");
+      alert(err?.message || "Unable to archive meeting in ClickUp.");
     } finally {
       setIsLoading(false);
     }
@@ -1314,6 +1318,12 @@ export default function Home() {
                     onChange={(e) => setMetadata({ ...metadata, client_name: e.target.value })}
                     className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Workspace</label><input value={metadata.workspace || ""} onChange={(e) => setMetadata({ ...metadata, workspace: e.target.value })} placeholder="Workspace name" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Department</label><input value={metadata.department || ""} onChange={(e) => setMetadata({ ...metadata, department: e.target.value })} placeholder="e.g. CRD or IT" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Space ID</label><input value={metadata.space_id || ""} onChange={(e) => setMetadata({ ...metadata, space_id: e.target.value })} placeholder="Required for archive" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
                 </div>
 
                 {/* Team Attendees & External Attendees */}
