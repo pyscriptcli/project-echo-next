@@ -61,19 +61,6 @@ export function Toolbar({
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
         </div>
 
-        {/* Pre-fill Demo Button */}
-        {onPreFillDemo && (
-          <button
-            type="button"
-            onClick={onPreFillDemo}
-            className="h-8 px-2.5 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
-            title="Pre-fill form with sample quotation data"
-          >
-            <span className="text-amber-600 font-black">⚡</span>
-            <span className="hidden sm:inline">Pre-fill Demo</span>
-          </button>
-        )}
-
         {/* Revision badge */}
         {isRevision && (
           <span className="inline-flex items-center gap-1 px-2 h-8 bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-bold shrink-0">

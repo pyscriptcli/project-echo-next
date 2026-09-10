@@ -13,7 +13,7 @@ import {
   ClipboardList
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "meetings" | "minutes" | "forms";
+export type NavView = "dashboard" | "tasks" | "meetings" | "minutes" | "forms" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -92,11 +92,12 @@ export function Sidebar({
     },
     {
       id: "forms" as NavView,
-      label: "Forms Portal",
+      label: "Forms",
       icon: ClipboardList,
       badge: "ClickUp"
     }
   ];
+  if (user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") navItems.push({ id: "forms-admin", label: "Forms Admin", icon: ClipboardList, badge: null });
 
   return (
     <div

@@ -695,7 +695,6 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
             setMissingFieldsList([]);
             setErrorMessage(null);
           }}
-          onPreFillDemo={handlePreFillDemo}
         />
 
         {/* Error banner */}
@@ -788,6 +787,8 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
 }
 
 export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
+  const [category, setCategory] = useState<string | null>(null);
+  if (!category) return <div className="bg-bg-primary text-[#0C0C0E] py-8 px-3 sm:px-6"><div className="max-w-5xl mx-auto"><h2 className="text-2xl font-semibold text-[#003366] mb-2">Choose a department</h2><p className="text-sm text-gray-500 mb-6">Select a category to start a request.</p><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{["Finance", "Marketing", "IT", "Research & Advisory"].map((name) => <button key={name} onClick={() => setCategory(name)} className="min-h-36 text-left p-6 bg-white border border-gray-200 hover:border-[#C9AB4C] hover:shadow-md transition"><div className="text-lg font-bold text-[#003366]">{name}</div><div className="text-xs text-gray-400 mt-2">Forms coming soon</div></button>)}</div></div></div>;
   return (
     <Suspense
       fallback={

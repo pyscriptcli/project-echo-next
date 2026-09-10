@@ -14,8 +14,8 @@ import {
   CheckSquare,
   LayoutDashboard,
   FolderKanban,
-  ExternalLink
-  ,ClipboardList
+  ExternalLink,
+  ClipboardList
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
 import { ClickUpTask } from "./TasksView";
@@ -30,7 +30,7 @@ interface TopbarProps {
   onNewMeeting: () => void;
   onOpenStudio: () => void;
   onGoToNotetaker: () => void;
-  onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "minutes" | "forms") => void;
+  onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "minutes" | "forms" | "forms-admin") => void;
 }
 
 export function Topbar({
@@ -83,12 +83,13 @@ export function Topbar({
   const query = searchQuery.trim().toLowerCase();
 
   // 1. Navigation Pages
-  const APP_PAGES: Array<{ id: "dashboard" | "meetings" | "tasks" | "minutes" | "forms"; name: string; description: string; icon: any }> = [
+  const APP_PAGES: Array<{ id: "dashboard" | "meetings" | "tasks" | "minutes" | "forms" | "forms-admin"; name: string; description: string; icon: any }> = [
     { id: "dashboard", name: "Dashboard", description: "Executive overview & meeting metrics", icon: LayoutDashboard },
     { id: "meetings", name: "Meetings Archive", description: "Review and edit meeting minutes", icon: Calendar },
     { id: "tasks", name: "Tasks Portal (ClickUp)", description: "Track & execute meeting action items", icon: CheckSquare },
     { id: "minutes", name: "Notetaker Studio", description: "Transcribe audio & synthesize notes", icon: Mic },
-    { id: "forms", name: "Forms Portal", description: "Submit, track & approve ClickUp requests", icon: ClipboardList },
+    { id: "forms", name: "Forms", description: "Submit, track & approve requests", icon: ClipboardList },
+    { id: "forms-admin", name: "Forms Admin", description: "Configure form access and routing", icon: ClipboardList },
   ];
 
   const matchedPages = query

@@ -1792,8 +1792,8 @@ export default function Home() {
             </div>
           )}
           </div>
-          {currentView === "forms" && (
-            <FormsPortal user={authUser ? { username: authUser.username, email: authUser.email } : null} />
+          {(currentView === "forms" || currentView === "forms-admin") && (
+            <FormsPortal initialTab={currentView === "forms-admin" ? "admin" : "track"} user={authUser ? { username: authUser.username, email: authUser.email } : null} />
           )}
         </main>
       </div>
