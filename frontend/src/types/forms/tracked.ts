@@ -27,5 +27,6 @@ export interface TrackedRfp {
   revisionReason?: string;
   revisionBy?: "tl" | "finance" | "approver";
   dateCreated: string;
+  updatedAt?: string;
   attachments: Array<{ id: string; name: string; url: string; type?: string }>;
 }

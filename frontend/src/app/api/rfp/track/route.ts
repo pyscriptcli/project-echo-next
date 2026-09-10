@@ -33,6 +33,7 @@ export interface TrackedRfp {
   revisionReason?: string;
   revisionBy?: "tl" | "finance" | "approver";
   dateCreated: string;
+  updatedAt?: string;
   attachments: Array<{ id: string; name: string; url: string; type?: string }>;
 }
 
@@ -172,9 +173,9 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     stageLabel = "Finance Verification (Zoho & Top Sheet)";
     stageIndex = 2;
   } else if (isBox1Checked || isOngoing) {
-    currentStage = "endorsed";
-    stageLabel = "Endorsed by Team Leader";
-    stageIndex = 1;
+    currentStage = "finance_verification";
+    stageLabel = "Finance Verification";
+    stageIndex = 2;
   } else {
     currentStage = "submitted";
     stageLabel = "Submitted (Pending Endorsement)";
@@ -196,10 +197,12 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
   // requestors do not see a ClickUp checklist, while Echo can still render it.
   const stageMarker = desc.match(/<!--\s*echo-finance-stage:(\d+)\s*-->/i);
   if (stageMarker && ["rfp", "po", "pcv"].includes(formType)) {
-    stageIndex = Math.max(0, Math.min(5, Number(stageMarker[1])));
+    const savedStage = Number(stageMarker[1]);
+    // Earlier markers used 1 for a completed Team Leader approval.
+    stageIndex = Math.max(0, Math.min(5, savedStage === 1 ? 2 : savedStage));
     const financeStages = [
       ["submitted", "Submitted (Pending Endorsement)"],
-      ["endorsed", "Endorsed by Team Leader"],
+      ["endorsed", "Approval Team Leader"],
       ["finance_verification", "Finance Verification"],
       ["disbursement_prep", "Disbursement Preparation"],
       ["executive_signoff", "Executive Sign-Off"],
@@ -257,6 +260,7 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
     isRevisionRequested,
     revisionReason,
     dateCreated: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(),
+    updatedAt: task.date_updated ? new Date(Number(task.date_updated)).toISOString() : undefined,
     attachments,
   };
 }

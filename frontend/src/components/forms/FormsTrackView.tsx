@@ -24,7 +24,7 @@ const DEPARTMENTS = ["All Departments", ...DEPARTMENT_NAMES];
 
 const FINANCE_STAGES = [
   { label: "Submitted", desc: "Pending Endorsement" },
-  { label: "Endorsed", desc: "TL / Dept Head Approved" },
+  { label: "Approval Team Leader", desc: "Awaiting Team Leader approval" },
   { label: "Finance Verification", desc: "Zoho & Top Sheet Prepared" },
   { label: "Disbursement Prep", desc: "UnionBank / Check Prepared" },
   { label: "Executive Sign-Off", desc: "CFO & CEO Signed Off" },
@@ -324,8 +324,8 @@ function TrackContent() {
                           badgeColor = "bg-amber-500 text-white border-amber-500 shadow-sm animate-pulse";
                           textColor = "text-amber-800 font-bold";
                         } else {
-                          badgeColor = "bg-[#003366] text-white border-[#003366] shadow-sm";
-                          textColor = "text-[#003366] font-bold";
+                          badgeColor = "bg-amber-400 text-[#003366] border-amber-500 shadow-sm animate-pulse";
+                          textColor = "text-amber-800 font-bold";
                         }
                       }
 
@@ -334,13 +334,17 @@ function TrackContent() {
                           <div
                             className={`w-7 h-7 rounded-full flex items-center justify-center border text-xs font-bold mb-2 transition-all ${badgeColor}`}
                           >
-                            {isComplete ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                            {isComplete ? <CheckCircle2 className="w-4 h-4" /> : isCurrent ? <Clock className="w-4 h-4" /> : idx + 1}
                           </div>
                           <span className={`text-[11px] sm:text-xs font-bold leading-tight block ${textColor}`}>
                             {stage.label}
                           </span>
                           <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
-                            {stage.desc}
+                            {idx === 1 && isFinance && isComplete
+                              ? `Approved by Team Leader${req.updatedAt ? ` · ${new Date(req.updatedAt).toLocaleString()}` : ""}`
+                              : isCurrent && !req.isRevisionRequested
+                              ? "On Going"
+                              : stage.desc}
                           </span>
                         </div>
                       );
