@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";
+export async function POST(req: Request) { const b=await req.json().catch(()=>({})); if(b.email?.toLowerCase()!=="admin@primephilippines.com"||b.password!=="admin") return NextResponse.json({error:"Invalid credentials"},{status:401}); const r=NextResponse.json({ok:true}); r.cookies.set("echo_admin_test","1",{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:86400}); return r; }
