@@ -7,13 +7,13 @@ export default function ITHelpdeskSupportForm({ listId, user }: { listId: string
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setSaving(true); setNotice("");
+    event.preventDefault(); const formElement = event.currentTarget; setSaving(true); setNotice("");
     try {
-      const payload = new FormData(event.currentTarget);
+      const payload = new FormData(formElement);
       payload.append("listId", listId); payload.append("requestorName", user?.name || "");
       const response = await fetch("/api/forms/it-helpdesk-support", { method: "POST", body: payload });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || "Unable to submit support request.");
-      setNotice(`Submitted to ClickUp: ${data.taskUrl || data.taskId}`); event.currentTarget.reset();
+      setNotice(`Submitted to ClickUp: ${data.taskUrl || data.taskId}`); formElement.reset();
     } catch (error: any) { setNotice(error.message || "Unable to submit support request."); }
     finally { setSaving(false); }
   };

@@ -33,7 +33,7 @@ import {
   ValidationErrorItem,
   scrollToFormField,
 } from "@/lib/forms/rfpValidation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, FileText } from "lucide-react";
 
 const getInitialFormData = (): RfpFormData => {
   const today = new Date().toISOString().split("T")[0];
