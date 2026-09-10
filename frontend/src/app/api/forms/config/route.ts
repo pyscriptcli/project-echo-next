@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 
-const OWNER_EMAIL = "dave.policarpio@primephilippines.com";
+const OWNER_EMAIL = "admin@primephilippines.com";
 interface UserPagePermission {
   email: string;
   name?: string;
@@ -105,15 +105,16 @@ export async function GET(req: NextRequest) {
 
   // Compute allowed pages for current user
   let allowedPages = defaultPages;
-  if (isAdmin) {
+  const isOwner = testAdmin || userEmail === OWNER_EMAIL;
+  const userRule = (config.pagePermissions || []).find(
+    (p: any) => String(p.email).toLowerCase().trim() === userEmail
+  );
+  if (isOwner) {
     allowedPages = ALL_APP_PAGES;
-  } else {
-    const userRule = (config.pagePermissions || []).find(
-      (p: any) => String(p.email).toLowerCase().trim() === userEmail
-    );
-    if (userRule && Array.isArray(userRule.allowedPages) && userRule.allowedPages.length > 0) {
-      allowedPages = userRule.allowedPages;
-    }
+  } else if (userRule && Array.isArray(userRule.allowedPages) && userRule.allowedPages.length > 0) {
+    allowedPages = userRule.allowedPages;
+  } else if (isAdmin) {
+    allowedPages = ALL_APP_PAGES;
   }
 
   // Owner and Admins receive full config including admin settings and all user permissions

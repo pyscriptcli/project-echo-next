@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { sendRequestorStatusNotification } from "@/lib/forms/email";
 
-const OWNER_EMAIL = "dave.policarpio@primephilippines.com";
+const OWNER_EMAIL = "admin@primephilippines.com";
 
 export async function POST(req: NextRequest) {
   try {

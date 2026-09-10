@@ -68,7 +68,7 @@ export function Sidebar({
   // Auto-collapsed when pointer is not hovering; auto-expanded when hovering
   const effectiveCollapsed = isPinned ? false : !isHovered;
 
-  const isOwner = user?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+  const isOwner = user?.email?.toLowerCase() === "admin@primephilippines.com";
   const isProjectAdmin = isOwner || Boolean(isAdmin);
 
   // Ordered strictly as: dashboard -> tasks -> meetings -> Notetaker -> forms

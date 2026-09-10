@@ -356,12 +356,10 @@ export default function Home() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (!data) return;
-          if (data.isAdmin) {
-            setIsAdminUser(true);
-          }
+          setIsAdminUser(Boolean(data.isAdmin));
           if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
             setAllowedPages(data.allowedPages);
-            const isOwner = authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+            const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
             if (!data.isAdmin && !isOwner) {
               setCurrentView((prev) => {
                 if (prev === "forms-admin") return data.allowedPages[0] || "forms";
@@ -382,15 +380,14 @@ export default function Home() {
   }, [authUser]);
 
   const isPageAllowed = (view: NavView) => {
-    if (authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") return true;
-    if (isAdminUser) return true;
+    if (authUser?.email?.toLowerCase() === "admin@primephilippines.com") return true;
     if (view === "forms-admin") return false;
     return allowedPages.includes(view);
   };
 
   const handleSelectView = (view: NavView) => {
     if (view === "forms-admin") {
-      if (isAdminUser || authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com") {
+      if (isAdminUser || authUser?.email?.toLowerCase() === "admin@primephilippines.com") {
         setCurrentView("forms-admin");
       }
       return;
