@@ -10,21 +10,23 @@ export interface EmailConfig {
   fromName: string;
   resendKey: string;
   fromAddress: string;
+  provider: "resend" | "smtp";
   isConfigured: boolean;
 }
 
 export function getEmailConfig(): EmailConfig {
-  const user = process.env.OUTLOOK_EMAIL_USER || process.env.SMTP_USER || "";
-  const pass = process.env.OUTLOOK_EMAIL_PASS || process.env.SMTP_PASS || "";
-  const host = process.env.OUTLOOK_SMTP_HOST || process.env.SMTP_HOST || "smtp-mail.outlook.com";
-  const port = parseInt(process.env.OUTLOOK_SMTP_PORT || process.env.SMTP_PORT || "587", 10);
+  const user = process.env.BREVO_SMTP_USER || process.env.SMTP_USER || process.env.OUTLOOK_EMAIL_USER || "";
+  const pass = process.env.BREVO_SMTP_KEY || process.env.SMTP_PASS || process.env.OUTLOOK_EMAIL_PASS || "";
+  const host = process.env.BREVO_SMTP_HOST || process.env.SMTP_HOST || process.env.OUTLOOK_SMTP_HOST || "smtp-relay.brevo.com";
+  const port = parseInt(process.env.BREVO_SMTP_PORT || process.env.SMTP_PORT || process.env.OUTLOOK_SMTP_PORT || "587", 10);
   const fromName = process.env.EMAIL_FROM_NAME || "Forms Portal";
   const resendKey = process.env.RESEND_API_KEY || "";
   const fromAddress = process.env.EMAIL_FROM || user;
+  const provider = process.env.EMAIL_PROVIDER?.toLowerCase() === "resend" || (!process.env.EMAIL_PROVIDER && resendKey) ? "resend" : "smtp";
 
   const smtpConfigured = Boolean(user && pass && user !== "mock" && !user.includes("example.com"));
-  const isConfigured = smtpConfigured || Boolean(resendKey && fromAddress);
-  return { user, pass, host, port, fromName, resendKey, fromAddress, isConfigured };
+  const isConfigured = provider === "resend" ? Boolean(resendKey && fromAddress) : smtpConfigured;
+  return { user, pass, host, port, fromName, resendKey, fromAddress, provider, isConfigured };
 }
 
 function createTransporter() {
@@ -91,12 +93,12 @@ export async function sendRequestorStatusNotification({
   const html = `<div style="background:#f4f4f6;padding:28px;font-family:Arial,sans-serif;color:#334155"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e2e8f0"><div style="background:#3f3f3f;color:#fff;padding:22px 30px;font-size:20px;font-weight:700">Request Status Update</div><div style="padding:30px;line-height:1.55;font-size:14px;white-space:normal">${body.replace(/\n/g, "<br>")}</div></div></div>`;
   const config = getEmailConfig();
   if (!config.isConfigured) {
-    console.warn("[Email] Requestor notification not sent: configure OUTLOOK_EMAIL_USER/OUTLOOK_EMAIL_PASS or RESEND_API_KEY/EMAIL_FROM in Vercel.");
+    console.warn("[Email] Requestor notification not sent: configure Brevo SMTP (BREVO_SMTP_USER/BREVO_SMTP_KEY) or Resend (RESEND_API_KEY/EMAIL_FROM) in Vercel.");
     return { success: false, error: "Email delivery is not configured" };
   }
   // Resend is the primary provider whenever its API key is present. This is
   // intentional even when stale SMTP variables remain in the deployment.
-  if (config.resendKey) {
+  if (config.provider === "resend" && config.resendKey) {
     try {
       const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${config.resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: config.fromAddress, to: [recipient], subject, html }) });
       const result = await response.json().catch(() => ({}));
