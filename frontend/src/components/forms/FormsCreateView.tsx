@@ -675,7 +675,7 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
       : formData.payee;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0C0C0E] py-6 px-3 sm:px-6 flex flex-col items-center">
+    <div className="bg-transparent text-[#0C0C0E] py-0 px-0 flex flex-col items-center">
       {/* Container - Aligned to exact 850px document width */}
       <div className="w-full max-w-[850px]">
         {/* Single Compressed Topbar */}
@@ -787,19 +787,9 @@ function RfpAppContent({ user }: { user?: FormsUser | null }) {
 }
 
 export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
-  const [category, setCategory] = useState<string | null>(null);
-  const [selectedForm, setSelectedForm] = useState<string | null>(null);
+  const [category, setCategory] = useState("Finance");
   const departments = ["Finance", "Marketing", "IT", "Research & Advisory"];
-  if (!selectedForm) return <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6"><div className="max-w-6xl mx-auto"><h2 className="text-2xl font-semibold text-[#003366] mb-1">New Form</h2><p className="text-sm text-gray-500 mb-6">Choose a department, then choose the form you want to submit.</p><div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6"><aside className="border border-gray-200 bg-white p-4"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div><div className="space-y-2">{departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-3 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}</div></aside><section className="border border-gray-200 bg-white p-6"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Forms</div>{category ? <><div className="text-sm text-[#003366] font-semibold mb-4">{category}</div><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{["Request for Payment", "Purchase Order", "Petty Cash Voucher"].map((form) => <button key={form} onClick={() => setSelectedForm(form)} className="min-h-28 text-left p-5 border border-gray-200 hover:border-[#C9AB4C] hover:shadow-sm transition"><div className="font-bold text-[#003366]">{form}</div><div className="text-xs text-gray-400 mt-2">Start a {category} request</div></button>)}</div></> : <div className="min-h-56 flex items-center justify-center text-sm text-gray-400">Select a department to view its available forms.</div>}</section></div></div></div>;
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 text-sm">
-          Loading Forms Portal...
-        </div>
-      }
-    >
-      <RfpAppContent user={user} />
-    </Suspense>
+    <div className="bg-bg-primary text-[#0C0C0E] py-6 px-3 sm:px-6"><div className="max-w-[1500px] mx-auto"><h2 className="text-2xl font-serif font-bold italic text-[#003366] mb-1">New Form</h2><p className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-5">Department forms and request workspace</p><div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6"><aside className="border border-gray-200 bg-white p-5 self-start"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Departments</div><div className="space-y-2">{departments.map((name) => <button key={name} onClick={() => setCategory(name)} className={`w-full text-left px-4 py-4 border transition ${category === name ? "border-[#C9AB4C] bg-[#fffdf6] text-[#003366]" : "border-gray-200 hover:border-[#C9AB4C]"}`}><div className="font-bold text-sm">{name}</div></button>)}</div></aside><section className="border border-gray-200 bg-white p-5 min-w-0"><div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-5"><div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div><span className="text-xs text-gray-400">Choose a form from the selector below</span></div><Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}><RfpAppContent user={user} /></Suspense></section></div></div></div>
   );
 }
