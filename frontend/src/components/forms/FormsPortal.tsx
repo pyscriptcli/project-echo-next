@@ -111,6 +111,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations">("rbac");
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -393,8 +394,16 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
         </div>
       )}
 
+      <div className="flex gap-1 border-b border-gray-200 pb-2">
+        {(["rbac", "configurations"] as const).map((item) => (
+          <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
+            {item === "rbac" ? "RBAC" : "Configurations"}
+          </button>
+        ))}
+      </div>
+
       {/* Role access summary */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>
         <h2 className="text-lg font-bold text-slate-800 mb-3">Role Access Summary</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {[
@@ -415,7 +424,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       </section>
 
       {/* NEW: Page Access Governance */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>
         <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -674,7 +683,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       </section>
 
       {/* Admin membership */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-slate-800">Admin Membership</h2>
           <span className="text-[10px] uppercase tracking-widest text-gray-400">Owner only</span>
@@ -724,7 +733,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       </section>
 
       {/* People & department assignments */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>
         <h2 className="text-lg font-bold text-slate-800 mb-3">People &amp; Department Assignments</h2>
         <div className="space-y-2 mb-4">
           {config.members.map((member) => (
@@ -793,7 +802,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       </section>
 
       {/* Departments */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "configurations" ? "hidden" : ""}`}>
         <h2 className="text-lg font-bold text-slate-800 mb-3">Departments</h2>
         <div className="flex flex-wrap gap-2 mb-3">
           {config.departments.map((department) => (
@@ -829,7 +838,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
       </section>
 
       {/* Department forms & ClickUp destinations */}
-      <section className="panel">
+      <section className={`panel ${settingsTab !== "configurations" ? "hidden" : ""}`}>
         <h2 className="text-lg font-bold text-slate-800 mb-1">Department Forms &amp; ClickUp Destinations</h2>
         <p className="text-xs text-gray-500 mb-4">
           Every department/form mapping requires its own ClickUp List ID.
@@ -994,6 +1003,9 @@ export default function FormsPortal({
   const isAdmin =
     normalizeEmail(user?.email) === OWNER_EMAIL ||
     configuredAdmins.some((admin) => admin.active && normalizeEmail(admin.email) === normalizeEmail(user?.email));
+
+  // Do not render Settings at all for non-admin accounts, including direct URL attempts.
+  if (tab === "admin" && !isAdmin) return null;
 
   const tabs: Array<{ id: PortalTab; label: string; icon: typeof FileEdit }> = [
     { id: "track", label: "Track Status", icon: PackageSearch },
