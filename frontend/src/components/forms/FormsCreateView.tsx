@@ -682,7 +682,7 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
   return (
     <div className="bg-transparent text-[#0C0C0E] py-0 px-0 flex flex-col items-center">
       {/* Container - Aligned to exact 850px document width */}
-      <div className="w-full max-w-[850px]">
+      <div className="w-full">
         {/* Single Compressed Topbar */}
         <Toolbar
           onPreviewPdf={handlePreviewPdf}
@@ -818,12 +818,13 @@ export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
           </aside>
           <section className="border border-gray-200 bg-white p-5 min-w-0">
             {category === "IT" ? (
-              <div className="relative mb-5 flex flex-col gap-3 border border-slate-300 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative mb-5 flex flex-col gap-3 border border-slate-300 bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-center">
                 <div className="absolute left-0 right-0 top-0 h-[2px] bg-[#C9AB4C]" />
-                <label className="relative flex w-full max-w-[410px] items-center border border-[#003366] bg-slate-50 text-[#003366]"><FileText size={15} className="ml-3 shrink-0" /><select value={itFormKey} onChange={(event) => setItFormKey(event.target.value)} className="w-full appearance-none bg-transparent py-2.5 pl-2 pr-8 text-xs font-bold outline-none"><option value="it-asset-request-form">IT Asset Request Form</option><option value="it-helpdesk-support-form">Helpdesk Support Form</option><option value="it-bug-error-report-form">Bug/Error Report Form</option></select><span className="pointer-events-none absolute right-3 text-xs">⌄</span></label>
-                <button type="submit" form={itFormKey} disabled={!listId} className="inline-flex items-center justify-center gap-2 bg-[#003366] px-5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><Send size={15} className="text-[#C9AB4C]" />Submit to ClickUp</button>
+                <div className="shrink-0 min-w-[180px]"><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">IT</div></div>
+                <label className="relative flex w-full max-w-[410px] flex-1 items-center border border-[#003366] bg-slate-50 text-[#003366]"><FileText size={15} className="ml-3 shrink-0" /><select value={itFormKey} onChange={(event) => setItFormKey(event.target.value)} className="w-full appearance-none bg-transparent py-2.5 pl-2 pr-8 text-xs font-bold outline-none"><option value="it-asset-request-form">IT Asset Request Form</option><option value="it-helpdesk-support-form">Helpdesk Support Form</option><option value="it-bug-error-report-form">Bug/Error Report Form</option></select><span className="pointer-events-none absolute right-3 text-xs">⌄</span></label>
+                <button type="submit" form={itFormKey} disabled={!listId} className="inline-flex shrink-0 items-center justify-center gap-2 bg-[#003366] px-5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><Send size={15} className="text-[#C9AB4C]" />Submit to ClickUp</button>
               </div>
-            ) : <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-5"><div><div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div><div className="text-lg font-bold text-[#003366] mt-1">{category}</div></div><span className="text-xs text-gray-400">Choose a form from the selector below</span></div>}
+            ) : null}
             {listId ? <Suspense fallback={<div className="min-h-64 flex items-center justify-center text-sm text-gray-500">Loading form…</div>}>{category === "IT" ? itFormKey === "it-helpdesk-support-form" ? <ITHelpdeskSupportForm listId={listId} user={user} /> : itFormKey === "it-bug-error-report-form" ? <ITBugErrorReportForm listId={listId} user={user} /> : <ITAssetRequestForm listId={listId} user={user} /> : <RfpAppContent user={user} listId={listId} />}</Suspense> : <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Not configured yet — please contact IT department.</div>}
           </section>
         </div>

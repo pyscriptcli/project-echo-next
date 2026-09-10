@@ -39,12 +39,17 @@ export function Toolbar({
   onPreFillDemo,
 }: ToolbarProps) {
   return (
-    <div className="w-full max-w-[850px] mx-auto sticky top-3 z-40 mb-4 bg-white border border-slate-300 shadow-sm px-4 py-2.5 flex items-center justify-between gap-3 relative">
+    <div className="w-full sticky top-3 z-40 mb-4 bg-white border border-slate-300 shadow-sm px-4 py-2.5 flex flex-col lg:flex-row lg:items-center gap-3 relative">
       {/* Top Gold Accent Line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#C9AB4C]" />
 
-      {/* Left: Form Selector occupying expanded space */}
-      <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
+      <div className="shrink-0 min-w-[180px]">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Forms</div>
+        <div className="text-lg font-bold text-[#003366] mt-1">Finance</div>
+      </div>
+
+      {/* Form selector */}
+      <div className="flex items-center gap-2 flex-1 min-w-0 lg:mr-2">
         <div className="relative flex items-center w-full max-w-[300px] sm:max-w-[340px]">
           <FileText className="w-3.5 h-3.5 text-[#003366] absolute left-2.5 pointer-events-none" />
           <select
@@ -71,7 +76,7 @@ export function Toolbar({
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
         <button
           type="button"
           onClick={onPreviewPdf}
