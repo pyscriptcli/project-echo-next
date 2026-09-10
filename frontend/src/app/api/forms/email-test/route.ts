@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
     const user = getUserFromRequest(req);
     const email = String(user?.email || "").toLowerCase().trim();
     if (!email) return NextResponse.json({ success: false, message: "Your login email is unavailable" }, { status: 400 });
+    // Resend's onboarding sender can only deliver to the Resend account email.
+    // Keep this test-only recipient separate from the logged-in ClickUp user.
+    const recipient = String(process.env.RESEND_TEST_RECIPIENT || email).toLowerCase().trim();
     const body = await req.json().catch(() => ({}));
     const department = String(body.department || "Finance");
     const formType = String(body.formType || "rfp");
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https")}://${host}`;
     const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
     const result = await sendRequestorStatusNotification({
-      recipient: email,
+      recipient,
       event,
       department,
       formType,
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
         track_status_url: `${appUrl}/?view=forms&tab=track`,
       },
     });
-    return NextResponse.json({ ...result, recipient: email });
+    return NextResponse.json({ ...result, recipient });
   } catch (error: any) {
     console.error("[Email Test] Failed:", error);
     return NextResponse.json({ success: false, message: error.message || "Unable to send test email" }, { status: 500 });
