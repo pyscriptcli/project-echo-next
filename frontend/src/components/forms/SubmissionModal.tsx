@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, ExternalLink, Download, Copy, Check, FileText } from "lucide-react";
+import { CheckCircle2, Download, Copy, Check } from "lucide-react";
 import { SubmissionResponse } from "@/types/forms/rfp";
 import { downloadPdfBlob } from "@/lib/forms/pdfGenerator";
 
@@ -81,21 +81,7 @@ export function SubmissionModal({
               </p>
             </div>
 
-            {response.taskUrl && !response.isMock ? (
-              <a
-                href={response.taskUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="edgy-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
-              >
-                <span>View in ClickUp</span>
-                <ExternalLink className="w-3.5 h-3.5 text-[#C9AB4C]" />
-              </a>
-            ) : (
-              <div className="text-xs text-slate-500 italic bg-white px-3 py-1.5 border border-slate-200">
-                Mock Task #{response.taskId}
-              </div>
-            )}
+            {response.isMock && <div className="text-xs text-slate-500 italic bg-white px-3 py-1.5 border border-slate-200">Mock Task #{response.taskId}</div>}
           </div>
 
           {/* Workflow Next Steps */}

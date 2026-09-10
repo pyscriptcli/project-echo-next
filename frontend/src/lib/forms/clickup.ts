@@ -60,14 +60,6 @@ export function buildTaskDescription(data: RfpFormData): string {
     `| **Payment Details** | ${paymentDetails} |`,
     `| **Purpose** | ${data.purpose ? data.purpose.replace(/\n/g, " ") : "_No purpose stated._"} |`,
     `| **Requested By** | **${data.requestedByName || "N/A"}**${data.requestedByEmail ? ` (${data.requestedByEmail})` : ""} (Date: ${data.date || "N/A"}) |`,
-    "",
-    `---`,
-    `### 🔄 Processing Checklist`,
-    `- [ ] **1. Department / Team Leader Endorsement** — Verified requirement & purpose`,
-    `- [ ] **2. Finance Verification** — Encoded in Zoho & Top Sheet prepared`,
-    `- [ ] **3. Disbursement Preparation** — Uploaded to UnionBank (UB) / Check prepared`,
-    `- [ ] **4. Executive Sign-Off** — CFO / CEO reviewed & signed`,
-    `- [ ] **5. Payment Released & Completed** — Proof of payment sent & filed`,
   ];
 
   return lines.join("\n");
@@ -113,14 +105,6 @@ export function buildPoTaskDescription(data: PoFormData): string {
     `| **Financial Breakdown** | Subtotal: ₱${formattedSubtotal} • VAT (12%): ₱${formattedVat} • EWT (2%): ₱${formattedEwt} |`,
     `| **Notes** | ${data.additionalNotes ? data.additionalNotes.replace(/\n/g, " ") : "_No additional notes._"} |`,
     `| **Prepared By** | **${data.preparedByName || "N/A"}** (Date: ${data.date || "N/A"}) |`,
-    "",
-    `---`,
-    `### 🔄 Processing Checklist`,
-    `- [ ] **1. Department / Team Leader Endorsement** — Verified requirement & purpose`,
-    `- [ ] **2. Finance Verification** — Encoded in Zoho & Top Sheet prepared`,
-    `- [ ] **3. Disbursement Preparation** — Uploaded to UnionBank (UB) / Check prepared`,
-    `- [ ] **4. Executive Sign-Off** — CFO / CEO reviewed & signed`,
-    `- [ ] **5. Payment Released & Completed** — Proof of payment sent & filed`,
   ];
 
   return lines.join("\n");
@@ -161,14 +145,6 @@ export function buildPcvTaskDescription(data: PcvFormData): string {
     `| **Date** | ${data.date || "N/A"} (${urgencyDisplay}) |`,
     `| **Particulars** | ${particularsSummary} |`,
     `| **Requested By** | **${data.requestedByName || "N/A"}** |`,
-    "",
-    `---`,
-    `### 🔄 Processing Checklist`,
-    `- [ ] **1. Department / Team Leader Endorsement** — Verified requirement & purpose`,
-    `- [ ] **2. Finance Verification** — Encoded in Zoho & Top Sheet prepared`,
-    `- [ ] **3. Disbursement Preparation** — Uploaded to UnionBank (UB) / Check prepared`,
-    `- [ ] **4. Executive Sign-Off** — CFO / CEO reviewed & signed`,
-    `- [ ] **5. Payment Released & Completed** — Proof of payment sent & filed`,
   ];
 
   return lines.join("\n");

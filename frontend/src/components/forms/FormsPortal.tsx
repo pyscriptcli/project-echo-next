@@ -1027,7 +1027,7 @@ export default function FormsPortal({
   }
 
   return (
-    <div className="-mt-2 space-y-4">
+    <div className="-mt-5 space-y-4">
       {tab === "admin" ? (
         <AdminConfiguration userEmail={user?.email || ""} />
       ) : (
