@@ -351,28 +351,34 @@ export default function Home() {
 
   // Fetch page governance and role access
   useEffect(() => {
-    fetch("/api/forms/config")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data) return;
-        if (data.isAdmin) {
-          setIsAdminUser(true);
-        }
-        if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
-          setAllowedPages(data.allowedPages);
-          const isOwner = authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
-          if (!data.isAdmin && !isOwner) {
-            setCurrentView((prev) => {
-              if (prev === "forms-admin") return data.allowedPages[0] || "forms";
-              if (!data.allowedPages.includes(prev)) {
-                return data.allowedPages[0] || "forms";
-              }
-              return prev;
-            });
+    const refreshGovernance = () => {
+      fetch("/api/forms/config")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data) return;
+          if (data.isAdmin) {
+            setIsAdminUser(true);
           }
-        }
-      })
-      .catch(() => {});
+          if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
+            setAllowedPages(data.allowedPages);
+            const isOwner = authUser?.email?.toLowerCase() === "dave.policarpio@primephilippines.com";
+            if (!data.isAdmin && !isOwner) {
+              setCurrentView((prev) => {
+                if (prev === "forms-admin") return data.allowedPages[0] || "forms";
+                if (!data.allowedPages.includes(prev)) {
+                  return data.allowedPages[0] || "forms";
+                }
+                return prev;
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    };
+
+    refreshGovernance();
+    window.addEventListener("echo-config-updated", refreshGovernance);
+    return () => window.removeEventListener("echo-config-updated", refreshGovernance);
   }, [authUser]);
 
   const isPageAllowed = (view: NavView) => {

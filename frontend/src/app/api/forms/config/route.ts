@@ -15,6 +15,7 @@ interface FormsConfigData {
   departments: string[];
   mappings: any[];
   pagePermissions: UserPagePermission[];
+  defaultPageAccess?: string[];
 }
 
 const DEFAULT_CONFIG: FormsConfigData = {
@@ -23,6 +24,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
   mappings: [],
   pagePermissions: [],
+  defaultPageAccess: ["forms"],
 };
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "meetings", "minutes", "forms"];
@@ -47,11 +49,8 @@ function isOwnerOrAdmin(req: NextRequest, config: any) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!getTokenFromRequest(req)) {
-    return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
-  }
-
-  const user = getUserFromRequest(req);
+  const token = getTokenFromRequest(req);
+  const user = token ? getUserFromRequest(req) : null;
   const userEmail = (user?.email || "").toLowerCase().trim();
 
   const supabase = client();
@@ -66,9 +65,30 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (!error && data?.config) {
-      config = { ...DEFAULT_CONFIG, ...data.config, pagePermissions: data.config.pagePermissions || [] };
+      config = {
+        ...DEFAULT_CONFIG,
+        ...data.config,
+        pagePermissions: data.config.pagePermissions || [],
+        defaultPageAccess: data.config.defaultPageAccess || ["forms"],
+      };
       source = "supabase";
     }
+  }
+
+  const defaultPages =
+    Array.isArray(config.defaultPageAccess) && config.defaultPageAccess.length > 0
+      ? config.defaultPageAccess
+      : ["forms"];
+
+  // If user is not authenticated or not logged in yet, return public default page access policy
+  if (!token || !userEmail) {
+    return NextResponse.json({
+      allowedPages: defaultPages,
+      userAllowedPages: defaultPages,
+      defaultPageAccess: defaultPages,
+      isAdmin: false,
+      source,
+    });
   }
 
   const isAdmin =
@@ -80,8 +100,10 @@ export async function GET(req: NextRequest) {
     );
 
   // Compute allowed pages for current user
-  let allowedPages = ALL_APP_PAGES;
-  if (!isAdmin && userEmail) {
+  let allowedPages = defaultPages;
+  if (isAdmin) {
+    allowedPages = ALL_APP_PAGES;
+  } else {
     const userRule = (config.pagePermissions || []).find(
       (p: any) => String(p.email).toLowerCase().trim() === userEmail
     );
@@ -93,9 +115,13 @@ export async function GET(req: NextRequest) {
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {
     return NextResponse.json({
-      config,
+      config: {
+        ...config,
+        defaultPageAccess: defaultPages,
+      },
       allowedPages,
       userAllowedPages: allowedPages,
+      defaultPageAccess: defaultPages,
       isAdmin: true,
       source,
     });
@@ -118,9 +144,11 @@ export async function GET(req: NextRequest) {
         formLabel: m.formLabel,
         listId: m.listId,
       })),
+      defaultPageAccess: defaultPages,
     },
     allowedPages,
     userAllowedPages: allowedPages,
+    defaultPageAccess: defaultPages,
     isAdmin: false,
     source,
   });

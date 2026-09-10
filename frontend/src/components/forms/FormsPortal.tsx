@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   Lock,
   Check,
-  RotateCcw
+  RotateCcw,
+  Users
 } from "lucide-react";
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
@@ -79,6 +80,7 @@ export interface FormsConfig {
   departments: string[];
   mappings: FormMapping[];
   pagePermissions?: UserPagePermission[];
+  defaultPageAccess?: AppPage[];
 }
 
 const DEFAULT_CONFIG: FormsConfig = {
@@ -87,6 +89,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
   mappings: [],
   pagePermissions: [],
+  defaultPageAccess: ["forms"],
 };
 
 function normalizeEmail(email?: string) {
@@ -139,6 +142,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
             ...data.config,
             members: data.config.members || [],
             pagePermissions: data.config.pagePermissions || [],
+            defaultPageAccess: data.config.defaultPageAccess || ["forms"],
           });
         }
       })
@@ -148,6 +152,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
   const save = async (next: FormsConfig = config) => {
     setConfig(next);
     localStorage.setItem("echo_forms_config", JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent("echo-config-updated", { detail: next }));
     const res = await fetch("/api/forms/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -341,6 +346,31 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
     save({ ...config, pagePermissions: updatedRules });
   };
 
+  const handleUpdateDefaultPages = (pages: AppPage[]) => {
+    save({
+      ...config,
+      defaultPageAccess: pages.length > 0 ? pages : ["forms"],
+    });
+  };
+
+  const toggleDefaultPage = (page: AppPage) => {
+    const current = config.defaultPageAccess || ["forms"];
+    let next: AppPage[];
+    if (current.includes(page)) {
+      if (current.length <= 1) {
+        alert("New and unlisted users must have at least one permitted page (e.g. Forms).");
+        return;
+      }
+      next = current.filter((p) => p !== page);
+    } else {
+      next = [...current, page];
+    }
+    save({
+      ...config,
+      defaultPageAccess: next,
+    });
+  };
+
   const current = ensureMapping();
 
   return (
@@ -392,13 +422,71 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
               <Lock size={18} className="text-[#003366]" /> Page Access Governance
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Govern which pages (Dashboard, Tasks, Meetings, Notetaker, Forms) can be accessed by specific users.
-              Users not listed have unrestricted access to all pages.
+              Govern which pages (Dashboard, Tasks, Meetings, Notetaker, Forms) can be accessed by specific users or new users by default.
             </p>
           </div>
           <span className="text-[10px] uppercase font-bold tracking-widest text-[#003366] bg-blue-50 px-2 py-1 border border-blue-200">
             RBAC Governance
           </span>
+        </div>
+
+        {/* Default Page Access for New & Unlisted Users */}
+        <div className="mt-4 bg-[#fffdf6] border border-[#C9AB4C]/50 p-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold text-[#003366] uppercase tracking-wider flex items-center gap-1.5">
+                <Users size={15} className="text-[#C9AB4C]" />
+                Default Page Access for New / Unlisted Users
+              </div>
+              <p className="text-xs text-slate-600 mt-1">
+                Configure which pages are accessible to new members, first-time logins, or users without explicit custom rules.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleUpdateDefaultPages(["forms"])}
+                className="text-[11px] font-semibold text-[#003366] bg-white hover:bg-slate-100 px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
+              >
+                Forms Only
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateDefaultPages(APP_PAGE_LIST.map((p) => p.id))}
+                className="text-[11px] font-semibold text-[#003366] bg-white hover:bg-slate-100 px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
+              >
+                Grant All Pages
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#C9AB4C]/30 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-700 mr-1">
+              Active Default Pages:
+            </span>
+            {APP_PAGE_LIST.map((page) => {
+              const currentDefault = config.defaultPageAccess || ["forms"];
+              const isAllowed = currentDefault.includes(page.id);
+              return (
+                <button
+                  key={page.id}
+                  type="button"
+                  onClick={() => toggleDefaultPage(page.id)}
+                  className={`text-[11px] px-3 py-1 border font-medium transition-all cursor-pointer ${
+                    isAllowed
+                      ? "bg-[#003366] text-white border-[#003366] font-semibold shadow-xs"
+                      : "bg-white text-slate-400 border-slate-300 line-through hover:border-slate-400"
+                  }`}
+                >
+                  {page.label}
+                </button>
+              );
+            })}
+            <span className="text-[11px] text-slate-500 italic ml-2">
+              ({(config.defaultPageAccess || ["forms"]).length} of {APP_PAGE_LIST.length} permitted by default)
+            </span>
+          </div>
         </div>
 
         {/* Add / Restrict User Page Access Form */}
@@ -507,7 +595,7 @@ function AdminConfiguration({ userEmail }: { userEmail: string }) {
 
           {!config.pagePermissions || config.pagePermissions.length === 0 ? (
             <div className="border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500 bg-slate-50/50">
-              No specific user restrictions configured. All active members currently have access to all 5 application pages.
+              No specific user overrides configured. All users without custom rules follow the default access policy configured above ({(config.defaultPageAccess || ["forms"]).length} of {APP_PAGE_LIST.length} permitted pages).
             </div>
           ) : (
             config.pagePermissions.map((rule) => (
