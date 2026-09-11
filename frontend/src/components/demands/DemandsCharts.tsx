@@ -15,6 +15,7 @@ import {
   PieChart,
   BarChart3,
   CheckCircle2
+  ,MapPin
 } from "lucide-react";
 
 interface DemandsChartsProps {
@@ -371,6 +372,16 @@ export function SectorDonutChart({ demands }: { demands: DemandRecord[] }) {
       </div>
     </div>
   );
+}
+
+export function PhilippinesLocationHeatmap({ demands }: { demands: DemandRecord[] }) {
+  const points = useMemo(() => {
+    const counts = new Map<string, number>();
+    demands.forEach((d) => counts.set(d.gloc || d.city || "Unknown", (counts.get(d.gloc || d.city || "Unknown") || 0) + 1));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [demands]);
+  const max = Math.max(1, ...points.map(([, count]) => count));
+  return <section className="bg-white border border-slate-200 shadow-xs p-5"><div className="flex items-center justify-between"><div><h3 className="font-serif text-base font-bold text-[#003366]">Location trend</h3><p className="text-xs text-slate-500 mt-0.5">Demand concentration by Philippine region</p></div><MapPin className="w-4 h-4 text-[#C9AB4C]" /></div><div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-4 items-center"><svg viewBox="0 0 240 180" className="w-full h-40" role="img" aria-label="Philippines demand heatmap"><path d="M92 10l22 12-5 22 25 13-8 20 22 20-17 11 7 28-30 1-12 24-22-17-5-26-21-10 13-24-7-18 22-13z" fill="#e8eef4" stroke="#003366" strokeWidth="2"/><path d="M72 53l19 3 9 23-18 14-19-13zM119 82l27 8-13 22-25-5zM83 125l25 1-7 26-23-9z" fill="#C9AB4C" opacity=".7"/><circle cx="91" cy="64" r="7" fill="#003366" opacity=".8"/><circle cx="133" cy="98" r="10" fill="#003366" opacity=".65"/><circle cx="91" cy="137" r="5" fill="#003366" opacity=".5"/></svg><div className="space-y-2">{points.map(([name,count])=><div key={name}><div className="flex justify-between text-xs font-semibold text-slate-600"><span>{name}</span><span>{count}</span></div><div className="mt-1 h-1.5 bg-slate-100"><div className="h-1.5 bg-[#003366]" style={{width:`${count/max*100}%`}}/></div></div>)}{!points.length&&<p className="text-xs text-slate-400">No location data in this range.</p>}</div></div></section>;
 }
 
 // 4. Property Classification Donut Chart

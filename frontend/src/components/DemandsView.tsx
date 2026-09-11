@@ -22,6 +22,7 @@ import {
   PropertyTypeDonutChart, 
   SpaceBracketsBarChart, 
   AssociateLeaderboardBarChart 
+  ,PhilippinesLocationHeatmap
 } from "./demands/DemandsCharts";
 import { DemandsCards } from "./demands/DemandsCards";
 import { NewDemandModal } from "./demands/NewDemandModal";
@@ -48,6 +49,7 @@ import {
   FileText,
   SlidersHorizontal,
   RotateCcw
+  ,Sparkles
 } from "lucide-react";
 
 export interface DemandsViewProps {
@@ -66,6 +68,8 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const defaultHorizon = useMemo(() => getDefaultHorizonDates(), []);
   
@@ -148,6 +152,16 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const metrics = useMemo(() => {
     return calculateDemandMetrics(filteredDemands, demands);
   }, [filteredDemands, demands]);
+
+  const generateReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const res = await fetch("/api/demands/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ demands: filteredDemands, dateStart: filters.dateStart, dateEnd: filters.dateEnd, assetClass: activeAssetClass }) });
+      const data = await res.json();
+      setReport(data.report || data.error || "Unable to generate the report.");
+    } catch { setReport("Unable to generate the report right now."); }
+    finally { setIsGeneratingReport(false); }
+  };
 
   const handleSort = (col: string) => {
     if (sortCol === col) {
@@ -458,6 +472,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <FolderArchive className="w-3.5 h-3.5" />
               Archive (ClickUp)
             </button>
+            <button type="button" onClick={generateReport} disabled={isGeneratingReport} className="px-3 py-1 font-bold text-xs flex items-center gap-1.5 bg-[#C9AB4C] text-[#003366] disabled:opacity-60"><Sparkles className="w-3.5 h-3.5" />{isGeneratingReport ? "Generating…" : "Generate report"}</button>
           </div>
 
         </div>
@@ -494,24 +509,21 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
           />
 
           {/* Subpage Specialized Cards: Location Coverage, Industry Trend, Timeline */}
-          <DemandsCards assetClass={activeAssetClass} />
+          {report && <section className="border border-[#C9AB4C] bg-[#fffaf0] p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[#003366]">AI report</h3><button onClick={() => setReport(null)} className="text-xs text-slate-500">Close</button></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{report}</p></section>}
 
           {/* Row 2: Charts (Velocity Line Graph & Donut Charts) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-7">
-              <QuarterlyVelocityLineGraph demands={demands} />
+              <QuarterlyVelocityLineGraph demands={filteredDemands} />
             </div>
             <div className="lg:col-span-5">
-              <SectorDonutChart demands={demands} />
+              <SectorDonutChart demands={filteredDemands} />
             </div>
           </div>
 
+          <PhilippinesLocationHeatmap demands={filteredDemands} />
+
           {/* Row 3: Secondary Visual Analytics (Property Types, Size Brackets, Associate Leaderboard) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <PropertyTypeDonutChart demands={demands} />
-            <SpaceBracketsBarChart demands={demands} />
-            <AssociateLeaderboardBarChart demands={demands} />
-          </div>
 
         </div>
       )}
