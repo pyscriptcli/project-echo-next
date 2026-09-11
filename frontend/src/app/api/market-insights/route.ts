@@ -24,7 +24,7 @@ function descriptionFor(article: Article) {
 }
 
 function parseTask(task: any) {
-  const text = task.text_content || task.description || "";
+  const text = task.text_content || task.description || task.markdown_description || "";
   try {
     const parsed = JSON.parse(text);
     const article = articleFrom(parsed?.echoMarketInsight);
