@@ -27,13 +27,13 @@ export default function ITAssetRequestForm({ listId, user }: { listId: string; u
     finally { setSaving(false); }
   };
 
-  return <form id="it-asset-request-form" onSubmit={submit} className="max-w-[850px] mx-auto border border-slate-300 bg-white shadow-sm p-7 text-[#172033]">
+  return <form id="it-asset-request-form" onSubmit={submit} className="max-w-[850px] mx-auto border border-slate-300 bg-[#FFFCFB] shadow-sm p-7 text-[#172033]">
     <div className="flex items-start justify-between border-b-2 border-[#003366] pb-3 mb-5"><div><h2 className="text-xl font-bold text-[#003366]">IT Asset Request Form</h2><p className="text-xs text-slate-500 mt-1">Submit complete details to help IT evaluate and fulfill your request.</p></div><span className="text-[10px] font-bold uppercase tracking-widest text-[#C9AB4C]">IT Department</span></div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <label className="text-xs font-bold">Asset request title *<span className="block text-[10px] font-normal text-slate-400 mb-1">Example: Monitor_IT</span><input required name="title" placeholder="AssetType_Department" className="w-full border border-slate-300 px-3 py-2 font-normal" /></label>
       <label className="text-xs font-bold">Employee name *<input required name="employeeName" defaultValue={user?.name || ""} placeholder="Enter employee name" className="mt-1 w-full border border-slate-300 px-3 py-2 font-normal" /></label>
       <label className="text-xs font-bold">Department *<input required name="department" defaultValue="IT" placeholder="Department" className="mt-1 w-full border border-slate-300 px-3 py-2 font-normal" /></label>
-      <label className="text-xs font-bold">Asset type *<select required name="assetType" defaultValue="" className="mt-1 w-full border border-slate-300 px-3 py-2 bg-white font-normal"><option value="" disabled>Select an asset</option>{ASSET_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
+      <label className="text-xs font-bold">Asset type *<select required name="assetType" defaultValue="" className="mt-1 w-full border border-slate-300 px-3 py-2 bg-[#FFFCFB] font-normal"><option value="" disabled>Select an asset</option>{ASSET_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
       <label className="text-xs font-bold">Needed by *<input required name="neededBy" type="date" className="mt-1 w-full border border-slate-300 px-3 py-2 font-normal" /></label>
       <label className="text-xs font-bold">Assignee *<input required name="assignee" placeholder="IT assignee or team" className="mt-1 w-full border border-slate-300 px-3 py-2 font-normal" /></label>
     </div>

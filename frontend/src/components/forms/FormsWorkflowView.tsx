@@ -21,7 +21,7 @@ export default function WorkflowPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
       {/* Action Bar / Subheader */}
-      <div className="bg-white border-b border-slate-200 sticky top-14 z-40 shadow-xs">
+      <div className="bg-[#FFFCFB] border-b border-slate-200 sticky top-14 z-40 shadow-xs">
         <div className="max-w-[1520px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
@@ -45,19 +45,19 @@ export default function WorkflowPage() {
           {/* Action Buttons & Platform Legend */}
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Platform Legend Chips */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
+            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold bg-[#FFFCFB] border border-slate-200 px-2.5 py-1 rounded-md">
               <span className="text-slate-400 uppercase text-[9px] mr-0.5">Platforms:</span>
               <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">Forms Portal</span>
               <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">ClickUp</span>
               <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Zoho</span>
               <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">UnionBank</span>
-              <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 border border-slate-300">Manual</span>
+              <span className="px-1.5 py-0.5 rounded bg-[#FFFCFB] text-slate-700 border border-slate-300">Manual</span>
             </div>
 
             {/* Print Button */}
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-[#FFFCFB] border border-slate-300 rounded-md hover:bg-[#FFFCFB] shadow-xs transition-colors"
               title="Print Workflow Chart"
             >
               <Printer className="w-3.5 h-3.5 text-slate-500" />
@@ -80,7 +80,7 @@ export default function WorkflowPage() {
 
       {/* Main Diagram Area */}
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 pt-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-[#FFFCFB] rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           
           {/* Card Header */}
           <div className="bg-[#181A1D] text-white px-6 py-3.5 border-b border-amber-500/30 flex items-center justify-between">
@@ -100,7 +100,7 @@ export default function WorkflowPage() {
             <div className="min-w-[1240px] grid grid-cols-5 divide-x divide-slate-200 p-1">
 
               {/* COLUMN 1: REQUESTOR */}
-              <div className="bg-white p-3 flex flex-col items-center">
+              <div className="bg-[#FFFCFB] p-3 flex flex-col items-center">
                 <div className="w-full pb-2.5 border-b-2 border-blue-800 text-center mb-3">
                   <h2 className="text-sm font-bold text-blue-900 tracking-tight">Requestor</h2>
                   <span className="text-[10px] text-slate-500 italic">Initiator</span>
@@ -108,7 +108,7 @@ export default function WorkflowPage() {
 
                 <div className="w-full flex flex-col items-center space-y-0">
                   {/* Step 1 */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider mb-1">
                       Forms Portal
                     </span>
@@ -118,7 +118,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-2.5 bg-blue-600 my-0.5" />
 
                   {/* Step 2 */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider mb-1">
                       Forms Portal
                     </span>
@@ -142,7 +142,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-2.5 bg-blue-600 my-0.5" />
 
                   {/* Step 4: Attachments */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider mb-1">
                       Forms Portal
                     </span>
@@ -176,7 +176,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-2.5 bg-blue-600 my-0.5" />
 
                   {/* Step 6: 6-Stage Tracking */}
-                  <div className="w-full bg-slate-50 border border-slate-300 rounded-md p-2 text-left shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border border-slate-300 rounded-md p-2 text-left shadow-xs">
                     <div className="text-center mb-1">
                       <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider">
                         Forms Portal (/track)
@@ -233,14 +233,14 @@ export default function WorkflowPage() {
               </div>
 
               {/* COLUMN 2: APPROVER - TL */}
-              <div className="bg-white p-3 flex flex-col items-center">
+              <div className="bg-[#FFFCFB] p-3 flex flex-col items-center">
                 <div className="w-full pb-2.5 border-b-2 border-blue-800 text-center mb-3">
                   <h2 className="text-sm font-bold text-blue-900 tracking-tight">Approver - TL</h2>
                   <span className="text-[10px] text-slate-500 italic">Department Head</span>
                 </div>
 
                 <div className="w-full flex flex-col items-center space-y-0">
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-2 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider mb-1">
                       Forms Portal (/approvals)
                     </span>
@@ -250,7 +250,7 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-2.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-slate-50 border-[1.5px] border-blue-700 rounded-md p-2 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-700 rounded-md p-2 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] font-bold uppercase tracking-wider mb-1">
                       Forms Portal
                     </span>
@@ -319,14 +319,14 @@ export default function WorkflowPage() {
               </div>
 
               {/* COLUMN 3: FINANCE / ACCOUNTING */}
-              <div className="bg-white p-3 flex flex-col items-center">
+              <div className="bg-[#FFFCFB] p-3 flex flex-col items-center">
                 <div className="w-full pb-2.5 border-b-2 border-blue-800 text-center mb-3">
                   <h2 className="text-sm font-bold text-blue-900 tracking-tight">Finance / Accounting</h2>
                   <span className="text-[10px] text-slate-500 italic">Disbursement &amp; Audit</span>
                 </div>
 
                 <div className="w-full flex flex-col items-center space-y-0">
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 border border-purple-200 text-[8px] font-bold uppercase mb-0.5">
                       ClickUp Task
                     </span>
@@ -336,7 +336,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
                   {/* Step: Encode Zoho + Check Box 2 */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 border border-orange-200 text-[8px] font-bold uppercase mb-0.5">
                       Zoho Books
                     </span>
@@ -349,8 +349,8 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
-                    <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-0.5">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                    <span className="inline-block px-1.5 py-0.2 rounded bg-[#FFFCFB] text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-0.5">
                       Manual / Zoho
                     </span>
                     <div className="text-[10px] font-semibold text-slate-800">Prepare top sheet</div>
@@ -359,7 +359,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
                   {/* Step: UB Prep + Check Box 3 */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 text-[8px] font-bold uppercase mb-0.5">
                       UnionBank (UB) / Manual
                     </span>
@@ -378,7 +378,7 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 border border-orange-200 text-[8px] font-bold uppercase mb-0.5">
                       Zoho / ClickUp
                     </span>
@@ -388,7 +388,7 @@ export default function WorkflowPage() {
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
                   {/* Step: Log check + Check Box 4 */}
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs flex flex-col items-center">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 border border-purple-200 text-[8px] font-bold uppercase mb-0.5">
                       ClickUp / Manual
                     </span>
@@ -401,7 +401,7 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 border border-orange-200 text-[8px] font-bold uppercase mb-0.5">
                       Zoho Books
                     </span>
@@ -410,7 +410,7 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 border border-purple-200 text-[8px] font-bold uppercase mb-0.5">
                       ClickUp Task Attachment
                     </span>
@@ -428,7 +428,7 @@ export default function WorkflowPage() {
 
                   <div className="w-[1.5px] h-1.5 bg-blue-600 my-0.5" />
 
-                  <div className="w-full bg-white border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
+                  <div className="w-full bg-[#FFFCFB] border-[1.5px] border-blue-600 rounded-md p-1.5 text-center shadow-xs">
                     <span className="inline-block px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8px] font-bold uppercase mb-0.5">
                       Email / Outlook
                     </span>
@@ -439,7 +439,7 @@ export default function WorkflowPage() {
 
                   {/* Step: Final Complete + Check Box 5 */}
                   <div className="w-full bg-emerald-50/70 border border-emerald-600 rounded-md p-2 text-center shadow-xs flex flex-col items-center">
-                    <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-0.5">
+                    <span className="inline-block px-1.5 py-0.2 rounded bg-[#FFFCFB] text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-0.5">
                       Physical Filing / ClickUp
                     </span>
                     <div className="text-[10px] font-bold text-slate-900">Print APV &amp; CV, File documents</div>
@@ -453,14 +453,14 @@ export default function WorkflowPage() {
               </div>
 
               {/* COLUMN 4: CFO (APPROVER) */}
-              <div className="bg-white p-3 flex flex-col items-center">
+              <div className="bg-[#FFFCFB] p-3 flex flex-col items-center">
                 <div className="w-full pb-2.5 border-b-2 border-blue-800 text-center mb-3">
                   <h2 className="text-sm font-bold text-blue-900 tracking-tight">CFO (Approver)</h2>
                   <span className="text-[10px] text-slate-500 italic">Chief Financial Officer</span>
                 </div>
 
                 <div className="w-full flex flex-col items-center space-y-0 pt-24">
-                  <div className="w-full bg-slate-50 border border-dashed border-slate-300 rounded p-1.5 text-center mb-2 text-[9px] text-slate-600 font-medium">
+                  <div className="w-full bg-[#FFFCFB] border border-dashed border-slate-300 rounded p-1.5 text-center mb-2 text-[9px] text-slate-600 font-medium">
                     <span>Receives batch &amp; top sheet from Finance ➔</span>
                   </div>
 
@@ -481,19 +481,19 @@ export default function WorkflowPage() {
               </div>
 
               {/* COLUMN 5: CEO (APPROVER) */}
-              <div className="bg-white p-3 flex flex-col items-center">
+              <div className="bg-[#FFFCFB] p-3 flex flex-col items-center">
                 <div className="w-full pb-2.5 border-b-2 border-blue-800 text-center mb-3">
                   <h2 className="text-sm font-bold text-blue-900 tracking-tight">CEO (Approver)</h2>
                   <span className="text-[10px] text-slate-500 italic">Chief Executive Officer</span>
                 </div>
 
                 <div className="w-full flex flex-col items-center space-y-0 pt-36">
-                  <div className="w-full bg-slate-50 border border-dashed border-slate-300 rounded p-1.5 text-center mb-2 text-[9px] text-slate-600 font-medium">
+                  <div className="w-full bg-[#FFFCFB] border border-dashed border-slate-300 rounded p-1.5 text-center mb-2 text-[9px] text-slate-600 font-medium">
                     <span>Receives CFO-approved batch ➔</span>
                   </div>
 
                   <div className="w-full bg-emerald-50 border border-emerald-600 rounded-md p-3 text-center shadow-xs">
-                    <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-1">
+                    <span className="inline-block px-1.5 py-0.2 rounded bg-[#FFFCFB] text-slate-700 border border-slate-300 text-[8px] font-bold uppercase mb-1">
                       Manual Sign / UnionBank
                     </span>
                     <div className="text-xs font-bold text-emerald-950">Sign off on check</div>

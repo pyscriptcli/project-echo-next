@@ -325,7 +325,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
   if (error && !payload) {
     return (
-      <div className="max-w-xl mx-auto mt-16 bg-white border border-red-200 p-7 text-center">
+      <div className="max-w-xl mx-auto mt-16 bg-[#FFFCFB] border border-red-200 p-7 text-center">
         <AlertCircle className="mx-auto text-red-500 mb-3" size={26} />
         <h1 className="text-xl">Notebook unavailable</h1>
         <p className="text-sm text-gray-600 mt-2">{error}</p>
@@ -350,7 +350,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               value={member?.id || ""}
               onChange={(event) => setSelectedMemberId(event.target.value)}
               aria-label="Team member"
-              className="h-10 min-w-52 bg-white border border-gray-300 px-3 text-sm text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]"
+              className="h-10 min-w-52 bg-[#FFFCFB] border border-gray-300 px-3 text-sm text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]"
             >
               {payload.members.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
             </select>
@@ -359,15 +359,15 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             type="button"
             onClick={loadNotebook}
             disabled={loading}
-            className="h-10 px-3 bg-white border border-gray-300 text-[#003366] text-sm font-semibold flex items-center gap-2 hover:border-[#C9AB4C] disabled:opacity-50"
+            className="h-10 px-3 bg-[#FFFCFB] border border-gray-300 text-[#003366] text-sm font-semibold flex items-center gap-2 hover:border-[#C9AB4C] disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 shadow-2xs p-2 flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex border border-gray-200 bg-gray-50" role="tablist" aria-label="Notebook views">
+      <div className="bg-[#FFFCFB] border border-gray-200 shadow-2xs p-2 flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex border border-gray-200 bg-[#FFFCFB]" role="tablist" aria-label="Notebook views">
           {([
             ["today", "Today"],
             ["week", "Week"],
@@ -380,7 +380,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               aria-selected={activeTab === id}
               onClick={() => setActiveTab(id)}
               className={`h-10 px-5 text-sm font-semibold border-r last:border-r-0 border-gray-200 transition-colors ${
-                activeTab === id ? "bg-[#003366] text-white shadow-[inset_0_-2px_0_#C9AB4C]" : "bg-white text-gray-500 hover:text-[#003366] hover:bg-gray-50"
+                activeTab === id ? "bg-[#003366] text-white shadow-[inset_0_-2px_0_#C9AB4C]" : "bg-[#FFFCFB] text-gray-500 hover:text-[#003366] hover:bg-[#FFFCFB]"
               }`}
             >
               {label}
@@ -390,7 +390,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
         {activeTab === "insights" ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500"><span className="hidden 2xl:inline">View</span><select value={insightMemberId} onChange={(event) => setInsightMemberId(event.target.value)} aria-label="Insight team member" className="h-10 min-w-52 bg-white border border-gray-300 px-3 text-sm font-medium normal-case tracking-normal text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]">
+            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500"><span className="hidden 2xl:inline">View</span><select value={insightMemberId} onChange={(event) => setInsightMemberId(event.target.value)} aria-label="Insight team member" className="h-10 min-w-52 bg-[#FFFCFB] border border-gray-300 px-3 text-sm font-medium normal-case tracking-normal text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]">
               <option value="all">All team members</option>
               {(payload?.members || []).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
             </select></label>
@@ -401,15 +401,15 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               <option value="last-month">Last month</option>
               <option value="custom">Custom range</option>
             </select>
-            <input type="date" value={rangeStart} onChange={(event) => { setRangePreset("custom"); setRangeStart(event.target.value); }} aria-label="Reporting range start" className="h-10 bg-white border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
+            <input type="date" value={rangeStart} onChange={(event) => { setRangePreset("custom"); setRangeStart(event.target.value); }} aria-label="Reporting range start" className="h-10 bg-[#FFFCFB] border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
             <span className="text-sm text-gray-400">to</span>
-            <input type="date" value={rangeEnd} onChange={(event) => { setRangePreset("custom"); setRangeEnd(event.target.value); }} aria-label="Reporting range end" className="h-10 bg-white border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
+            <input type="date" value={rangeEnd} onChange={(event) => { setRangePreset("custom"); setRangeEnd(event.target.value); }} aria-label="Reporting range end" className="h-10 bg-[#FFFCFB] border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
           </div>
         ) : (
-          <div className="flex items-center bg-white border border-gray-300">
-            <button type="button" onClick={previousDay} aria-label="Previous day" className="w-10 h-10 grid place-items-center text-gray-500 hover:text-[#003366] hover:bg-gray-50"><ChevronLeft size={17} /></button>
+          <div className="flex items-center bg-[#FFFCFB] border border-gray-300">
+            <button type="button" onClick={previousDay} aria-label="Previous day" className="w-10 h-10 grid place-items-center text-gray-500 hover:text-[#003366] hover:bg-[#FFFCFB]"><ChevronLeft size={17} /></button>
             <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="h-10 border-x border-y-0 border-gray-300 px-3 text-sm text-[#1b1d1e] focus:outline-none" />
-            <button type="button" onClick={nextDay} aria-label="Next day" className="w-10 h-10 grid place-items-center text-gray-500 hover:text-[#003366] hover:bg-gray-50"><ChevronRight size={17} /></button>
+            <button type="button" onClick={nextDay} aria-label="Next day" className="w-10 h-10 grid place-items-center text-gray-500 hover:text-[#003366] hover:bg-[#FFFCFB]"><ChevronRight size={17} /></button>
           </div>
         )}
       </div>
@@ -422,7 +422,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             {CATEGORY_META.map((category) => {
               const count = itemsFromText(draftCategories[category.key]).length;
               return (
-                <div key={category.key} className="bg-white border border-gray-200 p-4">
+                <div key={category.key} className="bg-[#FFFCFB] border border-gray-200 p-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-gray-500">{category.label}</div>
                   <div className="text-3xl font-serif font-bold text-[#003366] mt-2">{count}</div>
                   <div className="text-xs text-gray-400 mt-1">recorded item{count === 1 ? "" : "s"}</div>
@@ -443,7 +443,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                 </span>
               </div>
 
-              <div className="bg-white border border-gray-200 divide-y divide-gray-200">
+              <div className="bg-[#FFFCFB] border border-gray-200 divide-y divide-gray-200">
                 {CATEGORY_META.map((category) => {
                   return (
                     <div key={category.key} className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 p-4 sm:p-5">
@@ -455,12 +455,12 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                         onBlur={() => normalizeCategory(category.key)}
                         placeholder={`• Log ${category.label.toLowerCase()} work`}
                         rows={3}
-                        className="w-full border border-gray-200 bg-gray-50/70 px-3 py-2 text-sm text-gray-700 leading-relaxed resize-y focus:outline-none focus:border-[#C9AB4C] focus:bg-white"
+                        className="w-full border border-gray-200 bg-[#FFFCFB]/70 px-3 py-2 text-sm text-gray-700 leading-relaxed resize-y focus:outline-none focus:border-[#C9AB4C] focus:bg-[#FFFCFB]"
                       />
                     </div>
                   );
                 })}
-                <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-gray-50/70">
+                <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-[#FFFCFB]/70">
                   <p className="text-xs text-gray-500">Press Enter for another bullet. Changes save automatically after you pause typing.</p>
                   <div className="flex items-center gap-2 shrink-0">
                     {selectedDayEntry && <button type="button" onClick={deleteDailyLog} disabled={deleting || saving} className="h-10 px-3 border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-2"><Trash2 size={15} /> Delete</button>}
@@ -472,7 +472,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             </section>
 
             <aside className="lg:col-span-4 space-y-4">
-              <div className="bg-white border border-gray-200 p-5">
+              <div className="bg-[#FFFCFB] border border-gray-200 p-5">
                 <h3 className="text-lg flex items-center gap-2"><FileText size={17} className="text-[#C9AB4C]" /> Source record</h3>
                 <p className="text-sm text-gray-500 mt-2 leading-relaxed">Edit directly here. Echo keeps the same month parent and daily subtask structure your team already uses in ClickUp.</p>
                 {selectedDayEntries[0]?.url ? (
@@ -510,7 +510,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   type="button"
                   key={date}
                   onClick={() => { setSelectedDate(date); setActiveTab("today"); }}
-                  className={`self-start w-full text-left bg-white border p-4 transition-colors hover:border-[#C9AB4C] ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : "border-gray-200"}`}
+                  className={`self-start w-full text-left bg-[#FFFCFB] border p-4 transition-colors hover:border-[#C9AB4C] ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : "border-gray-200"}`}
                 >
                   <span className="block text-xs uppercase tracking-wider text-gray-500 font-bold">{formatDate(date, { weekday: "short" })}</span>
                   <span className="block text-2xl font-serif font-bold text-[#003366] mt-1">{fromIso(date).getDate()}</span>
@@ -542,13 +542,13 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           </div>
 
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Team completeness</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{averageCompleteness}%</div><div className="text-xs text-gray-400 mt-1">{submittedLogs} of {expectedLogs} expected logs</div></div>
-            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{filteredRows.length}</div><div className="text-xs text-gray-400 mt-1">within the selected view</div></div>
-            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Blank records</div><div className="text-3xl font-serif font-bold text-amber-700 mt-2">{blankLogs}</div><div className="text-xs text-gray-400 mt-1">created but without content</div></div>
-            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty days</div><div className="text-3xl font-serif font-bold text-red-700 mt-2">{emptyDayLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
+            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Team completeness</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{averageCompleteness}%</div><div className="text-xs text-gray-400 mt-1">{submittedLogs} of {expectedLogs} expected logs</div></div>
+            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{filteredRows.length}</div><div className="text-xs text-gray-400 mt-1">within the selected view</div></div>
+            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Blank records</div><div className="text-3xl font-serif font-bold text-amber-700 mt-2">{blankLogs}</div><div className="text-xs text-gray-400 mt-1">created but without content</div></div>
+            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty days</div><div className="text-3xl font-serif font-bold text-red-700 mt-2">{emptyDayLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
           </div>
 
-          <section className="bg-white border border-gray-200">
+          <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div><h3 className="text-lg flex items-center gap-2"><Users size={18} className="text-[#C9AB4C]" /> Completeness by team member</h3><p className="text-sm text-gray-500 mt-1">Submitted logs compared with elapsed working days.</p></div>
               <div className="text-xs text-gray-500">Expected per member: <strong className="text-[#003366]">{workdays.length} days</strong></div>
@@ -558,7 +558,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                 <div key={row.member.id} className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-[minmax(190px,1fr)_minmax(220px,2fr)_100px] gap-4 items-center">
                   <div className="flex items-center gap-3 min-w-0"><MemberAvatar member={row.member} /><div className="min-w-0"><div className="text-sm font-semibold text-[#1b1d1e] truncate">{row.member.name}</div><div className="text-xs text-gray-400">{row.submittedDates.length} submitted · {row.emptyDays.length} empty days</div></div></div>
                   <div>
-                    <div className="h-2.5 bg-gray-100 overflow-hidden flex" role="progressbar" aria-label={`${row.member.name} completeness`} aria-valuenow={row.percent} aria-valuemin={0} aria-valuemax={100}>
+                    <div className="h-2.5 bg-[#FFFCFB] overflow-hidden flex" role="progressbar" aria-label={`${row.member.name} completeness`} aria-valuenow={row.percent} aria-valuemin={0} aria-valuemax={100}>
                       <span className="bg-[#003366] h-full" style={{ width: `${row.percent}%` }} />
                       {workdays.length > 0 && <span className="bg-amber-400 h-full" style={{ width: `${(row.emptyDates.length / workdays.length) * 100}%` }} />}
                     </div>
@@ -570,7 +570,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             </div>
           </section>
 
-          <section className="bg-white border border-gray-200">
+          <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs, blank records, and empty days.</p></div>
               <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-amber-400" /> Blank record</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-red-100 border border-red-200" /> Empty day</span></div>
@@ -598,14 +598,14 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <section className="bg-white border border-gray-200 p-5">
+            <section className="bg-[#FFFCFB] border border-gray-200 p-5">
               <h3 className="text-lg flex items-center gap-2"><BarChart3 size={18} className="text-[#C9AB4C]" /> Recorded work mix</h3>
               <p className="text-sm text-gray-500 mt-1">Individual entries detected in each existing ClickUp field.</p>
               <div className="space-y-4 mt-5">
                 {monthCategoryTotals.map((category) => (
                   <div key={category.key} className="grid grid-cols-[80px_1fr_40px] gap-3 items-center">
                     <span className="text-sm text-gray-600">{category.label}</span>
-                    <div className="h-5 bg-gray-100"><div className="h-full bg-[#003366]" style={{ width: `${(category.count / maxCategoryTotal) * 100}%` }} /></div>
+                    <div className="h-5 bg-[#FFFCFB]"><div className="h-full bg-[#003366]" style={{ width: `${(category.count / maxCategoryTotal) * 100}%` }} /></div>
                     <strong className="text-sm text-right text-[#003366]">{category.count}</strong>
                   </div>
                 ))}

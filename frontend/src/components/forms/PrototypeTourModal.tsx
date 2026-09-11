@@ -193,7 +193,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                     handleDismissWelcome();
                     handleTriggerPreFill();
                   }}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded transition-colors"
+                  className="px-3 py-1.5 bg-[#FFFCFB]/10 hover:bg-[#FFFCFB]/20 text-white text-xs font-semibold rounded transition-colors"
                 >
                   ⚡ Fill Sample Data
                 </button>
@@ -206,7 +206,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
       {/* 2. Interactive Spotlight Tour Overlay */}
       {isTourActive && (
         <div className="fixed inset-0 z-50 pointer-events-auto flex flex-col justify-end sm:justify-center items-center p-4 bg-black/60 backdrop-blur-[2px]">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
+          <div className="bg-[#FFFCFB] rounded-xl shadow-2xl border border-slate-300 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Top Bar */}
             <div className="bg-[#181A1D] text-white px-5 py-3 flex items-center justify-between border-b border-[#C9AB4C]/40">
               <div className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                     className={`h-1.5 rounded-full transition-all ${
                       i === currentStepIndex
                         ? "w-6 bg-[#003366]"
-                        : "w-2 bg-slate-200 hover:bg-slate-300"
+                        : "w-2 bg-[#FFFCFB] hover:bg-slate-300"
                     }`}
                   />
                 ))}
@@ -255,7 +255,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
             </div>
 
             {/* Footer Controls */}
-            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
+            <div className="bg-[#FFFCFB] px-5 py-3 border-t border-slate-200 flex items-center justify-between">
               <button
                 onClick={handleEndTour}
                 className="text-xs font-semibold text-slate-500 hover:text-slate-800"
@@ -267,7 +267,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                 {currentStepIndex > 0 && (
                   <button
                     onClick={handlePrevStep}
-                    className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-100 flex items-center gap-1 shadow-2xs"
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-[#FFFCFB] border border-slate-300 rounded hover:bg-[#FFFCFB] flex items-center gap-1 shadow-2xs"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Back</span>
@@ -306,7 +306,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
       {/* 4. Dedicated Slide-Over Drawer: Multi-Role Workflow Guide */}
       {isOpenDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-[1px] animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-300 animate-in slide-in-from-right duration-200">
+          <div className="w-full max-w-md bg-[#FFFCFB] h-full shadow-2xl flex flex-col border-l border-slate-300 animate-in slide-in-from-right duration-200">
             
             {/* Drawer Header */}
             <div className="bg-[#181A1D] text-white p-5 border-b border-[#C9AB4C]/40 flex items-center justify-between">
@@ -325,7 +325,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
               </div>
               <button
                 onClick={() => setIsOpenDrawer(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                className="w-8 h-8 rounded-full bg-[#FFFCFB]/10 hover:bg-[#FFFCFB]/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -361,7 +361,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
               </div>
 
               {/* Step 1: Requestor */}
-              <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50 space-y-1.5">
+              <div className="p-3.5 rounded-lg border border-slate-200 bg-[#FFFCFB] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black flex items-center justify-center">1</span>
@@ -375,10 +375,10 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
               </div>
 
               {/* Step 2: Approver (TL) */}
-              <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2 hover:border-slate-300 transition-colors">
+              <div className="p-3.5 rounded-lg border border-slate-200 bg-[#FFFCFB] space-y-2 hover:border-slate-300 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-800 text-[10px] font-black flex items-center justify-center">2</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FFFCFB] text-slate-800 text-[10px] font-black flex items-center justify-center">2</span>
                     Role: Department Approver (TL)
                   </span>
                   <Link
@@ -395,10 +395,10 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
               </div>
 
               {/* Step 3: Finance & Live Tracker */}
-              <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2 hover:border-slate-300 transition-colors">
+              <div className="p-3.5 rounded-lg border border-slate-200 bg-[#FFFCFB] space-y-2 hover:border-slate-300 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-800 text-[10px] font-black flex items-center justify-center">3</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FFFCFB] text-slate-800 text-[10px] font-black flex items-center justify-center">3</span>
                     Role: Finance &amp; Tracker
                   </span>
                   <Link
@@ -415,10 +415,10 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
               </div>
 
               {/* Step 4: Official Process Workflow */}
-              <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2 hover:border-slate-300 transition-colors">
+              <div className="p-3.5 rounded-lg border border-slate-200 bg-[#FFFCFB] space-y-2 hover:border-slate-300 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-800 text-[10px] font-black flex items-center justify-center">4</span>
+                    <span className="w-5 h-5 rounded-full bg-[#FFFCFB] text-slate-800 text-[10px] font-black flex items-center justify-center">4</span>
                     Process Workflow SOP
                   </span>
                   <Link
@@ -437,13 +437,13 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
             </div>
 
             {/* Drawer Footer Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2">
+            <div className="p-4 bg-[#FFFCFB] border-t border-slate-200 space-y-2">
               <button
                 onClick={() => {
                   setIsOpenDrawer(false);
                   handleTriggerTour();
                 }}
-                className="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold rounded flex items-center justify-center gap-1.5 shadow-2xs transition-colors"
+                className="w-full py-2 bg-[#FFFCFB] border border-slate-300 hover:bg-[#FFFCFB] text-slate-800 text-xs font-bold rounded flex items-center justify-center gap-1.5 shadow-2xs transition-colors"
               >
                 <Play className="w-3.5 h-3.5 fill-slate-700" />
                 <span>Replay Step-by-Step Tour</span>

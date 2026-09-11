@@ -74,7 +74,7 @@ export function SubmissionLoadingModal({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-md bg-white border-2 border-[#181A1D] shadow-2xl relative overflow-hidden flex flex-col">
+      <div className="w-full max-w-md bg-[#FFFCFB] border-2 border-[#181A1D] shadow-2xl relative overflow-hidden flex flex-col">
         {/* Top Gold Accent Line */}
         <div className="h-1 bg-[#C9AB4C] w-full" />
 
@@ -114,7 +114,7 @@ export function SubmissionLoadingModal({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-slate-100 h-1.5 overflow-hidden">
+        <div className="w-full bg-[#FFFCFB] h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-[#003366] via-[#C9AB4C] to-emerald-500 transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
@@ -122,13 +122,13 @@ export function SubmissionLoadingModal({
         </div>
 
         {/* Stages Checklist */}
-        <div className="p-6 space-y-3.5 bg-slate-50">
+        <div className="p-6 space-y-3.5 bg-[#FFFCFB]">
           {STAGES.map((s, idx) => {
             const isDone = currentStageIndex > idx;
             const isCurrent = currentStageIndex === idx;
 
             let icon = (
-              <div className="w-5 h-5 rounded-full border border-slate-300 bg-white flex items-center justify-center text-[10px] text-slate-400 font-bold">
+              <div className="w-5 h-5 rounded-full border border-slate-300 bg-[#FFFCFB] flex items-center justify-center text-[10px] text-slate-400 font-bold">
                 {idx + 1}
               </div>
             );
@@ -153,7 +153,7 @@ export function SubmissionLoadingModal({
               );
               labelColor = "text-[#181A1D] font-bold";
               descColor = "text-slate-600 font-medium";
-              rowBg = "bg-white border border-slate-200 shadow-xs";
+              rowBg = "bg-[#FFFCFB] border border-slate-200 shadow-xs";
             }
 
             return (
@@ -172,7 +172,7 @@ export function SubmissionLoadingModal({
         </div>
 
         {/* Bottom Reassurance Footer */}
-        <div className="px-6 py-3 bg-white border-t border-slate-200 text-center">
+        <div className="px-6 py-3 bg-[#FFFCFB] border-t border-slate-200 text-center">
           <span className="text-[11px] text-slate-400 italic">
             🔒 Secure 256-bit SSL upload directly to ClickUp Workspace
           </span>

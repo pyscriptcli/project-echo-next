@@ -48,7 +48,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
 
       {/* Right Column: App Canvas (#FAF9F7) with Centered White Card */}
       <div className="w-full md:w-7/12 lg:w-8/12 bg-[#FAF9F7] flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md bg-white p-8 md:p-10 border border-gray-200 border-t-4 border-t-[#C9AB4C] shadow-lg rounded-none">
+        <div className="w-full max-w-md bg-[#FFFCFB] p-8 md:p-10 border border-gray-200 border-t-4 border-t-[#C9AB4C] shadow-lg rounded-none">
           
           {/* Subheader / Tag */}
           <div className="text-[10px] font-bold uppercase tracking-widest text-[#C9AB4C] mb-2">
@@ -80,7 +80,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
             className="w-full py-3.5 px-5 bg-[#7B68EE] hover:bg-[#6b57ea] active:bg-[#5c47df] text-white font-semibold text-xs tracking-wide transition-all rounded-none flex items-center justify-between cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed shadow-sm hover:shadow"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-5 h-5 bg-white rounded-none flex items-center justify-center p-0.5">
+              <div className="w-5 h-5 bg-[#FFFCFB] rounded-none flex items-center justify-center p-0.5">
                 <svg viewBox="0 0 100 100" fill="none" className="w-4 h-4">
                   <path d="M20 54L34 42L50 56L66 42L80 54L50 28L20 54Z" fill="#7B68EE" />
                   <path d="M20 66C30 76 70 76 80 66L88 74C72 88 28 88 12 74L20 66Z" fill="#FF005A" />

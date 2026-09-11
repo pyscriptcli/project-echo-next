@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RetailDemandsPage() {
   return (
-    <div className="min-h-screen bg-slate-50 overflow-y-auto">
+    <div className="min-h-screen bg-[#FFFCFB] overflow-y-auto">
       <div className="bg-[#1b1d1e] text-white px-6 py-3 border-b border-[#C9AB4C] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link

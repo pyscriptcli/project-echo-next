@@ -854,7 +854,7 @@ export default function Home() {
       
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="fixed inset-0 bg-white/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
+        <div className="fixed inset-0 bg-[#FFFCFB]/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
           <div className="relative w-20 h-20 mb-4"><svg viewBox="0 0 36 36" className="w-full h-full -rotate-90"><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#e5e7eb" strokeWidth="3" /><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#003366" strokeWidth="3" strokeDasharray={`${loadingProgress}, 100`} /></svg><span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#003366]">{loadingProgress}%</span></div>
           <p className="font-bold tracking-widest uppercase text-sm text-[#003366] mb-4 px-6 text-center max-w-lg">Processing minutes of the meeting</p>
           <button
@@ -867,7 +867,7 @@ export default function Home() {
         </div>
       )}
 
-      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-white border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-gray-50"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
+      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-[#FFFCFB]"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
 
       {/* Full Recording Studio Modal */}
       {showStudio && (
@@ -934,7 +934,7 @@ export default function Home() {
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5">
           {!isPageAllowed(currentView) ? (
             <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
-              <div className="max-w-md w-full bg-white border border-slate-200 p-8 text-center shadow-sm">
+              <div className="max-w-md w-full bg-[#FFFCFB] border border-slate-200 p-8 text-center shadow-sm">
                 <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4 text-amber-600">
                   <Lock className="w-6 h-6" />
                 </div>
@@ -1081,8 +1081,8 @@ export default function Home() {
         {stage === "Input" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             
-            {/* Left Panel: Meeting Source (Uniform bg-white rounded-none card) */}
-            <div className="bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+            {/* Left Panel: Meeting Source (Uniform bg-[#FFFCFB] rounded-none card) */}
+            <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">1. Meeting Source</span>
                 {selectedFile && (
@@ -1141,7 +1141,7 @@ export default function Home() {
                           ? "border-[#003366] bg-[#eef1f6] shadow-xs" 
                           : selectedFile
                             ? "border-green-600/40 bg-green-50/20"
-                            : "border-gray-300 bg-[#faf9f7] hover:border-[#003366]/50 hover:bg-white"
+                            : "border-gray-300 bg-[#FFFCFB] hover:border-[#003366]/50 hover:bg-[#FFFCFB]"
                       }`}
                     >
                       <input 
@@ -1168,13 +1168,13 @@ export default function Home() {
                             or <span className="text-[#003366] font-bold underline">Browse files</span> to automatically transcribe & generate
                           </p>
                           <div className="flex flex-wrap justify-center gap-1.5 text-[9px] text-gray-400 uppercase font-semibold">
-                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Audio: MP3, WAV, M4A</span>
-                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Documents: PDF, Word (.docx)</span>
-                            <span className="bg-white border border-gray-200 px-1.5 py-0.5">Transcripts: TXT, SRT, VTT</span>
+                            <span className="bg-[#FFFCFB] border border-gray-200 px-1.5 py-0.5">Audio: MP3, WAV, M4A</span>
+                            <span className="bg-[#FFFCFB] border border-gray-200 px-1.5 py-0.5">Documents: PDF, Word (.docx)</span>
+                            <span className="bg-[#FFFCFB] border border-gray-200 px-1.5 py-0.5">Transcripts: TXT, SRT, VTT</span>
                           </div>
                         </label>
                       ) : (
-                        <div className="w-full flex items-center justify-between bg-white border border-gray-200 p-2.5 shadow-2xs">
+                        <div className="w-full flex items-center justify-between bg-[#FFFCFB] border border-gray-200 p-2.5 shadow-2xs">
                           <div className="flex items-center gap-2.5 text-xs font-semibold text-[#003366] truncate text-left">
                             <FileCheck size={18} className="text-green-600 shrink-0" />
                             <div className="truncate">
@@ -1194,7 +1194,7 @@ export default function Home() {
                                 e.stopPropagation();
                                 setSelectedFile(null);
                               }}
-                              className="text-gray-400 hover:text-red-500 p-1 hover:bg-gray-100 rounded-none cursor-pointer"
+                              className="text-gray-400 hover:text-red-500 p-1 hover:bg-[#FFFCFB] rounded-none cursor-pointer"
                               title="Remove file"
                             >
                               <X size={14} />
@@ -1207,14 +1207,14 @@ export default function Home() {
                     {/* OR Divider */}
                     <div className="relative flex items-center justify-center my-0.5">
                       <div className="border-t border-gray-200 w-full"></div>
-                      <span className="bg-white px-2.5 text-[9px] uppercase font-bold tracking-widest text-gray-400 shrink-0">
+                      <span className="bg-[#FFFCFB] px-2.5 text-[9px] uppercase font-bold tracking-widest text-gray-400 shrink-0">
                         OR PASTE TRANSCRIPT / TEXT
                       </span>
                       <div className="border-t border-gray-200 w-full"></div>
                     </div>
 
                     {/* Direct Text Paste Area */}
-                    <div className="border border-gray-200 bg-white p-3">
+                    <div className="border border-gray-200 bg-[#FFFCFB] p-3">
                       <div className="flex justify-between items-center mb-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
                           Paste Meeting Text / Notes / Transcript
@@ -1234,7 +1234,7 @@ export default function Home() {
                         value={pastedText}
                         onChange={(e) => setPastedText(e.target.value)}
                         placeholder="Paste raw transcript, meeting notes, chat logs, or key bullet points directly here..."
-                        className="w-full border border-gray-200 p-2 text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed rounded-none"
+                        className="w-full border border-gray-200 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed rounded-none"
                       />
                       {pastedText.trim().length > 0 && (
                         <button
@@ -1254,7 +1254,7 @@ export default function Home() {
 
                 {/* TAB 2: RECORD LIVE */}
                 {sourceTab === "record" && (
-                  <div className="border border-gray-200 bg-white p-4 flex flex-col items-center justify-center gap-3">
+                  <div className="border border-gray-200 bg-[#FFFCFB] p-4 flex flex-col items-center justify-center gap-3">
                     <div className="flex justify-between w-full items-center mb-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Live Microphone Capture</span>
                       <button 
@@ -1274,7 +1274,7 @@ export default function Home() {
                           className={`w-18 h-18 rounded-none flex items-center justify-center border-2 transition-all shadow-sm ${
                             isInlineRecording 
                               ? "border-red-500 bg-red-50 animate-pulse text-red-500" 
-                              : "border-[#003366] bg-white hover:bg-gray-50 text-[#003366]"
+                              : "border-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] text-[#003366]"
                           }`}
                         >
                           {isInlineRecording ? <Square size={24} className="fill-current" /> : <Mic size={28} />}
@@ -1319,10 +1319,10 @@ export default function Home() {
                 )}
 
                 {/* Collapsible: Additional Meeting Notes */}
-                <div className="mt-3.5 border border-gray-200 bg-white">
+                <div className="mt-3.5 border border-gray-200 bg-[#FFFCFB]">
                   <div 
                     onClick={() => setIsNotesOpen(!isNotesOpen)}
-                    className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 select-none transition-colors"
+                    className="p-3 flex justify-between items-center cursor-pointer hover:bg-[#FFFCFB] select-none transition-colors"
                   >
                     <span className="text-[10px] font-bold tracking-widest uppercase text-[#003366] flex items-center gap-1.5">
                       {isNotesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -1332,13 +1332,13 @@ export default function Home() {
                   </div>
                   
                   {isNotesOpen && (
-                    <div className="p-3 border-t border-gray-100 bg-[#faf9f7]">
+                    <div className="p-3 border-t border-gray-100 bg-[#FFFCFB]">
                       <textarea 
                         rows={3}
                         value={additionalMeetingNotes}
                         onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
                         placeholder="Add background notes, key announcements, agenda items, or specific instructions..."
-                        className="w-full border border-gray-300 p-2 text-xs bg-white focus:outline-none focus:border-[#C9AB4C] leading-relaxed rounded-none"
+                        className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] leading-relaxed rounded-none"
                       />
                     </div>
                   )}
@@ -1346,7 +1346,7 @@ export default function Home() {
 
                 {/* Transcript Preview if available */}
                 {transcript && (
-                  <div className="mt-3.5 p-3 bg-gray-50 border border-gray-200">
+                  <div className="mt-3.5 p-3 bg-[#FFFCFB] border border-gray-200">
                     <div className="flex justify-between items-center mb-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Secured Source Content</span>
                       <span className="text-[9px] text-green-600 font-bold bg-green-100 px-1.5 py-0.5">Ready for Review</span>
@@ -1360,8 +1360,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Panel: Meeting Information (Uniform bg-white rounded-none card) */}
-            <div className="bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+            {/* Right Panel: Meeting Information (Uniform bg-[#FFFCFB] rounded-none card) */}
+            <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">
                   2. Meeting Information
@@ -1383,7 +1383,7 @@ export default function Home() {
                       type="date" 
                       value={metadata.date || ""}
                       onChange={(e) => setMetadata({ ...metadata, date: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                     />
                   </div>
                   <div>
@@ -1392,7 +1392,7 @@ export default function Home() {
                       type="time" 
                       value={metadata.start_time || "09:00"}
                       onChange={(e) => setMetadata({ ...metadata, start_time: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                     />
                   </div>
                   <div>
@@ -1401,7 +1401,7 @@ export default function Home() {
                       type="time" 
                       value={metadata.end_time || "10:00"}
                       onChange={(e) => setMetadata({ ...metadata, end_time: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                     />
                   </div>
                 </div>
@@ -1413,7 +1413,7 @@ export default function Home() {
                     <select 
                       value={metadata.meeting_type || "Internal"} 
                       onChange={(e) => setMetadata({ ...metadata, meeting_type: e.target.value })} 
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
                     >
                       <option value="Internal">Internal</option>
                       <option value="External">External</option>
@@ -1428,7 +1428,7 @@ export default function Home() {
                     <select 
                       value={metadata.location || VENUE_OPTIONS[0]} 
                       onChange={(e) => setMetadata({ ...metadata, location: e.target.value })} 
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none cursor-pointer"
                     >
                       {VENUE_OPTIONS.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -1443,7 +1443,7 @@ export default function Home() {
                           placeholder="Enter custom venue name or address..."
                           value={metadata.custom_location || ""}
                           onChange={(e) => setMetadata({ ...metadata, custom_location: e.target.value })}
-                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#c9ab4c] outline-none transition-colors rounded-none"
+                          className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-[#c9ab4c] outline-none transition-colors rounded-none"
                         />
                       </div>
                     )}
@@ -1458,14 +1458,14 @@ export default function Home() {
                     placeholder="e.g. Acme Corp or Internal Project Echo" 
                     value={metadata.client_name || ""}
                     onChange={(e) => setMetadata({ ...metadata, client_name: e.target.value })}
-                    className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                    className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Workspace</label><input value={metadata.workspace || ""} onChange={(e) => setMetadata({ ...metadata, workspace: e.target.value })} placeholder="Workspace name" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
-                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Department</label><input value={metadata.department || ""} onChange={(e) => setMetadata({ ...metadata, department: e.target.value })} placeholder="e.g. CRD or IT" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
-                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Space ID</label><input value={metadata.space_id || ""} onChange={(e) => setMetadata({ ...metadata, space_id: e.target.value })} placeholder="Required for archive" className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200" /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Workspace</label><input value={metadata.workspace || ""} onChange={(e) => setMetadata({ ...metadata, workspace: e.target.value })} placeholder="Workspace name" className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200" /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Department</label><input value={metadata.department || ""} onChange={(e) => setMetadata({ ...metadata, department: e.target.value })} placeholder="e.g. CRD or IT" className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200" /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">ClickUp Space ID</label><input value={metadata.space_id || ""} onChange={(e) => setMetadata({ ...metadata, space_id: e.target.value })} placeholder="Required for archive" className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200" /></div>
                 </div>
 
                 {/* Team Attendees & External Attendees */}
@@ -1476,7 +1476,7 @@ export default function Home() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       Team Attendees
                     </label>
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 border border-gray-200 min-h-[36px] items-center">
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-[#FFFCFB] border border-gray-200 min-h-[36px] items-center">
                       {primeAttendees.map((name) => (
                         <span key={name} className="bg-[#003366] text-[#c9ab4c] font-bold text-[11px] tracking-wider px-2 py-0.5 rounded-none flex items-center gap-1 shadow-2xs">
                           {name}
@@ -1499,7 +1499,7 @@ export default function Home() {
                               addPrimeAttendee();
                             }
                           }}
-                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-white"
+                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-[#FFFCFB]"
                         />
                         <button type="button" onClick={addPrimeAttendee} className="text-xs text-[#003366] hover:bg-gray-200 p-0.5">
                           <Plus size={13} />
@@ -1513,7 +1513,7 @@ export default function Home() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       External Attendees
                     </label>
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 border border-gray-200 min-h-[36px] items-center">
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-[#FFFCFB] border border-gray-200 min-h-[36px] items-center">
                       {externalAttendees.map((name) => (
                         <span key={name} className="bg-[#003366] text-white font-bold text-[11px] tracking-wider px-2 py-0.5 rounded-none flex items-center gap-1 shadow-2xs">
                           {name}
@@ -1536,7 +1536,7 @@ export default function Home() {
                               addExternalAttendee();
                             }
                           }}
-                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-white"
+                          className="text-[11px] py-0.5 px-1.5 border border-dashed border-gray-300 focus:outline-none focus:border-[#003366] w-20 bg-[#FFFCFB]"
                         />
                         <button type="button" onClick={addExternalAttendee} className="text-xs text-[#003366] hover:bg-gray-200 p-0.5">
                           <Plus size={13} />
@@ -1555,7 +1555,7 @@ export default function Home() {
                       type="text" 
                       value={metadata.prepared_by || "Dave Policarpio"}
                       onChange={(e) => setMetadata({ ...metadata, prepared_by: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                     />
                   </div>
                   <div>
@@ -1564,7 +1564,7 @@ export default function Home() {
                       type="text" 
                       value={metadata.confirmed_by || "Client Rep or Lead"}
                       onChange={(e) => setMetadata({ ...metadata, confirmed_by: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 
                     />
                   </div>
                 </div>
@@ -1592,7 +1592,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
-                  <span className="bg-white border border-gray-200 px-2 py-0.5">
+                  <span className="bg-[#FFFCFB] border border-gray-200 px-2 py-0.5">
                     {audioTelemetry.totalChunks} chunk{audioTelemetry.totalChunks !== 1 ? "s" : ""}
                     {audioTelemetry.cachedChunksReused > 0 ? ` (${audioTelemetry.cachedChunksReused} cached)` : ""}
                   </span>
@@ -1602,7 +1602,7 @@ export default function Home() {
             )}
 
             {/* Potential Missed Topic Detection Banner (Compact, Edgy) */}
-            <div className="bg-white border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
+            <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-10 bg-[#c9ab4c] shrink-0"></div>
                 <div>
@@ -1626,7 +1626,7 @@ export default function Home() {
             </div>
 
             {/* EXECUTIVE MINUTES MATRIX */}
-            <div className="border border-[#003366]/20 bg-white shadow-2xs overflow-hidden rounded-none">
+            <div className="border border-[#003366]/20 bg-[#FFFCFB] shadow-2xs overflow-hidden rounded-none">
               
               {/* Header */}
               <div className="bg-[#003366] text-white px-5 py-3.5 flex justify-between items-center">
@@ -1642,9 +1642,9 @@ export default function Home() {
               </div>
 
               {/* Discussion Cards Container */}
-              <div className="p-4 bg-[#fcfbf9] space-y-4">
+              <div className="p-4 bg-[#FFFCFB] space-y-4">
                 {momItems.length === 0 ? (
-                  <div className="p-10 text-center bg-white border border-gray-200 rounded-none">
+                  <div className="p-10 text-center bg-[#FFFCFB] border border-gray-200 rounded-none">
                     <p className="text-gray-500 text-xs mb-3">No minutes items generated yet.</p>
                     <button onClick={addRow} className="btn-primary !text-xs !py-1.5 !px-3 rounded-none">
                       <Plus size={13} className="inline mr-1" /> Add First Topic Manually
@@ -1654,7 +1654,7 @@ export default function Home() {
                   momItems.map((item, idx) => (
                     <div 
                       key={idx} 
-                      className="p-4 bg-white border border-gray-200 shadow-2xs hover:border-[#003366]/40 transition-colors relative rounded-none"
+                      className="p-4 bg-[#FFFCFB] border border-gray-200 shadow-2xs hover:border-[#003366]/40 transition-colors relative rounded-none"
                     >
                       {/* 1. TOPIC AS HEADER + MOVE/REMOVE BUTTONS */}
                       <div className="flex items-start justify-between gap-4 pb-2.5 border-b border-gray-100">
@@ -1684,7 +1684,7 @@ export default function Home() {
                             onClick={() => moveRow(idx, -1)} 
                             disabled={idx === 0}
                             title="Move topic up"
-                            className="p-1 border border-gray-200 bg-white hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
+                            className="p-1 border border-gray-200 bg-[#FFFCFB] hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
                           >
                             <ChevronUp size={13} />
                           </button>
@@ -1693,7 +1693,7 @@ export default function Home() {
                             onClick={() => moveRow(idx, 1)} 
                             disabled={idx === momItems.length - 1}
                             title="Move topic down"
-                            className="p-1 border border-gray-200 bg-white hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
+                            className="p-1 border border-gray-200 bg-[#FFFCFB] hover:bg-[#003366] hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-gray-500 rounded-none"
                           >
                             <ChevronDown size={13} />
                           </button>
@@ -1701,7 +1701,7 @@ export default function Home() {
                             type="button" 
                             onClick={() => removeRow(idx)} 
                             title="Remove topic"
-                            className="p-1 border border-gray-200 bg-white hover:bg-red-500 hover:text-white transition-colors text-gray-400 hover:border-red-500 rounded-none ml-0.5"
+                            className="p-1 border border-gray-200 bg-[#FFFCFB] hover:bg-red-500 hover:text-white transition-colors text-gray-400 hover:border-red-500 rounded-none ml-0.5"
                           >
                             <X size={13} />
                           </button>
@@ -1715,7 +1715,7 @@ export default function Home() {
                         </label>
                         <AutoResizeTextarea
                           rows={2}
-                          className="w-full border-l-2 border-[#c9ab4c] bg-[#faf9f7] p-2 text-xs italic text-gray-700 focus:outline-none focus:bg-white focus:border-[#003366] transition-colors leading-relaxed rounded-none"
+                          className="w-full border-l-2 border-[#c9ab4c] bg-[#FFFCFB] p-2 text-xs italic text-gray-700 focus:outline-none focus:bg-[#FFFCFB] focus:border-[#003366] transition-colors leading-relaxed rounded-none"
                           value={item.evidence_quote || ""}
                           placeholder='[00:00] Direct context or source reference quote...'
                           onChange={(e) => {
@@ -1736,7 +1736,7 @@ export default function Home() {
                           </label>
                           <AutoResizeTextarea
                             rows={3}
-                            className="w-full border border-gray-200 p-2 text-xs bg-white text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
+                            className="w-full border border-gray-200 p-2 text-xs bg-[#FFFCFB] text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
                             value={item.discussion_point || ""}
                             placeholder="Detail discussions, key arguments, and conclusions..."
                             onChange={(e) => {
@@ -1756,14 +1756,14 @@ export default function Home() {
                             <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-none ${
                               item.action_plan && item.action_plan !== "None"
                                 ? "bg-[#003366] text-[#c9ab4c]"
-                                : "bg-gray-100 text-gray-400"
+                                : "bg-[#FFFCFB] text-gray-400"
                             }`}>
                               {item.action_plan && item.action_plan !== "None" ? "Action" : "Info"}
                             </span>
                           </div>
                           <AutoResizeTextarea
                             rows={3}
-                            className="w-full border border-gray-200 p-2 text-xs bg-white text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
+                            className="w-full border border-gray-200 p-2 text-xs bg-[#FFFCFB] text-gray-700 leading-relaxed focus:outline-none focus:border-[#C9AB4C] transition-colors shadow-2xs rounded-none"
                             value={item.action_plan || ""}
                             placeholder="Next steps or operational action..."
                             onChange={(e) => {
@@ -1795,7 +1795,7 @@ export default function Home() {
                           <label className="block text-[9px] font-bold tracking-widest uppercase text-gray-500 mb-1">
                             Person in Charge
                           </label>
-                          <div className="flex items-center gap-1.5 border border-gray-200 bg-gray-50 px-2 py-1.5 rounded-none">
+                          <div className="flex items-center gap-1.5 border border-gray-200 bg-[#FFFCFB] px-2 py-1.5 rounded-none">
                             <Users size={12} className="text-[#c9ab4c] shrink-0" />
                             <input 
                               type="text" 
@@ -1857,7 +1857,7 @@ export default function Home() {
                                 topicIndex: idx,
                               });
                             }}
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-[#FFFCFB] border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
                           >
                             <CheckSquare size={13} className="text-[#c9ab4c]" />
                             <span>Add to Tasks</span>
@@ -1870,7 +1870,7 @@ export default function Home() {
               </div>
 
               {/* Table / Card List Footer */}
-              <div className="p-3.5 bg-[#faf9f7] border-t border-gray-200 flex justify-between items-center">
+              <div className="p-3.5 bg-[#FFFCFB] border-t border-gray-200 flex justify-between items-center">
                 <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
                 </button>
@@ -1885,13 +1885,13 @@ export default function Home() {
             </div>
 
             {/* Other Discussions */}
-            <div className="border border-gray-200 bg-white p-5 shadow-2xs rounded-none">
+            <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none">
               <h3 className="text-lg font-serif text-[#003366] italic mb-1.5">Other Discussions & Peripheral Notes</h3>
               <p className="text-[11px] text-gray-500 mb-3">
                 Summary of housekeeping topics, general announcements, administrative items, and non-action discussions.
               </p>
               <textarea 
-                className="w-full border border-gray-200 p-3 text-xs bg-[#faf9f7] focus:bg-white min-h-[100px] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed shadow-2xs rounded-none" 
+                className="w-full border border-gray-200 p-3 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] min-h-[100px] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed shadow-2xs rounded-none" 
                 value={otherDiscussions}
                 onChange={(e) => setOtherDiscussions(e.target.value)}
                 placeholder="Summary paragraph of all general discussions and administrative updates..."
@@ -1901,9 +1901,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* STAGE 3: EXPORT (Uniform bg-white rounded-none card) */}
+        {/* STAGE 3: EXPORT (Uniform bg-[#FFFCFB] rounded-none card) */}
         {stage === "Export" && (
-          <div className="bg-white border border-gray-200/90 rounded-none p-6 shadow-2xs">
+          <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-6 shadow-2xs">
             <h1 className="text-2xl font-serif text-[#003366] italic font-semibold mb-1">Export Minutes Package</h1>
             <p className="text-xs font-bold tracking-wider uppercase text-gray-400 mb-8">
               Choose an executive template and download the completed minutes package.
@@ -1912,7 +1912,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <button 
                 onClick={handleExportWord} 
-                className="py-12 bg-white border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
+                className="py-12 bg-[#FFFCFB] border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
               >
                 <FileText size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
                 <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download Word (.docx)</span>
@@ -1921,7 +1921,7 @@ export default function Home() {
               
               <button 
                 onClick={handleExportPdf} 
-                className="py-12 bg-white border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
+                className="py-12 bg-[#FFFCFB] border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
               >
                 <Download size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
                 <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download PDF (.pdf)</span>

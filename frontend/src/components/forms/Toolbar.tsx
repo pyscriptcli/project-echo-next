@@ -39,7 +39,7 @@ export function Toolbar({
   onPreFillDemo,
 }: ToolbarProps) {
   return (
-    <div className="w-full sticky top-3 z-40 mb-4 bg-white border border-slate-300 shadow-sm px-4 py-2.5 flex flex-col lg:flex-row lg:items-center gap-3 relative">
+    <div className="w-full sticky top-3 z-40 mb-4 bg-[#FFFCFB] border border-slate-300 shadow-sm px-4 py-2.5 flex flex-col lg:flex-row lg:items-center gap-3 relative">
       {/* Top Gold Accent Line */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#C9AB4C]" />
 
@@ -56,7 +56,7 @@ export function Toolbar({
             id="active-form-selector"
             value={selectedForm}
             onChange={(e) => onSelectForm?.(e.target.value)}
-            className="w-full appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-300 hover:border-slate-400 text-[#003366] text-xs font-bold rounded-none pl-8 pr-7 h-8 focus:outline-none focus:ring-1 focus:ring-[#003366] cursor-pointer transition-colors"
+            className="w-full appearance-none bg-[#FFFCFB] hover:bg-[#FFFCFB] border border-slate-300 hover:border-slate-400 text-[#003366] text-xs font-bold rounded-none pl-8 pr-7 h-8 focus:outline-none focus:ring-1 focus:ring-[#003366] cursor-pointer transition-colors"
             title="Select form type"
           >
             <option value="rfp">Request for Payment (RFP)</option>
@@ -81,7 +81,7 @@ export function Toolbar({
           type="button"
           onClick={onPreviewPdf}
           disabled={isGeneratingPdf}
-          className="h-8 px-3 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 text-[#003366] hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+          className="h-8 px-3 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 text-[#003366] hover:bg-[#FFFCFB] transition-colors cursor-pointer disabled:opacity-50"
         >
           {isGeneratingPdf ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#003366]" />

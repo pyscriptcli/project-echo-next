@@ -108,7 +108,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
     <div className="w-full flex justify-center py-2">
       <div
         id="po-printable-sheet"
-        className="w-full max-w-[850px] bg-white text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
+        className="w-full max-w-[850px] bg-[#FFFCFB] text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
         style={{ minHeight: "1100px" }}
       >
         {/* Top Header */}
@@ -310,7 +310,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
                       minHeight={26}
                       rows={1}
                       onChange={(e) => handleItemChange(idx, "details", e.target.value)}
-                      className={`px-2 py-1 text-xs focus:bg-white ${hasError(`item_${idx}_details`) ? "border border-rose-500 bg-rose-50" : ""}`}
+                      className={`px-2 py-1 text-xs focus:bg-[#FFFCFB] ${hasError(`item_${idx}_details`) ? "border border-rose-500 bg-rose-50" : ""}`}
                     />
                   </td>
 
@@ -321,7 +321,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
                       value={item.unit}
                       placeholder="pcs"
                       onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
-                      className="w-full text-center bg-transparent py-1 text-xs focus:bg-white"
+                      className="w-full text-center bg-transparent py-1 text-xs focus:bg-[#FFFCFB]"
                     />
                   </td>
 
@@ -341,7 +341,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
                           e.target.value === "" ? "" : parseFloat(e.target.value)
                         )
                       }
-                      className={`w-full text-center bg-transparent py-1 text-xs focus:bg-white font-mono ${hasError(`item_${idx}_qty`) ? "border border-rose-500 bg-rose-50" : ""}`}
+                      className={`w-full text-center bg-transparent py-1 text-xs focus:bg-[#FFFCFB] font-mono ${hasError(`item_${idx}_qty`) ? "border border-rose-500 bg-rose-50" : ""}`}
                     />
                   </td>
 
@@ -363,7 +363,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
                             e.target.value === "" ? "" : parseFloat(e.target.value)
                           )
                         }
-                        className={`w-full text-right bg-transparent py-1 text-xs focus:bg-white font-mono ${hasError(`item_${idx}_price`) ? "border border-rose-500 bg-rose-50" : ""}`}
+                        className={`w-full text-right bg-transparent py-1 text-xs focus:bg-[#FFFCFB] font-mono ${hasError(`item_${idx}_price`) ? "border border-rose-500 bg-rose-50" : ""}`}
                       />
                     </div>
                   </td>
@@ -489,7 +489,7 @@ export function PoSheet({ data, onChange, validationErrors }: PoSheetProps) {
                     </div>
                   </td>
                 </tr>
-                <tr className="bg-slate-50 font-black">
+                <tr className="bg-[#FFFCFB] font-black">
                   <td className="p-2 font-bold uppercase text-xs text-[#003366]">
                     TOTAL AMOUNT DUE
                   </td>

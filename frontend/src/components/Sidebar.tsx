@@ -145,7 +145,7 @@ export function Sidebar({
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
             {!effectiveCollapsed && (
               <div className="flex items-center gap-2 whitespace-nowrap">
-                <img src="/forms/prime-philippines-logo.png" alt="PRIME Philippines" className="h-8 w-auto object-contain" />
+                <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className="h-8 w-auto object-contain" />
                 <span className="w-1.5 h-1.5 bg-[#FFBF00] mt-1"></span>
               </div>
             )}

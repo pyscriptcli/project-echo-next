@@ -45,13 +45,13 @@ export function SubmissionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-white rounded-none shadow-2xl border-2 border-[#003366] flex flex-col relative overflow-hidden">
+      <div className="w-full max-w-xl bg-[#FFFCFB] rounded-none shadow-2xl border-2 border-[#003366] flex flex-col relative overflow-hidden">
         {/* Top Gold Accent Line */}
         <div className="h-[3px] bg-[#C9AB4C] w-full" />
 
         {/* Header decoration */}
         <div className="bg-[#003366] px-8 pt-6 pb-6 text-white text-center relative">
-          <div className="w-14 h-14 bg-white/10 rounded-none border border-[#C9AB4C] flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 bg-[#FFFCFB]/10 rounded-none border border-[#C9AB4C] flex items-center justify-center mx-auto mb-3">
             <CheckCircle2 className="w-8 h-8 text-[#C9AB4C]" />
           </div>
           <h2 className="font-serif italic text-2xl font-bold tracking-tight text-white">
@@ -71,7 +71,7 @@ export function SubmissionModal({
         {/* Details Content */}
         <div className="p-6 space-y-5">
           {/* Task Info Box */}
-          <div className="bg-slate-50 border border-slate-300 rounded-none p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="bg-[#FFFCFB] border border-slate-300 rounded-none p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 ClickUp Task ID
@@ -81,11 +81,11 @@ export function SubmissionModal({
               </p>
             </div>
 
-            {response.isMock && <div className="text-xs text-slate-500 italic bg-white px-3 py-1.5 border border-slate-200">Mock Task #{response.taskId}</div>}
+            {response.isMock && <div className="text-xs text-slate-500 italic bg-[#FFFCFB] px-3 py-1.5 border border-slate-200">Mock Task #{response.taskId}</div>}
           </div>
 
           {/* Workflow Next Steps */}
-          <div className="border border-slate-200 bg-slate-50 p-4 border-l-4 border-l-[#C9AB4C]">
+          <div className="border border-slate-200 bg-[#FFFCFB] p-4 border-l-4 border-l-[#C9AB4C]">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#003366] flex items-center gap-1.5 mb-1">
               <span className="w-2 h-2 bg-[#C9AB4C]" />
               Automated Next Step in Workflow
@@ -136,7 +136,7 @@ export function SubmissionModal({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+        <div className="bg-[#FFFCFB] px-6 py-3 border-t border-slate-200 flex justify-end">
           <button
             type="button"
             onClick={onClose}

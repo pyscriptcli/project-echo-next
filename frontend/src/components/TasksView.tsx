@@ -601,7 +601,7 @@ export default function TasksView({
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 text-gray-600 uppercase tracking-wider rounded-none">
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 bg-[#FFFCFB] text-gray-600 uppercase tracking-wider rounded-none">
         <span className="w-1.5 h-1.5 bg-gray-400"></span> Low
       </span>
     );
@@ -611,7 +611,7 @@ export default function TasksView({
     const s = statusStr.toLowerCase();
     const cat = getStatusCategory(s);
 
-    let badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
+    let badgeClass = "bg-[#FFFCFB] text-gray-700 border-gray-200";
     if (cat === "Not started") badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
     else if (cat === "Active") {
       if (s.includes("delayed")) badgeClass = "bg-red-50 text-red-700 border-red-200";
@@ -619,7 +619,7 @@ export default function TasksView({
       else badgeClass = "bg-yellow-50 text-yellow-800 border-yellow-200";
     } else if (cat === "Done") {
       if (s.includes("delayed")) badgeClass = "bg-pink-50 text-pink-700 border-pink-200";
-      else if (s.includes("onhold") || s.includes("shelved")) badgeClass = "bg-gray-100 text-gray-600 border-gray-200";
+      else if (s.includes("onhold") || s.includes("shelved")) badgeClass = "bg-[#FFFCFB] text-gray-600 border-gray-200";
       else badgeClass = "bg-blue-50 text-[#003366] border-blue-200";
     } else if (cat === "Closed") {
       badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
@@ -641,9 +641,9 @@ export default function TasksView({
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f8f9fa] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#FFFCFB] overflow-hidden">
       {/* Top Header Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-xs">
+      <div className="bg-[#FFFCFB] border-b border-gray-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#1b1d1e] flex items-center justify-center text-[#c9ab4c]">
             <CheckSquare size={17} />
@@ -674,7 +674,7 @@ export default function TasksView({
                 if (availableLists.length === 0) loadDiscoveredLists(false);
               }}
               title="Click to switch ClickUp list"
-              className="flex items-center gap-2 px-3 py-1.5 bg-[#FAF9F7] hover:bg-white border border-[#1b1d1e]/20 hover:border-[#c9ab4c] transition-all text-xs font-semibold text-[#1b1d1e] shadow-2xs rounded-none cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#FAF9F7] hover:bg-[#FFFCFB] border border-[#1b1d1e]/20 hover:border-[#c9ab4c] transition-all text-xs font-semibold text-[#1b1d1e] shadow-2xs rounded-none cursor-pointer"
             >
               <FolderKanban size={15} className="text-[#c9ab4c] shrink-0" />
               <div className="flex flex-col text-left leading-tight max-w-[170px] sm:max-w-[240px] truncate">
@@ -693,7 +693,7 @@ export default function TasksView({
 
             {/* Dropdown Menu */}
             {isListDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-80 sm:w-96 bg-white border-2 border-[#1b1d1e] shadow-2xl z-50 rounded-none overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="absolute right-0 mt-1.5 w-80 sm:w-96 bg-[#FFFCFB] border-2 border-[#1b1d1e] shadow-2xl z-50 rounded-none overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                 {/* Search / Filter bar inside dropdown */}
                 <div className="p-2.5 bg-[#1b1d1e] text-white border-b border-[#2c2f32]">
                   <div className="flex items-center justify-between mb-1.5">
@@ -746,7 +746,7 @@ export default function TasksView({
                   ) : (
                     listsBySpace.map(([spaceName, spaceLists]) => (
                       <div key={spaceName}>
-                        <div className="bg-gray-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-100 flex items-center justify-between">
+                        <div className="bg-[#FFFCFB] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-100 flex items-center justify-between">
                           <span>{spaceName}</span>
                           <span className="text-gray-400">{spaceLists.length} lists</span>
                         </div>
@@ -761,7 +761,7 @@ export default function TasksView({
                                 className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between group transition-colors cursor-pointer ${
                                   isSelected
                                     ? "bg-amber-50/70 border-l-4 border-[#c9ab4c]"
-                                    : "hover:bg-gray-50"
+                                    : "hover:bg-[#FFFCFB]"
                                 }`}
                               >
                                 <div className="truncate pr-2">
@@ -796,7 +796,7 @@ export default function TasksView({
                 </div>
 
                 {/* Dropdown Footer */}
-                <div className="p-2 bg-[#faf9f7] border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-500 px-3">
+                <div className="p-2 bg-[#FFFCFB] border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-500 px-3">
                   <span>
                     {availableLists.length > 0 ? `${availableLists.length} lists available` : "Click Rescan to refresh"}
                   </span>
@@ -816,7 +816,7 @@ export default function TasksView({
           </div>
 
           {/* Board / List Toggle */}
-          <div className="flex bg-gray-100 p-0.5 border border-gray-200">
+          <div className="flex bg-[#FFFCFB] p-0.5 border border-gray-200">
             <button
               onClick={() => setViewMode("board")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
@@ -846,7 +846,7 @@ export default function TasksView({
             onClick={() => loadTasks(true)}
             disabled={refreshing || loading}
             title="Refresh from ClickUp"
-            className="p-1.5 text-gray-600 hover:text-[#003366] bg-white border border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
+            className="p-1.5 text-gray-600 hover:text-[#003366] bg-[#FFFCFB] border border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin text-[#c9ab4c]" : ""} />
           </button>
@@ -898,7 +898,7 @@ export default function TasksView({
       </div>
 
       {/* Enterprise Filter Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <div className="bg-[#FFFCFB] border-b border-gray-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Box */}
           <div className="relative">
@@ -908,7 +908,7 @@ export default function TasksView({
               placeholder="Search tasks, meetings, assignees..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1 bg-gray-50 border border-gray-200 text-xs w-60 focus:bg-white focus:border-[#c9ab4c] outline-none"
+              className="pl-8 pr-3 py-1 bg-[#FFFCFB] border border-gray-200 text-xs w-60 focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
             />
           </div>
 
@@ -916,7 +916,7 @@ export default function TasksView({
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c] font-bold uppercase"
+            className="px-2.5 py-1 text-xs bg-[#FFFCFB] border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c] font-bold uppercase"
           >
             <option value="all">Status: All Statuses</option>
             {statusCategories.map(cat => (
@@ -934,7 +934,7 @@ export default function TasksView({
           <select
             value={dateFilter}
             onChange={e => setDateFilter(e.target.value as any)}
-            className="px-2.5 py-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c]"
+            className="px-2.5 py-1 text-xs bg-[#FFFCFB] border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c]"
           >
             <option value="all">Due: All Dates</option>
             <option value="today">Due: Today</option>
@@ -947,7 +947,7 @@ export default function TasksView({
             <select
               value={assigneeFilter}
               onChange={e => setAssigneeFilter(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c]"
+              className="px-2.5 py-1 text-xs bg-[#FFFCFB] border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c]"
             >
               <option value="all">Assignee: All Members</option>
               {allAssignees.map(a => (
@@ -963,7 +963,7 @@ export default function TasksView({
             <select
               value={meetingFilter}
               onChange={e => setMeetingFilter(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c] max-w-[200px] truncate"
+              className="px-2.5 py-1 text-xs bg-[#FFFCFB] border border-gray-200 text-gray-700 outline-none focus:border-[#c9ab4c] max-w-[200px] truncate"
             >
               <option value="all">Meeting: All Sources</option>
               {allMeetings.map(m => (
@@ -986,7 +986,7 @@ export default function TasksView({
         {/* Auth / Connection Warning Card */}
         {/* List Selection Required Card */}
         {needsListSelection && !loading && (
-          <div className="max-w-3xl mx-auto mb-8 bg-white border-2 border-[#1b1d1e] p-7 shadow-xl rounded-none">
+          <div className="max-w-3xl mx-auto mb-8 bg-[#FFFCFB] border-2 border-[#1b1d1e] p-7 shadow-xl rounded-none">
             <div className="flex items-start gap-3.5 mb-5">
               <div className="w-10 h-10 bg-[#1b1d1e] text-[#c9ab4c] flex items-center justify-center shrink-0">
                 <FolderKanban size={22} />
@@ -1027,11 +1027,11 @@ export default function TasksView({
                   <div className="border border-gray-200 divide-y divide-gray-100 max-h-80 overflow-y-auto bg-[#FAF9F7]">
                     {listsBySpace.map(([spaceName, spaceLists]) => (
                       <div key={spaceName}>
-                        <div className="bg-gray-100/80 px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-600 border-b border-gray-200 flex items-center justify-between">
+                        <div className="bg-[#FFFCFB]/80 px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-600 border-b border-gray-200 flex items-center justify-between">
                           <span>{spaceName}</span>
                           <span className="text-gray-400">{spaceLists.length} lists</span>
                         </div>
-                        <div className="divide-y divide-gray-100 bg-white">
+                        <div className="divide-y divide-gray-100 bg-[#FFFCFB]">
                           {spaceLists.map((l) => (
                             <div
                               key={l.id}
@@ -1065,7 +1065,7 @@ export default function TasksView({
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 bg-gray-50 border border-gray-200 text-center">
+                  <div className="p-8 bg-[#FFFCFB] border border-gray-200 text-center">
                     {loadingLists ? (
                       <div className="flex flex-col items-center justify-center gap-2 text-xs text-gray-500">
                         <RefreshCw size={20} className="animate-spin text-[#c9ab4c]" />
@@ -1102,7 +1102,7 @@ export default function TasksView({
                       placeholder="e.g. 9012345678"
                       value={listIdInput}
                       onChange={(e) => setListIdInput(e.target.value)}
-                      className="flex-1 border border-gray-300 p-2 text-xs font-mono bg-white focus:border-[#c9ab4c] outline-none"
+                      className="flex-1 border border-gray-300 p-2 text-xs font-mono bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                     />
                     <button
                       type="button"
@@ -1126,7 +1126,7 @@ export default function TasksView({
 
         {/* Auth / Connection Warning Card */}
         {needsAuth && (
-          <div className="max-w-2xl mx-auto mb-6 bg-white border-2 border-[#003366] p-6 shadow-md">
+          <div className="max-w-2xl mx-auto mb-6 bg-[#FFFCFB] border-2 border-[#003366] p-6 shadow-md">
             <div className="flex items-start gap-3 mb-4">
               <AlertCircle className="text-[#c9ab4c] shrink-0 mt-0.5" size={22} />
               <div>
@@ -1160,7 +1160,7 @@ export default function TasksView({
                   placeholder="pk_12345678_..."
                   value={tokenInput}
                   onChange={e => setTokenInput(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs font-mono bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                  className="w-full border border-gray-300 p-2 text-xs font-mono bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                 />
               </div>
 
@@ -1216,7 +1216,7 @@ export default function TasksView({
 
         {/* Empty State */}
         {!loading && !error && filteredTasks.length === 0 && (
-          <div className="text-center py-16 bg-white border border-gray-200 p-8 max-w-xl mx-auto">
+          <div className="text-center py-16 bg-[#FFFCFB] border border-gray-200 p-8 max-w-xl mx-auto">
             <CheckSquare size={32} className="mx-auto text-gray-300 mb-3" />
             <h3 className="font-serif italic font-bold text-base text-[#003366] mb-1">
               No Meeting Tasks Found
@@ -1245,16 +1245,16 @@ export default function TasksView({
               return (
                 <div
                   key={col.key}
-                  className="bg-gray-50/80 border border-gray-200 flex flex-col min-h-[500px]"
+                  className="bg-[#FFFCFB]/80 border border-gray-200 flex flex-col min-h-[500px]"
                 >
                   {/* Column Header */}
-                  <div className={`bg-white px-3.5 py-2.5 border-b-2 ${col.color} flex items-center justify-between shadow-2xs`}>
+                  <div className={`bg-[#FFFCFB] px-3.5 py-2.5 border-b-2 ${col.color} flex items-center justify-between shadow-2xs`}>
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-[11px] uppercase tracking-wider text-gray-800">
                         {col.label}
                       </h4>
                     </div>
-                    <span className="text-[10px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 py-0.2">
+                    <span className="text-[10px] font-mono font-bold bg-[#FFFCFB] text-gray-700 px-1.5 py-0.2">
                       {colTasks.length}
                     </span>
                   </div>
@@ -1265,7 +1265,7 @@ export default function TasksView({
                       <div
                         key={task.id}
                         onClick={() => openTaskDetail(task)}
-                        className="bg-white border border-gray-200 hover:border-[#c9ab4c] p-3 shadow-2xs transition-all flex flex-col justify-between group cursor-pointer hover:shadow-xs"
+                        className="bg-[#FFFCFB] border border-gray-200 hover:border-[#c9ab4c] p-3 shadow-2xs transition-all flex flex-col justify-between group cursor-pointer hover:shadow-xs"
                       >
                         <div>
                           {/* Priority & Specific Status Badge */}
@@ -1334,7 +1334,7 @@ export default function TasksView({
                           <select
                             value={task.status.toLowerCase()}
                             onChange={e => handleStatusChange(task.id, e.target.value)}
-                            className="text-[9px] uppercase font-bold tracking-wider bg-gray-50 border border-gray-200 text-gray-700 py-0.5 px-1 outline-none hover:border-gray-400 cursor-pointer max-w-[120px] truncate"
+                            className="text-[9px] uppercase font-bold tracking-wider bg-[#FFFCFB] border border-gray-200 text-gray-700 py-0.5 px-1 outline-none hover:border-gray-400 cursor-pointer max-w-[120px] truncate"
                           >
                             {statusCategories.map(cat => (
                               <optgroup key={cat.category} label={`── ${cat.category} ──`}>
@@ -1358,7 +1358,7 @@ export default function TasksView({
 
         {/* ─── LIST VIEW (TABLE) ─── */}
         {!loading && !error && viewMode === "list" && filteredTasks.length > 0 && (
-          <div className="bg-white border border-gray-200 overflow-x-auto shadow-2xs">
+          <div className="bg-[#FFFCFB] border border-gray-200 overflow-x-auto shadow-2xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-[#1b1d1e] text-white border-b border-[#c9ab4c]/40 text-[10px] uppercase font-bold tracking-wider">
@@ -1383,7 +1383,7 @@ export default function TasksView({
                       <select
                         value={task.status.toLowerCase()}
                         onChange={e => handleStatusChange(task.id, e.target.value)}
-                        className="text-[10px] uppercase font-bold tracking-wider bg-gray-50 border border-gray-200 text-gray-800 py-1 px-1.5 outline-none hover:border-[#c9ab4c]"
+                        className="text-[10px] uppercase font-bold tracking-wider bg-[#FFFCFB] border border-gray-200 text-gray-800 py-1 px-1.5 outline-none hover:border-[#c9ab4c]"
                       >
                         {statusCategories.map(cat => (
                           <optgroup key={cat.category} label={`── ${cat.category} ──`}>
@@ -1509,7 +1509,7 @@ export default function TasksView({
       {/* ─── TASK DETAIL & EDIT MODAL ─── */}
       {selectedTaskForDetail && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-4xl rounded-none animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#FFFCFB] border-2 border-[#003366] shadow-2xl p-6 w-full max-w-4xl rounded-none animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-gray-200 pb-3 mb-4">
               <div>
@@ -1563,7 +1563,7 @@ export default function TasksView({
                       required
                       value={editTitle}
                       onChange={e => setEditTitle(e.target.value)}
-                      className="w-full border border-gray-300 p-2 text-xs font-bold text-gray-900 bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                      className="w-full border border-gray-300 p-2 text-xs font-bold text-gray-900 bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none"
                     />
                   </div>
 
@@ -1600,7 +1600,7 @@ export default function TasksView({
                       <select
                         value={editStatus}
                         onChange={e => setEditStatus(e.target.value)}
-                        className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                        className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
                       >
                         {statusCategories.map(cat => (
                           <optgroup key={cat.category} label={`── ${cat.category} ──`}>
@@ -1621,7 +1621,7 @@ export default function TasksView({
                       <select
                         value={editPriority}
                         onChange={e => setEditPriority(e.target.value)}
-                        className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                        className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
                       >
                         <option value="urgent">🔴 Urgent</option>
                         <option value="high">🟠 High</option>
@@ -1640,7 +1640,7 @@ export default function TasksView({
                       type="date"
                       value={editDueDate}
                       onChange={e => setEditDueDate(e.target.value)}
-                      className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                      className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none"
                     />
                   </div>
 
@@ -1672,7 +1672,7 @@ export default function TasksView({
                       value={editDescription}
                       onChange={e => setEditDescription(e.target.value)}
                       placeholder="Executive context, action plan, and meeting evidence..."
-                      className="w-full flex-1 min-h-[260px] border border-gray-300 p-3 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none font-mono leading-relaxed rounded-none"
+                      className="w-full flex-1 min-h-[260px] border border-gray-300 p-3 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none resize-none font-mono leading-relaxed rounded-none"
                     />
                     <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
                       <span>Synchronized with ClickUp task description</span>
@@ -1747,7 +1747,7 @@ export default function TasksView({
       {/* ─── CREATE TASK MODAL ─── */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-lg rounded-none">
+          <div className="bg-[#FFFCFB] border-2 border-[#003366] shadow-2xl p-6 w-full max-w-lg rounded-none">
             <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <CheckSquare className="text-[#c9ab4c]" size={20} />
@@ -1774,7 +1774,7 @@ export default function TasksView({
                   placeholder="e.g. Follow up on Q4 financial projections"
                   value={newTaskName}
                   onChange={e => setNewTaskName(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                 />
               </div>
 
@@ -1787,7 +1787,7 @@ export default function TasksView({
                   placeholder="e.g. Executive Board Meeting - Sept 9"
                   value={newTaskMeetingTitle}
                   onChange={e => setNewTaskMeetingTitle(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                 />
               </div>
 
@@ -1799,7 +1799,7 @@ export default function TasksView({
                   <select
                     value={newTaskPriority}
                     onChange={e => setNewTaskPriority(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                    className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                   >
                     <option value="urgent">🔴 Urgent</option>
                     <option value="high">🟠 High</option>
@@ -1815,7 +1815,7 @@ export default function TasksView({
                   <select
                     value={newTaskStatus}
                     onChange={e => setNewTaskStatus(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none uppercase font-bold"
+                    className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none uppercase font-bold"
                   >
                     {statusCategories.map(cat => (
                       <optgroup key={cat.category} label={`── ${cat.category} ──`}>
@@ -1839,7 +1839,7 @@ export default function TasksView({
                     type="date"
                     value={newTaskDueDate}
                     onChange={e => setNewTaskDueDate(e.target.value)}
-                    className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none"
+                    className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none"
                   />
                 </div>
 
@@ -1865,7 +1865,7 @@ export default function TasksView({
                   placeholder="Specific deliverables, discussion point context, and expected outcomes..."
                   value={newTaskDesc}
                   onChange={e => setNewTaskDesc(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none resize-none"
                 />
               </div>
 

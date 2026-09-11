@@ -75,7 +75,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
     <div className="w-full flex justify-center py-2">
       <div
         id="pcv-printable-sheet"
-        className="w-full max-w-[850px] bg-white text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
+        className="w-full max-w-[850px] bg-[#FFFCFB] text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
         style={{ minHeight: "1050px" }}
       >
         {/* Header Branding */}
@@ -201,7 +201,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
                       minHeight={26}
                       rows={1}
                       onChange={(e) => handleParticularChange(idx, "description", e.target.value)}
-                      className={`px-1 py-0.5 text-xs focus:bg-white ${hasError(`particular_${idx}_desc`) ? "border border-rose-500 bg-rose-50" : ""}`}
+                      className={`px-1 py-0.5 text-xs focus:bg-[#FFFCFB] ${hasError(`particular_${idx}_desc`) ? "border border-rose-500 bg-rose-50" : ""}`}
                     />
                   </td>
                   <td className="align-top p-1 text-right">
@@ -220,7 +220,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
                             e.target.value === "" ? "" : parseFloat(e.target.value)
                           )
                         }
-                        className={`w-24 text-right bg-transparent py-1 text-xs focus:bg-white font-mono font-semibold ${hasError(`particular_${idx}_amount`) ? "border border-rose-500 bg-rose-50" : ""}`}
+                        className={`w-24 text-right bg-transparent py-1 text-xs focus:bg-[#FFFCFB] font-mono font-semibold ${hasError(`particular_${idx}_amount`) ? "border border-rose-500 bg-rose-50" : ""}`}
                       />
                     </div>
                   </td>
@@ -261,7 +261,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
             <span className="font-bold text-xs uppercase tracking-tight block mb-1">
               Requested by:
             </span>
-            <div className={`w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-white ${hasError("requestedByName") ? "border-rose-500 bg-rose-50" : ""}`}>
+            <div className={`w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-[#FFFCFB] ${hasError("requestedByName") ? "border-rose-500 bg-rose-50" : ""}`}>
               <input
                 id="pcv-field-requested-by"
                 type="text"
@@ -281,7 +281,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
             <span className="font-bold text-xs uppercase tracking-tight block mb-1">
               Noted By:
             </span>
-            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-white">
+            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-[#FFFCFB]">
               <input
                 type="text"
                 placeholder="Team Leader"
@@ -300,7 +300,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
             <span className="font-bold text-xs uppercase tracking-tight block mb-1">
               Approved By:
             </span>
-            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-white">
+            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-[#FFFCFB]">
               <input
                 type="text"
                 placeholder="Finance Officer"
@@ -319,7 +319,7 @@ export function PcvSheet({ data, onChange, validationErrors }: PcvSheetProps) {
             <span className="font-bold text-xs uppercase tracking-tight block mb-1">
               Received By:
             </span>
-            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-white">
+            <div className="w-full h-16 border-2 border-black flex flex-col justify-end p-1.5 bg-[#FFFCFB]">
               <input
                 type="text"
                 placeholder="Payee Signature"

@@ -56,10 +56,10 @@ export function Stepper({
               isActive 
                 ? "bg-[#003366] text-white" 
                 : isCompleted
-                  ? "border border-emerald-600 text-emerald-600 bg-white"
+                  ? "border border-emerald-600 text-emerald-600 bg-[#FFFCFB]"
                   : isClickable
-                    ? "border border-gray-400 text-gray-600 bg-white text-[11px] font-mono"
-                    : "border border-gray-300 text-gray-400 bg-white text-[11px] font-mono"
+                    ? "border border-gray-400 text-gray-600 bg-[#FFFCFB] text-[11px] font-mono"
+                    : "border border-gray-300 text-gray-400 bg-[#FFFCFB] text-[11px] font-mono"
             }`}>
               {isActive ? (
                 <Check size={12} strokeWidth={3} />

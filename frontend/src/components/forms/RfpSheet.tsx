@@ -106,7 +106,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
       {/* Printable Sheet Wrapper */}
       <div
         id="rfp-printable-sheet"
-        className="w-full max-w-[850px] bg-white text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
+        className="w-full max-w-[850px] bg-[#FFFCFB] text-black p-8 md:p-10 border-2 border-black shadow-2xl relative font-sans leading-tight text-xs"
         style={{ minHeight: "1100px" }}
       >
         {/* Top Header Grid */}
@@ -200,7 +200,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
         <div className="mt-4 border-2 border-black overflow-hidden">
           <table className="w-full border-collapse text-xs">
             <thead>
-              <tr className="border-b-2 border-black bg-slate-50">
+              <tr className="border-b-2 border-black bg-[#FFFCFB]">
                 <th className="border-r border-black p-2 text-center font-bold uppercase tracking-wider">
                   ITEMS/DESCRIPTION
                 </th>
@@ -237,7 +237,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                       minHeight={26}
                       rows={1}
                       onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                      className={`w-full px-2 py-1 text-xs focus:bg-white ${
+                      className={`w-full px-2 py-1 text-xs focus:bg-[#FFFCFB] ${
                         hasError(`item_${idx}_desc`) ? "ring-1 ring-rose-500 bg-rose-50" : ""
                       }`}
                     />
@@ -259,7 +259,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                           e.target.value === "" ? "" : parseFloat(e.target.value)
                         )
                       }
-                      className={`w-full text-center bg-transparent px-1 py-1 text-xs focus:outline-none focus:bg-white font-mono ${
+                      className={`w-full text-center bg-transparent px-1 py-1 text-xs focus:outline-none focus:bg-[#FFFCFB] font-mono ${
                         hasError(`item_${idx}_qty`) ? "ring-1 ring-rose-500 bg-rose-50 font-bold text-rose-700" : ""
                       }`}
                     />
@@ -273,7 +273,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                       value={item.unit}
                       placeholder=""
                       onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
-                      className={`w-full text-center bg-transparent px-1 py-1 text-xs focus:outline-none focus:bg-white ${
+                      className={`w-full text-center bg-transparent px-1 py-1 text-xs focus:outline-none focus:bg-[#FFFCFB] ${
                         hasError(`item_${idx}_unit`) ? "ring-1 ring-rose-500 bg-rose-50 font-bold text-rose-700" : ""
                       }`}
                     />
@@ -297,7 +297,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                             e.target.value === "" ? "" : parseFloat(e.target.value)
                           )
                         }
-                        className={`w-full text-right bg-transparent py-1 text-xs focus:outline-none focus:bg-white font-mono ${
+                        className={`w-full text-right bg-transparent py-1 text-xs focus:outline-none focus:bg-[#FFFCFB] font-mono ${
                           hasError(`item_${idx}_price`) ? "ring-1 ring-rose-500 bg-rose-50 font-bold text-rose-700" : ""
                         }`}
                       />
@@ -335,7 +335,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
               ))}
 
               {/* Total Amount Row */}
-              <tr className="border-t-2 border-black bg-slate-50 font-bold">
+              <tr className="border-t-2 border-black bg-[#FFFCFB] font-bold">
                 <td colSpan={4} className="border-r border-black p-2 text-right uppercase tracking-wider">
                   TOTAL AMOUNT
                 </td>
@@ -416,7 +416,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                   className={`w-4 h-4 border-2 border-black flex items-center justify-center transition-colors ${
                     (data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("cash")
                       ? "bg-[#181A1D] border-[#181A1D]"
-                      : "bg-white"
+                      : "bg-[#FFFCFB]"
                   }`}
                 >
                   {(data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("cash") && (
@@ -437,7 +437,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                   className={`w-4 h-4 border-2 border-black flex items-center justify-center transition-colors ${
                     (data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("check")
                       ? "bg-[#181A1D] border-[#181A1D]"
-                      : "bg-white"
+                      : "bg-[#FFFCFB]"
                   }`}
                 >
                   {(data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("check") && (
@@ -458,7 +458,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                   className={`w-4 h-4 border-2 border-black flex items-center justify-center transition-colors ${
                     (data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("online")
                       ? "bg-[#181A1D] border-[#181A1D]"
-                      : "bg-white"
+                      : "bg-[#FFFCFB]"
                   }`}
                 >
                   {(data.paymentMethods || (data.paymentMethod ? [data.paymentMethod] : [])).includes("online") && (
@@ -562,7 +562,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                     className={`w-4 h-4 border-2 border-black flex items-center justify-center transition-colors ${
                       (data.urgencyOptions || (data.urgency ? [data.urgency] : [])).includes("urgent")
                         ? "bg-[#181A1D] border-[#181A1D]"
-                        : "bg-white"
+                        : "bg-[#FFFCFB]"
                     }`}
                   >
                     {(data.urgencyOptions || (data.urgency ? [data.urgency] : [])).includes("urgent") && (
@@ -583,7 +583,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                     className={`w-4 h-4 border-2 border-black flex items-center justify-center transition-colors ${
                       (data.urgencyOptions || (data.urgency ? [data.urgency] : [])).includes("not_urgent")
                         ? "bg-[#181A1D] border-[#181A1D]"
-                        : "bg-white"
+                        : "bg-[#FFFCFB]"
                     }`}
                   >
                     {(data.urgencyOptions || (data.urgency ? [data.urgency] : [])).includes("not_urgent") && (
@@ -600,7 +600,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
               className={`border-2 ${
                 hasError("dateNeeded")
                   ? "border-rose-500 bg-rose-50/40 ring-2 ring-rose-400/40"
-                  : "border-black bg-slate-50"
+                  : "border-black bg-[#FFFCFB]"
               } rounded-none p-2.5 transition-all`}
             >
               <label className="font-bold text-[11px] uppercase tracking-wider block mb-1 flex items-center justify-between">
@@ -613,7 +613,7 @@ export function RfpSheet({ data, onChange, validationErrors }: RfpSheetProps) {
                 type="date"
                 value={data.dateNeeded}
                 onChange={(e) => updateField("dateNeeded", e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-none p-1 text-xs font-semibold focus:outline-none"
+                className="w-full bg-[#FFFCFB] border border-slate-300 rounded-none p-1 text-xs font-semibold focus:outline-none"
               />
             </div>
           </div>

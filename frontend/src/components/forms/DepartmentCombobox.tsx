@@ -94,7 +94,7 @@ export function DepartmentCombobox({
       {isOpen && (
         <div
           data-html2canvas-ignore="true"
-          className="absolute left-0 top-full mt-1 w-60 max-h-64 overflow-y-auto bg-white border border-slate-300 shadow-xl z-50 p-1.5 no-print rounded-none animate-in fade-in zoom-in-95 duration-100"
+          className="absolute left-0 top-full mt-1 w-60 max-h-64 overflow-y-auto bg-[#FFFCFB] border border-slate-300 shadow-xl z-50 p-1.5 no-print rounded-none animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
             <span>ClickUp Presets</span>
@@ -110,7 +110,7 @@ export function DepartmentCombobox({
                   type="button"
                   onClick={() => handleSelect(preset.code)}
                   className={`w-full flex items-center justify-between px-2 py-1.5 text-left text-xs cursor-pointer transition-colors ${
-                    isSelected ? "bg-slate-100 font-bold" : "hover:bg-slate-50"
+                    isSelected ? "bg-[#FFFCFB] font-bold" : "hover:bg-[#FFFCFB]"
                   }`}
                 >
                   <span

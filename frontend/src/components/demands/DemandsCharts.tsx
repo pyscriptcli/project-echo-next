@@ -48,7 +48,7 @@ export function BigNumbersHero({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
       {/* Metric 1: Demands In Period */}
-      <div className="bg-white p-5 border-l-4 border-[#003366] border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
+      <div className="bg-[#FFFCFB] p-5 border-l-4 border-[#003366] border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Demands In Period</span>
@@ -69,7 +69,7 @@ export function BigNumbersHero({
       </div>
 
       {/* Metric 2: Pipeline Floor Area */}
-      <div className="bg-white p-5 border-l-4 border-[#C9AB4C] border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
+      <div className="bg-[#FFFCFB] p-5 border-l-4 border-[#C9AB4C] border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pipeline Floor Area</span>
@@ -90,7 +90,7 @@ export function BigNumbersHero({
       </div>
 
       {/* Metric 3: Priority Mandates */}
-      <div className="bg-white p-5 border-l-4 border-rose-500 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
+      <div className="bg-[#FFFCFB] p-5 border-l-4 border-rose-500 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority Mandates</span>
@@ -111,7 +111,7 @@ export function BigNumbersHero({
       </div>
 
       {/* Metric 4: Est Monthly Value */}
-      <div className="bg-white p-5 border-l-4 border-emerald-600 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
+      <div className="bg-[#FFFCFB] p-5 border-l-4 border-emerald-600 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Est. Monthly Value</span>
@@ -132,7 +132,7 @@ export function BigNumbersHero({
       </div>
 
       {/* Metric 5: Asset Distribution */}
-      <div className="bg-white p-5 border-l-4 border-indigo-600 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
+      <div className="bg-[#FFFCFB] p-5 border-l-4 border-indigo-600 border-y border-r border-slate-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Asset Split</span>
@@ -173,7 +173,7 @@ export function QuarterlyVelocityLineGraph({
   }, [demands]);
 
   return (
-    <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
+    <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -208,10 +208,10 @@ export function QuarterlyVelocityLineGraph({
           </defs>
 
           {/* Grid lines */}
-          <line x1="40" y1="30" x2="670" y2="30" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-          <line x1="40" y1="80" x2="670" y2="80" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-          <line x1="40" y1="130" x2="670" y2="130" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-          <line x1="40" y1="180" x2="670" y2="180" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="40" y1="30" x2="670" y2="30" stroke="#FFFCFB" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="40" y1="80" x2="670" y2="80" stroke="#FFFCFB" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="40" y1="130" x2="670" y2="130" stroke="#FFFCFB" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="40" y1="180" x2="670" y2="180" stroke="#FFFCFB" strokeWidth="1" strokeDasharray="4 4" />
           <line x1="40" y1="210" x2="670" y2="210" stroke="#cbd5e1" strokeWidth="1.5" />
 
           {/* Axis Labels (Left) */}
@@ -312,7 +312,7 @@ export function SectorDonutChart({ demands }: { demands: DemandRecord[] }) {
   ];
 
   return (
-    <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
+    <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
@@ -329,7 +329,7 @@ export function SectorDonutChart({ demands }: { demands: DemandRecord[] }) {
       <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-6">
         <div className="relative w-44 h-44 shrink-0">
           <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
-            <circle cx="80" cy="80" r="67" fill="none" stroke="#f1f5f9" strokeWidth="22" />
+            <circle cx="80" cy="80" r="67" fill="none" stroke="#FFFCFB" strokeWidth="22" />
             {industries.map((sec) => (
               <circle
                 key={sec.name}
@@ -382,7 +382,7 @@ export function PhilippinesLocationHeatmap({ demands }: { demands: DemandRecord[
   }, [demands]);
   const max = Math.max(1, ...points.map(([, count]) => count));
   const positions: Record<string, [number, number]> = { MM: [122, 62], N: [113, 38], S: [132, 106], GMM: [105, 52], SL: [126, 128] };
-  return <section className="bg-white border border-slate-200 shadow-xs p-5"><div className="flex items-center justify-between"><div><h3 className="font-serif text-base font-bold text-[#003366]">Location trend</h3><p className="text-xs text-slate-500 mt-0.5">Demand concentration by Philippine region</p></div><MapPin className="w-4 h-4 text-[#C9AB4C]" /></div><div className="mt-4 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-6 items-center"><svg viewBox="0 0 250 180" className="w-full h-44" role="img" aria-label="Philippines demand heatmap"><path d="M92 8l24 13-5 21 21 13-7 19 20 17-14 15 8 25-22 3-11 28-19-14-7-24-20-8 12-26-8-18 20-14z" fill="#f2f5f8" stroke="#003366" strokeWidth="2"/><path d="M63 38l27-17 15 9-5 24-20 13-18-10zM72 81l29-12 19 18-13 23-25 4-18-15zM103 119l28-8 17 20-17 27-26-5z" fill="#C9AB4C" opacity=".28" stroke="#C9AB4C"/><path d="M96 18l18 12-5 20M78 82l20 6M111 133l15 10" stroke="#003366" strokeOpacity=".25" fill="none"/><text x="145" y="18" className="fill-slate-400 text-[9px]">N</text><text x="145" y="91" className="fill-slate-400 text-[9px]">MM</text><text x="145" y="163" className="fill-slate-400 text-[9px]">S</text>{points.map(([name,count])=>{const [cx,cy]=positions[name]||[125,90];return <g key={name}><circle cx={cx} cy={cy} r={Math.max(4,Math.min(14,4+count/max*10))} fill="#003366" fillOpacity=".78" stroke="white" strokeWidth="1.5"/><text x={cx+7} y={cy+3} className="fill-[#003366] text-[9px] font-bold">{name}</text></g>;})}</svg><div className="space-y-2">{points.map(([name,count])=><div key={name}><div className="flex justify-between text-xs font-semibold text-slate-600"><span>{name}</span><span>{count}</span></div><div className="mt-1 h-1.5 bg-slate-100"><div className="h-1.5 bg-[#003366]" style={{width:`${count/max*100}%`}}/></div></div>)}{!points.length&&<p className="text-xs text-slate-400">No location data in this range.</p>}</div></div></section>;
+  return <section className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5"><div className="flex items-center justify-between"><div><h3 className="font-serif text-base font-bold text-[#003366]">Location trend</h3><p className="text-xs text-slate-500 mt-0.5">Demand concentration by Philippine region</p></div><MapPin className="w-4 h-4 text-[#C9AB4C]" /></div><div className="mt-4 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-6 items-center"><svg viewBox="0 0 250 180" className="w-full h-44" role="img" aria-label="Philippines demand heatmap"><path d="M92 8l24 13-5 21 21 13-7 19 20 17-14 15 8 25-22 3-11 28-19-14-7-24-20-8 12-26-8-18 20-14z" fill="#FFFCFB" stroke="#003366" strokeWidth="2"/><path d="M63 38l27-17 15 9-5 24-20 13-18-10zM72 81l29-12 19 18-13 23-25 4-18-15zM103 119l28-8 17 20-17 27-26-5z" fill="#C9AB4C" opacity=".28" stroke="#C9AB4C"/><path d="M96 18l18 12-5 20M78 82l20 6M111 133l15 10" stroke="#003366" strokeOpacity=".25" fill="none"/><text x="145" y="18" className="fill-slate-400 text-[9px]">N</text><text x="145" y="91" className="fill-slate-400 text-[9px]">MM</text><text x="145" y="163" className="fill-slate-400 text-[9px]">S</text>{points.map(([name,count])=>{const [cx,cy]=positions[name]||[125,90];return <g key={name}><circle cx={cx} cy={cy} r={Math.max(4,Math.min(14,4+count/max*10))} fill="#003366" fillOpacity=".78" stroke="white" strokeWidth="1.5"/><text x={cx+7} y={cy+3} className="fill-[#003366] text-[9px] font-bold">{name}</text></g>;})}</svg><div className="space-y-2">{points.map(([name,count])=><div key={name}><div className="flex justify-between text-xs font-semibold text-slate-600"><span>{name}</span><span>{count}</span></div><div className="mt-1 h-1.5 bg-[#FFFCFB]"><div className="h-1.5 bg-[#003366]" style={{width:`${count/max*100}%`}}/></div></div>)}{!points.length&&<p className="text-xs text-slate-400">No location data in this range.</p>}</div></div></section>;
 }
 
 // 4. Property Classification Donut Chart
@@ -394,7 +394,7 @@ export function PropertyTypeDonutChart({ demands }: { demands: DemandRecord[] })
   ];
 
   return (
-    <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
+    <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
@@ -411,7 +411,7 @@ export function PropertyTypeDonutChart({ demands }: { demands: DemandRecord[] })
       <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-6">
         <div className="relative w-44 h-44 shrink-0">
           <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
-            <circle cx="80" cy="80" r="67" fill="none" stroke="#f1f5f9" strokeWidth="22" />
+            <circle cx="80" cy="80" r="67" fill="none" stroke="#FFFCFB" strokeWidth="22" />
             {types.map((t) => (
               <circle
                 key={t.type}
@@ -467,7 +467,7 @@ export function SpaceBracketsBarChart({ demands }: { demands: DemandRecord[] }) 
   ];
 
   return (
-    <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
+    <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export function SpaceBracketsBarChart({ demands }: { demands: DemandRecord[] }) 
           </div>
           <p className="text-xs text-slate-500 mt-0.5">Demands segmented by required floor plate</p>
         </div>
-        <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 border border-slate-200">
+        <span className="text-[11px] font-bold text-slate-600 bg-[#FFFCFB] px-2 py-0.5 border border-slate-200">
           5 Area Brackets
         </span>
       </div>
@@ -489,7 +489,7 @@ export function SpaceBracketsBarChart({ demands }: { demands: DemandRecord[] }) 
               <span className="text-[11px] font-mono font-bold text-slate-800 opacity-90 group-hover:scale-110 transition-transform">
                 {b.count}
               </span>
-              <div className="w-full max-w-[48px] bg-slate-100 flex items-end h-full">
+              <div className="w-full max-w-[48px] bg-[#FFFCFB] flex items-end h-full">
                 <div 
                   className="w-full transition-all duration-500 hover:brightness-110" 
                   style={{ height: `${pct}%`, backgroundColor: b.color }} 
@@ -525,7 +525,7 @@ export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecor
   ];
 
   return (
-    <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
+    <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecor
                 <span className="font-mono text-[11px] text-slate-500">{a.sqm}</span>
               </div>
             </div>
-            <div className="h-2 w-full bg-slate-100 overflow-hidden">
+            <div className="h-2 w-full bg-[#FFFCFB] overflow-hidden">
               <div 
                 className="h-full bg-[#003366] transition-all duration-500 hover:bg-[#C9AB4C]"
                 style={{ width: `${a.pct}%` }} 

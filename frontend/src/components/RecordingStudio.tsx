@@ -68,12 +68,12 @@ export function RecordingStudio({ onClose, onAudioSecured }: RecordingStudioProp
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#f4f1ec] rounded-none shadow-xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden border border-[#003366]/20">
+      <div className="bg-[#FFFCFB] rounded-none shadow-xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden border border-[#003366]/20">
         <div className="flex-1 border-r border-[#003366]/20 p-6">
           <h2 className="text-xl font-serif text-[#003366] italic mb-2">Meeting notes</h2>
           <p className="text-sm text-gray-500 mb-4">Capture context while the recording is in progress.</p>
           <textarea 
-            className="w-full h-64 border border-[#003366]/20 rounded-none p-3 text-sm focus:outline-none focus:border-[#c9ab4c] bg-white"
+            className="w-full h-64 border border-[#003366]/20 rounded-none p-3 text-sm focus:outline-none focus:border-[#c9ab4c] bg-[#FFFCFB]"
             placeholder="Key decisions, announcements, or discussion items..."
           />
         </div>
@@ -87,7 +87,7 @@ export function RecordingStudio({ onClose, onAudioSecured }: RecordingStudioProp
                 className={`w-32 h-32 rounded-none flex items-center justify-center border-4 transition-all ${
                   isRecording 
                     ? "border-red-500 bg-red-50 animate-pulse text-red-500" 
-                    : "border-[#003366] bg-white hover:bg-gray-50 text-[#003366]"
+                    : "border-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] text-[#003366]"
                 }`}
               >
                 {isRecording ? <Square size={40} className="fill-current" /> : <Mic size={48} />}

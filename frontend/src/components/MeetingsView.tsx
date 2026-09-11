@@ -113,7 +113,7 @@ function DatePickerInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full text-xs bg-white border border-gray-200 rounded-none px-2 py-1 pr-7 focus:outline-none focus:border-[#C9AB4C]"
+        className="w-full text-xs bg-[#FFFCFB] border border-gray-200 rounded-none px-2 py-1 pr-7 focus:outline-none focus:border-[#C9AB4C]"
       />
       <input
         type="date"
@@ -365,14 +365,14 @@ export function MeetingsView({
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
-        <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">Echo Meetings Space<select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId) onSelectMeetingSpace?.(spaceId); }} className="bg-white border border-gray-300 px-3 py-2 text-xs font-normal text-[#003366]"><option value="">Select a ClickUp Space</option>{meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}</select></label>
+        <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">Echo Meetings Space<select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId) onSelectMeetingSpace?.(spaceId); }} className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal text-[#003366]"><option value="">Select a ClickUp Space</option>{meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}</select></label>
       </div>
 
       {/* Master-Detail Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT MASTER PANE (4 cols) */}
-        <div className="lg:col-span-4 space-y-3 bg-white border border-gray-200/90 rounded-none p-4 shadow-2xs">
+        <div className="lg:col-span-4 space-y-3 bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs">
           {/* Search Box */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
@@ -381,7 +381,7 @@ export function MeetingsView({
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Filter archived meetings..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:border-[#C9AB4C]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 rounded-none focus:outline-none focus:border-[#C9AB4C]"
             />
           </div>
 
@@ -395,7 +395,7 @@ export function MeetingsView({
                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-none transition-colors ${
                   typeFilter === t
                     ? "bg-[#003366] text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    : "bg-[#FFFCFB] text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 {t}
@@ -415,7 +415,7 @@ export function MeetingsView({
                     className={`p-3.5 rounded-none border text-left cursor-pointer transition-all ${
                       isSelected
                         ? "bg-[#FAF9F7] border-[#C9AB4C] shadow-xs"
-                        : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                        : "bg-[#FFFCFB] border-gray-200 hover:border-gray-300 hover:bg-[#FFFCFB]/50"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -458,7 +458,7 @@ export function MeetingsView({
           {activeMeeting ? (
             <>
               {/* Meeting Header & Export Action Bar */}
-              <div className="bg-white border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
+              <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold tracking-widest uppercase text-[#003366]">
@@ -520,7 +520,7 @@ export function MeetingsView({
                       type="text"
                       value={activeMeeting.title}
                       onChange={(e) => setActiveMeeting({ ...activeMeeting, title: e.target.value })}
-                      className="w-full font-serif font-bold text-base text-[#003366] bg-gray-50 border border-gray-200 rounded-none px-2.5 py-1.5 focus:outline-none focus:border-[#C9AB4C] focus:bg-white"
+                      className="w-full font-serif font-bold text-base text-[#003366] bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 focus:outline-none focus:border-[#C9AB4C] focus:bg-[#FFFCFB]"
                     />
                   </div>
 
@@ -549,7 +549,7 @@ export function MeetingsView({
                           className={`flex-1 py-1.5 rounded-none font-semibold text-xs transition-colors ${
                             activeMeeting.meeting_type === t
                               ? "bg-[#003366] text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              : "bg-[#FFFCFB] text-gray-600 hover:bg-gray-200"
                           }`}
                         >
                           {t}
@@ -573,7 +573,7 @@ export function MeetingsView({
                           setActiveMeeting({ ...activeMeeting, location: e.target.value });
                         }
                       }}
-                      className="w-full bg-white border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
+                      className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
                     >
                       {VENUE_OPTIONS.map((v) => (
                         <option key={v} value={v}>
@@ -588,7 +588,7 @@ export function MeetingsView({
                         value={activeMeeting.location}
                         onChange={(e) => setActiveMeeting({ ...activeMeeting, location: e.target.value })}
                         placeholder="Enter custom venue location..."
-                        className="w-full mt-1.5 bg-white border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
+                        className="w-full mt-1.5 bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
                       />
                     )}
                   </div>
@@ -623,7 +623,7 @@ export function MeetingsView({
                           }
                         }}
                         placeholder="Add team attendee..."
-                        className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-none px-2 py-1 focus:outline-none focus:border-[#C9AB4C]"
+                        className="flex-1 text-xs bg-[#FFFCFB] border border-gray-200 rounded-none px-2 py-1 focus:outline-none focus:border-[#C9AB4C]"
                       />
                       <button onClick={handleAddPrimeAttendee} className="btn-outline !py-1 !px-2.5 !text-xs rounded-none">
                         Add
@@ -658,7 +658,7 @@ export function MeetingsView({
                           }
                         }}
                         placeholder="Add external attendee..."
-                        className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-none px-2 py-1 focus:outline-none focus:border-[#C9AB4C]"
+                        className="flex-1 text-xs bg-[#FFFCFB] border border-gray-200 rounded-none px-2 py-1 focus:outline-none focus:border-[#C9AB4C]"
                       />
                       <button onClick={handleAddExternalAttendee} className="btn-outline !py-1 !px-2.5 !text-xs rounded-none">
                         Add
@@ -676,7 +676,7 @@ export function MeetingsView({
                     value={activeMeeting.summary}
                     onChange={(e) => setActiveMeeting({ ...activeMeeting, summary: e.target.value })}
                     placeholder="Enter short summary based on discussion points..."
-                    className="w-full text-xs text-gray-700 bg-gray-50/60 border border-gray-200 rounded-none p-2.5 focus:outline-none focus:border-[#C9AB4C] leading-relaxed"
+                    className="w-full text-xs text-gray-700 bg-[#FFFCFB]/60 border border-gray-200 rounded-none p-2.5 focus:outline-none focus:border-[#C9AB4C] leading-relaxed"
                   />
                 </div>
               </div>
@@ -700,7 +700,7 @@ export function MeetingsView({
                 {activeMeeting.items.map((item, idx) => (
                   <div
                     key={item.id || idx}
-                    className="bg-white border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-3 relative group"
+                    className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-3 relative group"
                   >
                     {/* Top Header: Topic (Editable in-place) & Top-Right Move/Remove Controls */}
                     <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2.5">
@@ -724,7 +724,7 @@ export function MeetingsView({
                           onClick={() => handleMoveItem(idx, "up")}
                           disabled={idx === 0}
                           title="Move Topic Up"
-                          className="p-1 text-gray-400 hover:text-[#003366] disabled:opacity-20 hover:bg-gray-100 rounded-none"
+                          className="p-1 text-gray-400 hover:text-[#003366] disabled:opacity-20 hover:bg-[#FFFCFB] rounded-none"
                         >
                           <ChevronUp size={15} />
                         </button>
@@ -733,7 +733,7 @@ export function MeetingsView({
                           onClick={() => handleMoveItem(idx, "down")}
                           disabled={idx === activeMeeting.items.length - 1}
                           title="Move Topic Down"
-                          className="p-1 text-gray-400 hover:text-[#003366] disabled:opacity-20 hover:bg-gray-100 rounded-none"
+                          className="p-1 text-gray-400 hover:text-[#003366] disabled:opacity-20 hover:bg-[#FFFCFB] rounded-none"
                         >
                           <ChevronDown size={15} />
                         </button>
@@ -758,7 +758,7 @@ export function MeetingsView({
                         value={item.evidence}
                         onChange={(e) => handleUpdateItem(idx, "evidence", e.target.value)}
                         placeholder="[00:00] Quote or contextual anchor..."
-                        className="w-full text-[11px] text-gray-500 italic bg-gray-50 border-l-2 border-[#C9AB4C] px-2.5 py-1 border border-gray-200/80 rounded-none focus:outline-none focus:border-[#C9AB4C]"
+                        className="w-full text-[11px] text-gray-500 italic bg-[#FFFCFB] border-l-2 border-[#C9AB4C] px-2.5 py-1 border border-gray-200/80 rounded-none focus:outline-none focus:border-[#C9AB4C]"
                       />
                     </div>
 
@@ -773,7 +773,7 @@ export function MeetingsView({
                           value={item.discussion_point}
                           onChange={(e) => handleUpdateItem(idx, "discussion_point", e.target.value)}
                           placeholder="Key debate or takeaway..."
-                          className="w-full bg-white border border-gray-200 rounded-none p-2 text-xs focus:outline-none focus:border-[#C9AB4C]"
+                          className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none p-2 text-xs focus:outline-none focus:border-[#C9AB4C]"
                         />
                       </div>
 
@@ -786,7 +786,7 @@ export function MeetingsView({
                           value={item.action_plan}
                           onChange={(e) => handleUpdateItem(idx, "action_plan", e.target.value)}
                           placeholder="Action item or next step..."
-                          className="w-full bg-white border border-gray-200 rounded-none p-2 text-xs focus:outline-none focus:border-[#003366]"
+                          className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none p-2 text-xs focus:outline-none focus:border-[#003366]"
                         />
                       </div>
 
@@ -811,7 +811,7 @@ export function MeetingsView({
                           value={item.person_in_charge}
                           onChange={(e) => handleUpdateItem(idx, "person_in_charge", e.target.value)}
                           placeholder="Assignee..."
-                          className="w-full bg-white border border-gray-200 rounded-none px-2 py-1 text-xs focus:outline-none focus:border-[#C9AB4C]"
+                          className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2 py-1 text-xs focus:outline-none focus:border-[#C9AB4C]"
                         />
                       </div>
                     </div>
@@ -857,7 +857,7 @@ export function MeetingsView({
                               topicIndex: idx,
                             });
                           }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-white border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-[#003366] bg-[#FFFCFB] border border-[#003366]/30 hover:border-[#003366] hover:bg-blue-50/50 transition-colors shadow-2xs rounded-none cursor-pointer"
                         >
                           <CheckSquare size={13} className="text-[#c9ab4c]" />
                           <span>Add to Tasks</span>
@@ -869,7 +869,7 @@ export function MeetingsView({
               </div>
             </>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-none p-12 text-center text-gray-400 text-xs">
+            <div className="bg-[#FFFCFB] border border-gray-200 rounded-none p-12 text-center text-gray-400 text-xs">
               Select a meeting from the archive list on the left to view details and discussion points.
             </div>
           )}

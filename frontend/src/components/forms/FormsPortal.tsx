@@ -443,7 +443,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
 
       <div className="flex gap-1 border-b border-gray-200 pb-2">
         {(["rbac", "configurations", "email"] as const).map((item) => (
-          <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
+          <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
             {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : "Email"}
           </button>
         ))}
@@ -459,7 +459,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             ["Approver", "Review and act on assigned approval stages"],
             ["Requestor", "Submit forms and track progress of own requests"],
           ].map(([role, desc]) => (
-            <div key={role} className="border border-gray-200 p-3 bg-slate-50/50">
+            <div key={role} className="border border-gray-200 p-3 bg-[#FFFCFB]/50">
               <div className="font-bold text-[#003366] text-sm">{role}</div>
               <div className="text-[11px] text-gray-500 mt-1">{desc}</div>
             </div>
@@ -487,7 +487,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
 
         {/* Default Page Access for New & Unlisted Users */}
-        <div className="mt-4 bg-[#fffdf6] border border-[#C9AB4C]/50 p-4 shadow-xs">
+        <div className="mt-4 bg-[#FFFCFB] border border-[#C9AB4C]/50 p-4 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="text-xs font-bold text-[#003366] uppercase tracking-wider flex items-center gap-1.5">
@@ -503,14 +503,14 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
               <button
                 type="button"
                 onClick={() => handleUpdateDefaultPages(["forms"])}
-                className="text-[11px] font-semibold text-[#003366] bg-white hover:bg-slate-100 px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
+                className="text-[11px] font-semibold text-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
               >
                 Forms Only
               </button>
               <button
                 type="button"
                 onClick={() => handleUpdateDefaultPages(APP_PAGE_LIST.map((p) => p.id))}
-                className="text-[11px] font-semibold text-[#003366] bg-white hover:bg-slate-100 px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
+                className="text-[11px] font-semibold text-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
               >
                 Grant All Pages
               </button>
@@ -532,7 +532,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                   className={`text-[11px] px-3 py-1 border font-medium transition-all cursor-pointer ${
                     isAllowed
                       ? "bg-[#003366] text-white border-[#003366] font-semibold shadow-xs"
-                      : "bg-white text-slate-400 border-slate-300 line-through hover:border-slate-400"
+                      : "bg-[#FFFCFB] text-slate-400 border-slate-300 line-through hover:border-slate-400"
                   }`}
                 >
                   {page.label}
@@ -546,7 +546,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
 
         {/* Add / Restrict User Page Access Form */}
-        <div className="mt-4 bg-slate-50 border border-slate-200 p-4">
+        <div className="mt-4 bg-[#FFFCFB] border border-slate-200 p-4">
           <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
             Add or Restrict User Page Access
           </div>
@@ -558,7 +558,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
               <div className="space-y-1.5">
                 {config.members.length > 0 && (
                   <select
-                    className="w-full border border-gray-300 px-2.5 py-1.5 text-xs bg-white focus:outline-none"
+                    className="w-full border border-gray-300 px-2.5 py-1.5 text-xs bg-[#FFFCFB] focus:outline-none"
                     onChange={(e) => {
                       const val = e.target.value;
                       if (!val) return;
@@ -583,7 +583,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                   placeholder="user@primephilippines.com"
                   value={newPageUserEmail}
                   onChange={(e) => setNewPageUserEmail(e.target.value)}
-                  className="w-full border border-gray-300 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                  className="w-full border border-gray-300 px-3 py-1.5 text-xs bg-[#FFFCFB] focus:outline-none"
                 />
               </div>
             </div>
@@ -597,7 +597,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                 placeholder="e.g. Jane Doe"
                 value={newPageUserName}
                 onChange={(e) => setNewPageUserName(e.target.value)}
-                className="w-full border border-gray-300 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                className="w-full border border-gray-300 px-3 py-1.5 text-xs bg-[#FFFCFB] focus:outline-none"
               />
             </div>
 
@@ -624,7 +624,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                       className={`text-[11px] px-2 py-1 border font-medium transition-colors cursor-pointer ${
                         isChecked
                           ? "bg-[#003366] text-white border-[#003366]"
-                          : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+                          : "bg-[#FFFCFB] text-slate-600 border-slate-300 hover:border-slate-400"
                       }`}
                     >
                       {page.label}
@@ -650,14 +650,14 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           </div>
 
           {!config.pagePermissions || config.pagePermissions.length === 0 ? (
-            <div className="border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500 bg-slate-50/50">
+            <div className="border border-dashed border-slate-300 p-6 text-center text-xs text-slate-500 bg-[#FFFCFB]/50">
               No specific user overrides configured. All users without custom rules follow the default access policy configured above ({(config.defaultPageAccess || ["forms"]).length} of {APP_PAGE_LIST.length} permitted pages).
             </div>
           ) : (
             config.pagePermissions.map((rule) => (
               <div
                 key={rule.email}
-                className="border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs"
+                className="border border-slate-200 bg-[#FFFCFB] p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs"
               >
                 <div className="min-w-[200px]">
                   <div className="text-xs font-bold text-[#003366]">
@@ -681,7 +681,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                         className={`text-[11px] px-2.5 py-1 border transition-all cursor-pointer ${
                           isAllowed
                             ? "bg-[#003366] text-white border-[#003366] font-semibold"
-                            : "bg-slate-50 text-slate-400 border-slate-200 line-through hover:border-slate-300"
+                            : "bg-[#FFFCFB] text-slate-400 border-slate-200 line-through hover:border-slate-300"
                         }`}
                       >
                         {page.label}
@@ -695,7 +695,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                   <button
                     type="button"
                     onClick={() => setPresetForUser(rule.email, ["forms"])}
-                    className="text-[10px] text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 border border-slate-300 cursor-pointer"
+                    className="text-[10px] text-slate-600 bg-[#FFFCFB] hover:bg-[#FFFCFB] px-2 py-1 border border-slate-300 cursor-pointer"
                   >
                     Forms Only
                   </button>
@@ -710,7 +710,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                         "forms",
                       ])
                     }
-                    className="text-[10px] text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 border border-slate-300 cursor-pointer"
+                    className="text-[10px] text-slate-600 bg-[#FFFCFB] hover:bg-[#FFFCFB] px-2 py-1 border border-slate-300 cursor-pointer"
                   >
                     Grant All
                   </button>
@@ -737,7 +737,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
           {config.admins.map((admin) => (
-            <div key={admin.email} className="flex items-center gap-2 border border-gray-200 px-3 py-2 text-xs bg-slate-50">
+            <div key={admin.email} className="flex items-center gap-2 border border-gray-200 px-3 py-2 text-xs bg-[#FFFCFB]">
               <span>
                 {admin.name} · {admin.email}
               </span>
@@ -786,7 +786,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           {config.members.map((member) => (
             <div
               key={member.email}
-              className="flex flex-wrap items-center justify-between gap-2 border border-gray-200 px-3 py-2 text-xs bg-white"
+              className="flex flex-wrap items-center justify-between gap-2 border border-gray-200 px-3 py-2 text-xs bg-[#FFFCFB]"
             >
               <span>
                 <b>{member.name}</b> · {member.email} ·{" "}
@@ -822,7 +822,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             onChange={(e) => setNewMemberEmail(e.target.value)}
           />
           <select
-            className="border border-gray-300 px-3 py-2 text-xs bg-white"
+            className="border border-gray-300 px-3 py-2 text-xs bg-[#FFFCFB]"
             value={newMemberRole}
             onChange={(e) => setNewMemberRole(e.target.value as Exclude<Role, "owner">)}
           >
@@ -832,7 +832,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           </select>
           <div className="flex gap-2">
             <select
-              className="border border-gray-300 px-3 py-2 text-xs bg-white flex-1"
+              className="border border-gray-300 px-3 py-2 text-xs bg-[#FFFCFB] flex-1"
               value={newMemberDepartment}
               onChange={(e) => setNewMemberDepartment(e.target.value)}
             >
@@ -853,7 +853,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <h2 className="text-lg font-bold text-slate-800 mb-3">Departments</h2>
         <div className="flex flex-wrap gap-2 mb-3">
           {config.departments.map((department) => (
-            <span key={department} className="inline-flex items-center gap-2 border border-gray-200 px-3 py-1.5 text-xs bg-white">
+            <span key={department} className="inline-flex items-center gap-2 border border-gray-200 px-3 py-1.5 text-xs bg-[#FFFCFB]">
               {department}
               <button
                 aria-label={`Remove ${department}`}
@@ -894,7 +894,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           <label className="text-xs font-bold text-gray-600">
             Department
             <select
-              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal"
+              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal"
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
             >
@@ -906,7 +906,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           <label className="text-xs font-bold text-gray-600">
             Form
             <select
-              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal"
+              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal"
               value={selectedForm}
               onChange={(e) => setSelectedForm(e.target.value)}
             >
@@ -919,11 +919,11 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             </select>
           </label>
         </div>
-        <div className="border border-gray-200 p-3 mb-4 bg-slate-50">
+        <div className="border border-gray-200 p-3 mb-4 bg-[#FFFCFB]">
           <label className="text-xs font-bold text-gray-600">
             ClickUp List ID
             <input
-              className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal bg-white"
+              className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal bg-[#FFFCFB]"
               placeholder="Required destination List ID"
               value={current.listId || ""}
               onChange={(e) =>
@@ -968,7 +968,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             return (
               <div
                 key={stageName}
-                className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr_auto] gap-2 items-center border border-gray-200 p-3 bg-white"
+                className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr_auto] gap-2 items-center border border-gray-200 p-3 bg-[#FFFCFB]"
               >
                 <div>
                   <div className="text-xs font-bold text-[#003366]">
@@ -1019,15 +1019,15 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <div className="flex items-center gap-2 mb-1"><Mail size={18} className="text-[#003366]" /><h2 className="text-lg font-bold text-slate-800">Automated Requestor Email</h2></div>
         <p className="text-xs text-gray-500 mb-4">Configure a separate dynamic email for each department, form, and request event.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <label className="text-xs font-bold text-gray-600">Department<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>{config.departments.map((department) => <option key={department}>{department}</option>)}</select></label>
-          <label className="text-xs font-bold text-gray-600">Form<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={selectedForm} onChange={(e) => setSelectedForm(e.target.value)}>{Object.entries(FORM_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}{selectedDepartment === "IT" && <option value="it-asset-request-form">IT Asset Request Form</option>}{config.mappings.filter((item) => item.department === selectedDepartment && !FORM_LABELS[item.formType] && item.formType !== "it-asset-request-form").map((item) => <option key={item.formType} value={item.formType}>{item.formLabel || item.formType}</option>)}</select></label>
-          <label className="text-xs font-bold text-gray-600">Event<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-white font-normal" value={emailEvent} onChange={(e) => setEmailEvent(e.target.value as EmailEvent)}><option value="submitted">Submitted</option><option value="approved">Approved / Stage changed</option><option value="revision_requested">Revision requested</option><option value="completed">Completed</option></select></label>
+          <label className="text-xs font-bold text-gray-600">Department<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal" value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>{config.departments.map((department) => <option key={department}>{department}</option>)}</select></label>
+          <label className="text-xs font-bold text-gray-600">Form<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal" value={selectedForm} onChange={(e) => setSelectedForm(e.target.value)}>{Object.entries(FORM_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}{selectedDepartment === "IT" && <option value="it-asset-request-form">IT Asset Request Form</option>}{config.mappings.filter((item) => item.department === selectedDepartment && !FORM_LABELS[item.formType] && item.formType !== "it-asset-request-form").map((item) => <option key={item.formType} value={item.formType}>{item.formLabel || item.formType}</option>)}</select></label>
+          <label className="text-xs font-bold text-gray-600">Event<select className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal" value={emailEvent} onChange={(e) => setEmailEvent(e.target.value as EmailEvent)}><option value="submitted">Submitted</option><option value="approved">Approved / Stage changed</option><option value="revision_requested">Revision requested</option><option value="completed">Completed</option></select></label>
         </div>
         <label className="mb-4 flex items-center gap-2 text-xs font-bold text-[#003366]"><input type="checkbox" checked={emailTemplate.enabled} onChange={(e) => updateEmailTemplate({ enabled: e.target.checked })} /> Send this email automatically</label>
         <label className="block text-xs font-bold text-gray-600 mb-3">Subject<input className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal" value={emailTemplate.subject} onChange={(e) => updateEmailTemplate({ subject: e.target.value })} /></label>
         <label className="block text-xs font-bold text-gray-600">Email body<textarea rows={16} className="mt-1 w-full border border-gray-300 px-3 py-2 font-mono text-xs font-normal leading-relaxed" value={emailTemplate.body} onChange={(e) => updateEmailTemplate({ body: e.target.value })} /></label>
-        <div className="mt-3 border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Dynamic fields</div><div className="flex flex-wrap gap-1.5">{["requestor_first_name", "form_name", "form_id", "department", "status_label", "request_title", "amount", "purpose", "submitted_at", "status_updated_at", "completed_stage", "approver_name", "completed_at", "current_stage", "current_stage_started_at", "status_message", "next_step_message", "track_status_url"].map((field) => <button type="button" key={field} onClick={() => updateEmailTemplate({ body: `${emailTemplate.body}{{${field}}}` })} className="border border-slate-300 bg-white px-2 py-1 text-[10px] text-[#003366]">{`{{${field}}}`}</button>)}</div></div>
-        <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={sendTestEmail} className="border border-[#003366] bg-white px-4 py-2 text-xs font-bold text-[#003366] hover:bg-slate-50">Send test email to my login</button>{emailTestStatus && <span className="text-xs text-slate-600">{emailTestStatus}</span>}</div>
+        <div className="mt-3 border border-slate-200 bg-[#FFFCFB] p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Dynamic fields</div><div className="flex flex-wrap gap-1.5">{["requestor_first_name", "form_name", "form_id", "department", "status_label", "request_title", "amount", "purpose", "submitted_at", "status_updated_at", "completed_stage", "approver_name", "completed_at", "current_stage", "current_stage_started_at", "status_message", "next_step_message", "track_status_url"].map((field) => <button type="button" key={field} onClick={() => updateEmailTemplate({ body: `${emailTemplate.body}{{${field}}}` })} className="border border-slate-300 bg-[#FFFCFB] px-2 py-1 text-[10px] text-[#003366]">{`{{${field}}}`}</button>)}</div></div>
+        <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={sendTestEmail} className="border border-[#003366] bg-[#FFFCFB] px-4 py-2 text-xs font-bold text-[#003366] hover:bg-[#FFFCFB]">Send test email to my login</button>{emailTestStatus && <span className="text-xs text-slate-600">{emailTestStatus}</span>}</div>
       </section>
     </div>
   );
@@ -1107,7 +1107,7 @@ export default function FormsPortal({
                   className={`px-3 py-2 text-xs font-bold flex items-center gap-1.5 border cursor-pointer ${
                     tab === id
                       ? "bg-[#003366] text-white border-[#003366]"
-                      : "bg-white text-[#003366] border-gray-200 hover:border-[#C9AB4C]"
+                      : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"
                   }`}
                 >
                   <Icon size={14} />
@@ -1120,7 +1120,7 @@ export default function FormsPortal({
                   className={`px-3 py-2 text-xs font-bold flex items-center gap-1.5 border cursor-pointer ${
                     tab === "approvals"
                       ? "bg-[#003366] text-white border-[#003366]"
-                      : "bg-white text-[#003366] border-gray-200 hover:border-[#C9AB4C]"
+                      : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"
                   }`}
                 >
                   <ShieldCheck size={14} />

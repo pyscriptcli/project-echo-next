@@ -135,7 +135,7 @@ export function UniversalEchoDrawer({
       />
 
       {/* Drawer */}
-      <div className="relative w-full max-w-md md:max-w-lg bg-white h-full shadow-2xl flex flex-col z-10 border-l border-gray-200 animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-md md:max-w-lg bg-[#FFFCFB] h-full shadow-2xl flex flex-col z-10 border-l border-gray-200 animate-in slide-in-from-right duration-300">
         {/* Header (Clean, no prime / firm-wide subheadings) */}
         <div className="h-16 px-6 bg-[#1b1d1e] text-white flex items-center justify-between border-b border-[#2c2f32]">
           <div className="flex items-center gap-2.5">
@@ -181,7 +181,7 @@ export function UniversalEchoDrawer({
                   type="button"
                   onClick={() => handleSend(prompt)}
                   disabled={isThinking}
-                  className="text-left text-xs bg-white hover:bg-[#F4F1EC] text-gray-700 hover:text-[#003366] border border-gray-200/80 hover:border-[#C9AB4C] px-3 py-1.5 rounded-none transition-all line-clamp-1 disabled:opacity-50"
+                  className="text-left text-xs bg-[#FFFCFB] hover:bg-[#F4F1EC] text-gray-700 hover:text-[#003366] border border-gray-200/80 hover:border-[#C9AB4C] px-3 py-1.5 rounded-none transition-all line-clamp-1 disabled:opacity-50"
                 >
                   &ldquo;{prompt}&rdquo;
                 </button>
@@ -191,7 +191,7 @@ export function UniversalEchoDrawer({
         </div>
 
         {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#FFFCFB]/50">
           {messages.map((msg, index) => {
             const isEcho = msg.role === "echo";
             return (
@@ -212,7 +212,7 @@ export function UniversalEchoDrawer({
                 <div 
                   className={`max-w-[82%] rounded-none p-3 text-xs leading-relaxed shadow-xs ${
                     isEcho 
-                      ? "bg-white border border-gray-200 text-gray-800" 
+                      ? "bg-[#FFFCFB] border border-gray-200 text-gray-800" 
                       : "bg-[#003366] text-white"
                   }`}
                 >
@@ -234,7 +234,7 @@ export function UniversalEchoDrawer({
               <div className="w-7 h-7 rounded-none bg-[#161616] text-[#C9AB4C] border border-[#C9AB4C]/40 flex items-center justify-center shrink-0">
                 <Sparkles size={13} />
               </div>
-              <div className="bg-white border border-gray-200 rounded-none p-3 text-xs text-gray-500 flex items-center gap-2 shadow-xs">
+              <div className="bg-[#FFFCFB] border border-gray-200 rounded-none p-3 text-xs text-gray-500 flex items-center gap-2 shadow-xs">
                 <Loader2 size={14} className="animate-spin text-[#C9AB4C]" />
                 Echo is analyzing meeting archives...
               </div>
@@ -244,7 +244,7 @@ export function UniversalEchoDrawer({
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-white border-t border-gray-200">
+        <div className="p-4 bg-[#FFFCFB] border-t border-gray-200">
           <form 
             onSubmit={(e) => {
               e.preventDefault();
@@ -258,7 +258,7 @@ export function UniversalEchoDrawer({
               onChange={(e) => setInputPrompt(e.target.value)}
               placeholder="Ask anything about meetings, action items, or decisions..."
               disabled={isThinking}
-              className="w-full pl-3 pr-10 py-2.5 text-xs bg-gray-50 border border-gray-300 rounded-none focus:outline-none focus:border-[#003366] focus:bg-white transition-all text-gray-800"
+              className="w-full pl-3 pr-10 py-2.5 text-xs bg-[#FFFCFB] border border-gray-300 rounded-none focus:outline-none focus:border-[#003366] focus:bg-[#FFFCFB] transition-all text-gray-800"
             />
             <button
               type="submit"

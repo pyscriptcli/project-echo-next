@@ -66,7 +66,7 @@ export function ValidationAlertBanner({ items, onDismiss }: ValidationAlertBanne
             key={`${err.id}-${idx}`}
             type="button"
             onClick={() => scrollToFormField(err.id)}
-            className="inline-flex items-center gap-1.5 bg-white hover:bg-rose-100 border border-rose-300 hover:border-rose-500 text-rose-900 px-2.5 py-1 text-xs font-semibold shadow-2xs transition-all cursor-pointer group"
+            className="inline-flex items-center gap-1.5 bg-[#FFFCFB] hover:bg-rose-100 border border-rose-300 hover:border-rose-500 text-rose-900 px-2.5 py-1 text-xs font-semibold shadow-2xs transition-all cursor-pointer group"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-rose-600 group-hover:scale-125 transition-transform" />
             <span>{err.label}</span>

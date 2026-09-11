@@ -110,10 +110,10 @@ export function NewDemandModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white border-t-4 border-[#C9AB4C] shadow-2xl w-full max-w-2xl my-4 overflow-hidden text-slate-800">
+      <div className="bg-[#FFFCFB] border-t-4 border-[#C9AB4C] shadow-2xl w-full max-w-2xl my-4 overflow-hidden text-slate-800">
         
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-[#FFFCFB]/70">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-widest bg-[#003366] text-[#C9AB4C] px-2 py-0.5">
@@ -130,7 +130,7 @@ export function NewDemandModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-[#FFFCFB] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -140,21 +140,21 @@ export function NewDemandModal({
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[78vh] overflow-y-auto">
           
           {/* Intake Mode Switcher Banner */}
-          <div className="bg-slate-50 border border-slate-200 p-3 space-y-2">
+          <div className="bg-[#FFFCFB] border border-slate-200 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-[#003366]" />
                 Location Fulfillment Strategy:
               </label>
               
-              <div className="inline-flex border border-slate-300 bg-white">
+              <div className="inline-flex border border-slate-300 bg-[#FFFCFB]">
                 <button
                   type="button"
                   onClick={() => setFulfillmentMode("rollout")}
                   className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
                     fulfillmentMode === "rollout"
                       ? "bg-[#003366] text-white"
-                      : "text-slate-600 hover:bg-slate-100"
+                      : "text-slate-600 hover:bg-[#FFFCFB]"
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -166,7 +166,7 @@ export function NewDemandModal({
                   className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors ${
                     fulfillmentMode === "either"
                       ? "bg-[#C9AB4C] text-[#003366]"
-                      : "text-slate-600 hover:bg-slate-100"
+                      : "text-slate-600 hover:bg-[#FFFCFB]"
                   }`}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
@@ -200,7 +200,7 @@ export function NewDemandModal({
                 placeholder="e.g. Puregold, KFC, DSV Logistics, Mercury Drug"
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
 
@@ -213,7 +213,7 @@ export function NewDemandModal({
                 placeholder="e.g. F&B, Grocery & Convenience, Warehousing, Health & Beauty"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
           </div>
@@ -227,7 +227,7 @@ export function NewDemandModal({
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as DemandType)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               >
                 <option value="CL">Commercial Lease (CL)</option>
                 <option value="CS">Commercial Space (CS)</option>
@@ -242,7 +242,7 @@ export function NewDemandModal({
               <select
                 value={assoc}
                 onChange={(e) => setAssoc(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white font-bold"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB] font-bold"
               >
                 <option value="MELIZA">MELIZA</option>
                 <option value="DYKSTRA">DYKSTRA</option>
@@ -264,7 +264,7 @@ export function NewDemandModal({
                 placeholder="e.g. Existing Network, Cold Calls, Lamudi, Referral"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
           </div>
@@ -281,7 +281,7 @@ export function NewDemandModal({
                 required
                 value={minSqm || ""}
                 onChange={(e) => setMinSqm(Number(e.target.value))}
-                className="w-full h-9 px-3 border border-slate-300 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
 
@@ -295,13 +295,13 @@ export function NewDemandModal({
                 required
                 value={maxSqm || ""}
                 onChange={(e) => setMaxSqm(Number(e.target.value))}
-                className="w-full h-9 px-3 border border-slate-300 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
           </div>
 
           {/* DYNAMIC TARGET LOCATIONS BUILDER */}
-          <div className="border border-slate-200 p-4 bg-slate-50 space-y-3">
+          <div className="border border-slate-200 p-4 bg-[#FFFCFB] space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#003366] flex items-center gap-1.5">
@@ -329,7 +329,7 @@ export function NewDemandModal({
               {locations.map((loc, idx) => (
                 <div 
                   key={idx} 
-                  className="grid grid-cols-12 gap-2 items-center bg-white p-2.5 border border-slate-200 shadow-2xs"
+                  className="grid grid-cols-12 gap-2 items-center bg-[#FFFCFB] p-2.5 border border-slate-200 shadow-2xs"
                 >
                   <div className="col-span-1 text-center font-mono text-[10px] font-bold text-slate-400">
                     #{idx + 1}
@@ -339,7 +339,7 @@ export function NewDemandModal({
                     <select
                       value={loc.gloc}
                       onChange={(e) => handleLocationChange(idx, "gloc", e.target.value)}
-                      className="w-full h-8 px-2 border border-slate-300 text-xs bg-white font-bold text-slate-700"
+                      className="w-full h-8 px-2 border border-slate-300 text-xs bg-[#FFFCFB] font-bold text-slate-700"
                     >
                       <option value="MM">MM (Metro Manila)</option>
                       <option value="N">N (North Luzon)</option>
@@ -400,7 +400,7 @@ export function NewDemandModal({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as DemandPriority)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white font-bold"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB] font-bold"
               >
                 <option value="Normal">Normal</option>
                 <option value="Priority">Priority (Urgent)</option>
@@ -418,7 +418,7 @@ export function NewDemandModal({
                 placeholder="e.g. Expansion, New Setup, Identified, Relocation"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
 
@@ -431,7 +431,7 @@ export function NewDemandModal({
                 placeholder="e.g. Immediate, 2026 Q4, 2027"
                 value={timeline}
                 onChange={(e) => setTimeline(e.target.value)}
-                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
               />
             </div>
           </div>
@@ -446,7 +446,7 @@ export function NewDemandModal({
               placeholder="e.g. 10m clear ceiling height, 40ft container access, roadside drive-thru, grease trap, heavy power 3-phase..."
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              className="w-full p-2.5 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-white"
+              className="w-full p-2.5 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
             />
           </div>
 
@@ -462,7 +462,7 @@ export function NewDemandModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-colors"
+                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-[#FFFCFB] text-xs font-bold transition-colors"
               >
                 Cancel
               </button>

@@ -86,7 +86,7 @@ export function SupportingDocuments({
   return (
     <div
       id="supporting-documents-section"
-      className={`bg-white rounded-none border ${
+      className={`bg-[#FFFCFB] rounded-none border ${
         hasError
           ? "border-rose-500 ring-2 ring-rose-400/40 bg-rose-50/10"
           : "border-slate-300"
@@ -117,7 +117,7 @@ export function SupportingDocuments({
         <span className={`text-xs font-semibold px-2.5 py-1 ${
           hasError
             ? "bg-rose-50 text-rose-700 border border-rose-300 font-bold"
-            : "bg-slate-100 text-slate-700 border border-slate-200"
+            : "bg-[#FFFCFB] text-slate-700 border border-slate-200"
         }`}>
           {files.length} {files.length === 1 ? "file" : "files"} attached
         </span>
@@ -187,10 +187,10 @@ export function SupportingDocuments({
           {files.map((file, idx) => (
             <div
               key={file.id || idx}
-              className="flex items-center justify-between p-3 rounded-none border border-slate-300 bg-slate-50 hover:bg-slate-100/80 transition-colors"
+              className="flex items-center justify-between p-3 rounded-none border border-slate-300 bg-[#FFFCFB] hover:bg-[#FFFCFB]/80 transition-colors"
             >
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="p-2 bg-white border border-slate-200 text-[#003366] shrink-0">
+                <div className="p-2 bg-[#FFFCFB] border border-slate-200 text-[#003366] shrink-0">
                   {file.type.includes("image") ? (
                     <ImageIcon className="w-4 h-4" />
                   ) : (
@@ -213,7 +213,7 @@ export function SupportingDocuments({
                     href={file.dataUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-[#FFFCFB] transition-colors"
                     title="Preview file"
                   >
                     <Eye className="w-4 h-4" />

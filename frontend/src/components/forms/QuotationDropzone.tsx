@@ -80,7 +80,7 @@ export function QuotationDropzone({ onDataExtracted }: QuotationDropzoneProps) {
           e.stopPropagation();
         }}
         onDrop={handleFileDrop}
-        className="bg-white border border-slate-300 hover:border-[#003366] transition-all px-4 py-2.5 shadow-xs relative flex flex-col sm:flex-row items-center justify-between gap-3"
+        className="bg-[#FFFCFB] border border-slate-300 hover:border-[#003366] transition-all px-4 py-2.5 shadow-xs relative flex flex-col sm:flex-row items-center justify-between gap-3"
       >
         {/* Left: AI Badge + Description */}
         <div className="flex items-center gap-3 text-center sm:text-left">
@@ -105,7 +105,7 @@ export function QuotationDropzone({ onDataExtracted }: QuotationDropzoneProps) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isScanning}
-            className="h-8 px-4 text-xs font-bold text-[#003366] bg-slate-50 hover:bg-[#003366] hover:text-white border border-[#003366] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="h-8 px-4 text-xs font-bold text-[#003366] bg-[#FFFCFB] hover:bg-[#003366] hover:text-white border border-[#003366] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
             {isScanning ? (
               <>

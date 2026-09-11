@@ -285,7 +285,7 @@ export function QuickAddTaskModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-      <div className="bg-white border-2 border-[#003366] shadow-2xl p-6 w-full max-w-lg rounded-none animate-in fade-in zoom-in-95">
+      <div className="bg-[#FFFCFB] border-2 border-[#003366] shadow-2xl p-6 w-full max-w-lg rounded-none animate-in fade-in zoom-in-95">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
           <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export function QuickAddTaskModal({
             </h4>
             <p className="text-xs text-gray-600 max-w-xs mx-auto">
               This discussion point is linked to ClickUp with tag{" "}
-              <code className="bg-gray-100 px-1 font-bold text-purple-700">echo</code>.
+              <code className="bg-[#FFFCFB] px-1 font-bold text-purple-700">echo</code>.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2.5 pt-3">
               {/* OPEN IN TASKS BUTTON */}
@@ -353,7 +353,7 @@ export function QuickAddTaskModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-[#FFFCFB]"
               >
                 Done
               </button>
@@ -391,7 +391,7 @@ export function QuickAddTaskModal({
                       <select
                         value={selectedSpace}
                         onChange={(e) => handleSpaceChange(e.target.value)}
-                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
                       >
                         {availableSpaces.map((sp) => (
                           <option key={sp} value={sp}>
@@ -402,7 +402,7 @@ export function QuickAddTaskModal({
                       <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                   ) : (
-                    <div className="p-2 border border-gray-200 bg-white text-xs text-gray-500">
+                    <div className="p-2 border border-gray-200 bg-[#FFFCFB] text-xs text-gray-500">
                       {loadingLists ? "Discovering spaces..." : (selectedSpace || "Default Space")}
                     </div>
                   )}
@@ -418,7 +418,7 @@ export function QuickAddTaskModal({
                       <select
                         value={selectedListId}
                         onChange={(e) => handleListChange(e.target.value)}
-                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
                       >
                         {listsInSelectedSpace.map((l) => (
                           <option key={l.id} value={l.id}>
@@ -433,7 +433,7 @@ export function QuickAddTaskModal({
                       <select
                         value={selectedListId}
                         onChange={(e) => handleListChange(e.target.value)}
-                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-white focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
+                        className="w-full border border-gray-300 p-2 pr-7 text-xs font-semibold text-gray-800 bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none appearance-none cursor-pointer"
                       >
                         {availableLists.map((l) => (
                           <option key={l.id} value={l.id}>
@@ -444,7 +444,7 @@ export function QuickAddTaskModal({
                       <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                   ) : (
-                    <div className="p-2 border border-gray-200 bg-white text-xs text-gray-500 truncate">
+                    <div className="p-2 border border-gray-200 bg-[#FFFCFB] text-xs text-gray-500 truncate">
                       {loadingLists ? "Loading lists..." : (getStoredClickUpListName() || "Default List")}
                     </div>
                   )}
@@ -470,7 +470,7 @@ export function QuickAddTaskModal({
                 value={taskName}
                 onChange={e => setTaskName(e.target.value)}
                 placeholder="Action item summary..."
-                className="w-full border border-gray-300 p-2 text-xs font-semibold text-gray-900 bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                className="w-full border border-gray-300 p-2 text-xs font-semibold text-gray-900 bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none"
               />
             </div>
 
@@ -493,7 +493,7 @@ export function QuickAddTaskModal({
                 <select
                   value={priority}
                   onChange={e => setPriority(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none"
                 >
                   <option value="urgent">🔴 Urgent</option>
                   <option value="high">🟠 High</option>
@@ -510,7 +510,7 @@ export function QuickAddTaskModal({
                 <select
                   value={status}
                   onChange={e => setStatus(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none font-bold uppercase"
                 >
                   {statusCategories.map(cat => (
                     <optgroup key={cat.category} label={`── ${cat.category} ──`}>
@@ -535,7 +535,7 @@ export function QuickAddTaskModal({
                   type="date"
                   value={dueDate}
                   onChange={e => setDueDate(e.target.value)}
-                  className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none"
+                  className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none"
                 />
               </div>
 
@@ -571,7 +571,7 @@ export function QuickAddTaskModal({
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Key arguments, requirements, or deliverables discussed..."
-                className="w-full border border-gray-300 p-2 text-xs bg-gray-50 focus:bg-white focus:border-[#c9ab4c] outline-none resize-none rounded-none"
+                className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none resize-none rounded-none"
               />
             </div>
 

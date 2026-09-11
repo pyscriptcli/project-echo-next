@@ -184,7 +184,7 @@ function ApprovalsContent() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* Header Banner */}
-      <div className="mb-6 bg-white border border-slate-300 p-6 shadow-sm relative overflow-hidden">
+      <div className="mb-6 bg-[#FFFCFB] border border-slate-300 p-6 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#C9AB4C]" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -208,7 +208,7 @@ function ApprovalsContent() {
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="bg-slate-50 border border-slate-300 text-xs pl-8 pr-4 h-8 font-semibold text-[#003366] focus:outline-none cursor-pointer"
+                className="bg-[#FFFCFB] border border-slate-300 text-xs pl-8 pr-4 h-8 font-semibold text-[#003366] focus:outline-none cursor-pointer"
               >
                 {DEPARTMENTS.map((dept) => (
                   <option key={dept} value={dept}>
@@ -234,18 +234,18 @@ function ApprovalsContent() {
         )}
 
         <div className="mt-4 flex gap-1 border-t border-slate-200 pt-3">
-          <button type="button" onClick={() => { setApprovalTab("pending"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "pending" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-300"}`}>Pending ({pendingRequests.length})</button>
-          <button type="button" onClick={() => { setApprovalTab("approved"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "approved" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-300"}`}>Approved ({approvedRequests.length})</button>
+          <button type="button" onClick={() => { setApprovalTab("pending"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "pending" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Pending ({pendingRequests.length})</button>
+          <button type="button" onClick={() => { setApprovalTab("approved"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "approved" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Approved ({approvedRequests.length})</button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="bg-white border border-slate-200 p-12 text-center">
+        <div className="bg-[#FFFCFB] border border-slate-200 p-12 text-center">
           <Loader2 className="w-6 h-6 animate-spin text-[#003366] mx-auto mb-2" />
           <p className="text-xs font-semibold text-slate-500">Loading pending requests...</p>
         </div>
       ) : visibleRequests.length === 0 ? (
-        <div className="bg-white border border-slate-300 p-12 text-center shadow-sm">
+        <div className="bg-[#FFFCFB] border border-slate-300 p-12 text-center shadow-sm">
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -276,8 +276,8 @@ function ApprovalsContent() {
                     onClick={() => setActiveRequest(req)}
                     className={`w-full text-left p-4 border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-white border-[#003366] shadow-md ring-1 ring-[#003366]"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+                        ? "bg-[#FFFCFB] border-[#003366] shadow-md ring-1 ring-[#003366]"
+                        : "bg-[#FFFCFB] border-slate-200 hover:border-slate-300 hover:bg-[#FFFCFB]/50"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -310,7 +310,7 @@ function ApprovalsContent() {
 
           {/* Right Column: Detailed Review & 1-Click Actions */}
           {activeRequest && (
-            <div className="lg:col-span-8 bg-white border border-slate-300 shadow-sm p-6 relative">
+            <div className="lg:col-span-8 bg-[#FFFCFB] border border-slate-300 shadow-sm p-6 relative">
               {/* Top Banner */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-200 pb-5">
                 <div>
@@ -318,7 +318,7 @@ function ApprovalsContent() {
                     <span className="font-mono text-xs font-bold text-[#003366] bg-blue-50 px-2 py-0.5 border border-blue-200">
                       Task #{activeRequest.taskId}
                     </span>
-                    <span className="text-xs font-bold text-slate-700 uppercase bg-slate-100 px-2 py-0.5">
+                    <span className="text-xs font-bold text-slate-700 uppercase bg-[#FFFCFB] px-2 py-0.5">
                       {activeRequest.department}
                     </span>
                     {activeRequest.urgency === "urgent" && (
@@ -351,7 +351,7 @@ function ApprovalsContent() {
               </div>
 
               {/* Purpose Box */}
-              <div className="my-4 p-3 bg-slate-50 border border-slate-200">
+              <div className="my-4 p-3 bg-[#FFFCFB] border border-slate-200">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
                   BUSINESS PURPOSE
                 </span>
@@ -362,13 +362,13 @@ function ApprovalsContent() {
 
               {/* Document Review Tabs */}
               <div className="my-5 border border-slate-300">
-                <div className="flex items-center border-b border-slate-300 bg-slate-100">
+                <div className="flex items-center border-b border-slate-300 bg-[#FFFCFB]">
                   <button
                     type="button"
                     onClick={() => setActiveDocTab("form")}
                     className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                       activeDocTab === "form"
-                        ? "bg-white text-[#003366] border-b-2 border-[#003366]"
+                        ? "bg-[#FFFCFB] text-[#003366] border-b-2 border-[#003366]"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -381,7 +381,7 @@ function ApprovalsContent() {
                     onClick={() => setActiveDocTab("quote")}
                     className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                       activeDocTab === "quote"
-                        ? "bg-white text-[#003366] border-b-2 border-[#003366]"
+                        ? "bg-[#FFFCFB] text-[#003366] border-b-2 border-[#003366]"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -391,7 +391,7 @@ function ApprovalsContent() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="p-4 bg-slate-50 max-h-[450px] overflow-y-auto flex items-center justify-center">
+                <div className="p-4 bg-[#FFFCFB] max-h-[450px] overflow-y-auto flex items-center justify-center">
                   {activeDocTab === "form" ? (
                     formPreviewAtt ? (
                       <div className="text-center">
@@ -463,7 +463,7 @@ function ApprovalsContent() {
                       value={approverName}
                       onChange={(e) => setApproverName(e.target.value)}
                       placeholder="e.g. Jane Doe (Marketing Head)"
-                      className="w-full bg-slate-50 border border-slate-300 text-xs px-2.5 h-8 focus:outline-none focus:border-[#003366]"
+                      className="w-full bg-[#FFFCFB] border border-slate-300 text-xs px-2.5 h-8 focus:outline-none focus:border-[#003366]"
                     />
                   </div>
                   <div className="sm:col-span-6">
@@ -475,7 +475,7 @@ function ApprovalsContent() {
                       value={approvalNotes}
                       onChange={(e) => setApprovalNotes(e.target.value)}
                       placeholder="e.g. Budget verified under Q4 promo allocation"
-                      className="w-full bg-slate-50 border border-slate-300 text-xs px-2.5 h-8 focus:outline-none focus:border-[#003366]"
+                      className="w-full bg-[#FFFCFB] border border-slate-300 text-xs px-2.5 h-8 focus:outline-none focus:border-[#003366]"
                     />
                   </div>
                 </div>
@@ -486,7 +486,7 @@ function ApprovalsContent() {
                     type="button"
                     onClick={() => setIsRevisionModalOpen(true)}
                     disabled={isApproving}
-                    className="w-full sm:w-auto h-10 px-5 bg-white border border-amber-400 hover:bg-amber-50 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="w-full sm:w-auto h-10 px-5 bg-[#FFFCFB] border border-amber-400 hover:bg-amber-50 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <XCircle className="w-4 h-4 text-amber-600" />
                     <span>Request Revision</span>
@@ -521,7 +521,7 @@ function ApprovalsContent() {
       {/* Revision Modal */}
       {isRevisionModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border-2 border-amber-500 shadow-2xl max-w-md w-full p-6 relative">
+          <div className="bg-[#FFFCFB] border-2 border-amber-500 shadow-2xl max-w-md w-full p-6 relative">
             <h3 className="font-serif italic font-bold text-lg text-amber-900">
               Request Revision on RFP #{activeRequest?.taskId}
             </h3>
@@ -535,7 +535,7 @@ function ApprovalsContent() {
               value={revisionReason}
               onChange={(e) => setRevisionReason(e.target.value)}
               placeholder="Enter specific revision instructions for the requestor..."
-              className="w-full mt-3 p-2.5 bg-slate-50 border border-slate-300 text-xs focus:outline-none focus:border-amber-500"
+              className="w-full mt-3 p-2.5 bg-[#FFFCFB] border border-slate-300 text-xs focus:outline-none focus:border-amber-500"
             />
 
             <div className="mt-4 flex items-center justify-end gap-2">

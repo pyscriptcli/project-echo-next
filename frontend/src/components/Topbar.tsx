@@ -199,7 +199,7 @@ export function Topbar({
               <X size={14} />
             </button>
           ) : (
-            <kbd className="absolute right-2.5 hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded-none">
+            <kbd className="absolute right-2.5 hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono text-gray-400 bg-[#FFFCFB] border border-gray-200 rounded-none">
               ⌘K
             </kbd>
           )}
@@ -207,7 +207,7 @@ export function Topbar({
 
         {/* Spotlight Results Dropdown */}
         {isOpen && query && (
-          <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-none shadow-xl overflow-hidden z-50 max-h-[420px] overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute left-0 right-0 mt-2 bg-[#FFFCFB] border border-gray-200 rounded-none shadow-xl overflow-hidden z-50 max-h-[420px] overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
             {hasResults ? (
               <div className="p-2 divide-y divide-gray-100 text-xs">
                 {/* 1. APP PAGES */}
@@ -226,7 +226,7 @@ export function Topbar({
                             if (onNavigateToPage) onNavigateToPage(p.id);
                             setIsOpen(false);
                           }}
-                          className="w-full text-left px-2.5 py-2 rounded-none hover:bg-gray-50 flex items-center justify-between group transition-colors"
+                          className="w-full text-left px-2.5 py-2 rounded-none hover:bg-[#FFFCFB] flex items-center justify-between group transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <IconComponent size={14} className="text-[#003366] shrink-0" />
@@ -258,7 +258,7 @@ export function Topbar({
                           if (onSelectTask) onSelectTask(t.id);
                           setIsOpen(false);
                         }}
-                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-gray-50 flex items-center justify-between group transition-colors"
+                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-[#FFFCFB] flex items-center justify-between group transition-colors"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <CheckSquare size={14} className="text-[#003366] shrink-0" />
@@ -293,7 +293,7 @@ export function Topbar({
                           onSelectMeeting(m.id);
                           setIsOpen(false);
                         }}
-                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-gray-50 flex items-center justify-between group transition-colors"
+                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-[#FFFCFB] flex items-center justify-between group transition-colors"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <Calendar size={14} className="text-[#003366] shrink-0" />
@@ -326,7 +326,7 @@ export function Topbar({
                           onSelectMeeting(t.meetingId);
                           setIsOpen(false);
                         }}
-                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-gray-50 flex items-center justify-between group transition-colors"
+                        className="w-full text-left px-2.5 py-2 rounded-none hover:bg-[#FFFCFB] flex items-center justify-between group transition-colors"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <FileText size={14} className="text-[#C9AB4C] shrink-0" />

@@ -57,7 +57,7 @@ export function SearchableMemberSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between border border-gray-300 p-2 text-xs bg-gray-50 hover:bg-white focus:bg-white focus:border-[#c9ab4c] outline-none rounded-none transition-colors text-left"
+        className="w-full flex items-center justify-between border border-gray-300 p-2 text-xs bg-[#FFFCFB] hover:bg-[#FFFCFB] focus:bg-[#FFFCFB] focus:border-[#c9ab4c] outline-none rounded-none transition-colors text-left"
       >
         <div className="flex items-center gap-2 truncate">
           {selectedMember ? (
@@ -97,9 +97,9 @@ export function SearchableMemberSelect({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 shadow-xl z-50 rounded-none max-h-60 flex flex-col">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[#FFFCFB] border border-gray-300 shadow-xl z-50 rounded-none max-h-60 flex flex-col">
           {/* Search Input Bar */}
-          <div className="p-2 border-b border-gray-200 bg-gray-50 flex items-center gap-1.5 shrink-0">
+          <div className="p-2 border-b border-gray-200 bg-[#FFFCFB] flex items-center gap-1.5 shrink-0">
             <Search size={13} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -128,7 +128,7 @@ export function SearchableMemberSelect({
                 onChange("");
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 flex items-center justify-between text-gray-500 italic"
+              className="w-full px-3 py-2 text-left text-xs hover:bg-[#FFFCFB] flex items-center justify-between text-gray-500 italic"
             >
               <span>-- Unassigned --</span>
               {!selectedMemberId && <Check size={13} className="text-[#003366]" />}

@@ -28,7 +28,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* CARD 1: LOCATION COVERAGE */}
-      <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
+      <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
         <div>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
           <div className="mt-4 space-y-3.5 text-xs">
             {isIndustrial ? (
               <>
-                <div className="bg-slate-50 p-3 border-l-2 border-amber-600 space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-amber-600 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">North Logistics Belt (Bulacan / Valenzuela / Caloocan)</span>
                     <span className="font-mono text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2">48% Demands</span>
@@ -64,7 +64,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-3 border-l-2 border-[#003366] space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-[#003366] space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">South Logistics Hub (Laguna / Cavite / Batangas)</span>
                     <span className="font-mono text-[10px] font-bold text-[#003366] bg-blue-100 px-1.5 py-0.2">42% Demands</span>
@@ -74,7 +74,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-3 border-l-2 border-emerald-600 space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-emerald-600 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">Port & Cross-Dock Nodes (Batangas Port / Manila Harbor)</span>
                     <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2">10% Demands</span>
@@ -86,7 +86,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
               </>
             ) : (
               <>
-                <div className="bg-slate-50 p-3 border-l-2 border-[#003366] space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-[#003366] space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">Metro Manila Prime Commercial (QC / BGC / Makati)</span>
                     <span className="font-mono text-[10px] font-bold text-[#003366] bg-blue-100 px-1.5 py-0.2">54% Demands</span>
@@ -96,7 +96,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-3 border-l-2 border-[#C9AB4C] space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-[#C9AB4C] space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">Provincial Growth Clusters (Pampanga / Bulacan / Cavite)</span>
                     <span className="font-mono text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2">32% Demands</span>
@@ -106,7 +106,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-3 border-l-2 border-emerald-600 space-y-1">
+                <div className="bg-[#FFFCFB] p-3 border-l-2 border-emerald-600 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">Southern Hardware & Resort Nodes (Batangas / Baguio)</span>
                     <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2">14% Demands</span>
@@ -130,7 +130,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
       </div>
 
       {/* CARD 2: INDUSTRY TREND */}
-      <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
+      <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
         <div>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
           <div className="mt-4 space-y-3.5 text-xs">
             {isIndustrial ? (
               <>
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Clear Ceiling Heights</span>
                     <span className="font-mono font-bold text-amber-700">10m – 12m Standard</span>
@@ -166,7 +166,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Floor Load & Dock Levelers</span>
                     <span className="font-mono font-bold text-amber-700">5 Ton/sqm + Docks</span>
@@ -176,7 +176,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Built-to-Suit (BTS) Preference</span>
                     <span className="font-mono font-bold text-[#003366]">10–15 Year Leases</span>
@@ -188,7 +188,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
               </>
             ) : (
               <>
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Fit-out Rent-Free Period</span>
                     <span className="font-mono font-bold text-blue-700">60 to 90 Days</span>
@@ -198,7 +198,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Multi-Store Rollout Pipeline</span>
                     <span className="font-mono font-bold text-[#003366]">1 Brand · N Sites</span>
@@ -208,7 +208,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </p>
                 </div>
 
-                <div className="border border-slate-200 p-3 bg-white space-y-1.5">
+                <div className="border border-slate-200 p-3 bg-[#FFFCFB] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#003366]">Utility Load & Grease Traps</span>
                     <span className="font-mono font-bold text-amber-800">3-Phase 100A+</span>
@@ -232,7 +232,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
       </div>
 
       {/* CARD 3: TIMELINE & ROLLOUT PHASES */}
-      <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
+      <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-5 flex flex-col justify-between hover:border-[#003366] transition-colors">
         <div>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
           <div className="mt-4 space-y-3.5 text-xs">
             {isIndustrial ? (
               <>
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-[#003366] text-white shrink-0 font-bold text-[10px] font-mono">
                     2026 Q3
                   </div>
@@ -268,7 +268,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-[#C9AB4C] text-[#003366] shrink-0 font-bold text-[10px] font-mono">
                     2026 Q4
                   </div>
@@ -280,7 +280,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-slate-800 text-white shrink-0 font-bold text-[10px] font-mono">
                     2027+
                   </div>
@@ -294,7 +294,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
               </>
             ) : (
               <>
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-[#003366] text-white shrink-0 font-bold text-[10px] font-mono">
                     2026 Q3
                   </div>
@@ -306,7 +306,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-[#C9AB4C] text-[#003366] shrink-0 font-bold text-[10px] font-mono">
                     2026 Q4
                   </div>
@@ -318,7 +318,7 @@ export function DemandsCards({ assetClass }: DemandsCardsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-[#FFFCFB] border border-slate-200">
                   <div className="p-1.5 bg-slate-800 text-white shrink-0 font-bold text-[10px] font-mono">
                     2027–28
                   </div>
