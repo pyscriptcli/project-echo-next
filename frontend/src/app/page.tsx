@@ -32,6 +32,7 @@ import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
 import { DashboardView } from "@/components/DashboardView";
 import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
+import { NotebookView } from "@/components/NotebookView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
@@ -338,6 +339,7 @@ export default function Home() {
   const [allowedPages, setAllowedPages] = useState<NavView[]>([
     "dashboard",
     "tasks",
+    "notebook",
     "meetings",
     "minutes",
     "forms",
@@ -346,7 +348,7 @@ export default function Home() {
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "forms") setCurrentView("forms");
+    if (view === "forms" || view === "notebook") setCurrentView(view);
   }, []);
 
   // Fetch page governance and role access
@@ -983,6 +985,11 @@ export default function Home() {
                 focusedTaskId={focusedTaskId}
                 onClearFocusedTask={() => setFocusedTaskId(null)}
               />
+            )}
+
+            {/* VIEW: WORK NOTEBOOK (READ-ONLY CLICKUP DAILY LOG) */}
+            {currentView === "notebook" && (
+              <NotebookView currentUserName={authUser?.username} />
             )}
 
             {/* VIEW 2: MEETINGS ARCHIVE */}

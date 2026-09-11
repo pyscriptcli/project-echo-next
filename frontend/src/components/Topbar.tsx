@@ -15,7 +15,8 @@ import {
   LayoutDashboard,
   FolderKanban,
   ExternalLink,
-  ClipboardList
+  ClipboardList,
+  NotebookTabs
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
 import { ClickUpTask } from "./TasksView";
@@ -30,8 +31,8 @@ interface TopbarProps {
   onNewMeeting: () => void;
   onOpenStudio: () => void;
   onGoToNotetaker: () => void;
-  onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "minutes" | "forms" | "forms-admin") => void;
-  allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "minutes" | "forms">;
+  onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "notebook" | "minutes" | "forms" | "forms-admin") => void;
+  allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "notebook" | "minutes" | "forms">;
   isAdmin?: boolean;
 }
 
@@ -87,10 +88,11 @@ export function Topbar({
   const query = searchQuery.trim().toLowerCase();
 
   // 1. Navigation Pages
-  const APP_PAGES: Array<{ id: "dashboard" | "meetings" | "tasks" | "minutes" | "forms" | "forms-admin"; name: string; description: string; icon: any }> = [
+  const APP_PAGES: Array<{ id: "dashboard" | "meetings" | "tasks" | "notebook" | "minutes" | "forms" | "forms-admin"; name: string; description: string; icon: any }> = [
     { id: "dashboard", name: "Dashboard", description: "Executive overview & meeting metrics", icon: LayoutDashboard },
     { id: "meetings", name: "Meetings Archive", description: "Review and edit meeting minutes", icon: Calendar },
     { id: "tasks", name: "Tasks Portal (ClickUp)", description: "Track & execute meeting action items", icon: CheckSquare },
+    { id: "notebook", name: "Work Notebook", description: "Daily logs & team completeness", icon: NotebookTabs },
     { id: "minutes", name: "Notetaker Studio", description: "Transcribe audio & synthesize notes", icon: Mic },
     { id: "forms", name: "Forms", description: "Submit, track & approve requests", icon: ClipboardList },
     { id: "forms-admin", name: "Settings", description: "Configure Echo access and routing", icon: ClipboardList },

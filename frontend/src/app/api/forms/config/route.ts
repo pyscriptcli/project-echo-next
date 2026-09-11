@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   emailTemplates: [],
 };
 
-const ALL_APP_PAGES = ["dashboard", "tasks", "meetings", "minutes", "forms"];
+const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "meetings", "minutes", "forms"];
 
 function client() {
   const url = process.env.SUPABASE_URL || "";

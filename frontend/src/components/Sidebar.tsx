@@ -10,10 +10,11 @@ import {
   LogOut,
   CheckSquare,
   ClipboardList,
-  Settings
+  Settings,
+  NotebookTabs
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "meetings" | "minutes" | "forms" | "forms-admin";
+export type NavView = "dashboard" | "tasks" | "notebook" | "meetings" | "minutes" | "forms" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -71,7 +72,7 @@ export function Sidebar({
   const isOwner = user?.email?.toLowerCase() === "admin@primephilippines.com";
   const isProjectAdmin = isOwner || Boolean(isAdmin);
 
-  // Ordered strictly as: dashboard -> tasks -> meetings -> Notetaker -> forms
+  // Primary workspace navigation order
   const allNavItems = [
     {
       id: "dashboard" as NavView,
@@ -83,6 +84,12 @@ export function Sidebar({
       id: "tasks" as NavView,
       label: "Tasks",
       icon: CheckSquare,
+      badge: null
+    },
+    {
+      id: "notebook" as NavView,
+      label: "Notebook",
+      icon: NotebookTabs,
       badge: null
     },
     {
