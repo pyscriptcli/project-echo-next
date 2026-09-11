@@ -34,6 +34,7 @@ import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { NotebookView } from "@/components/NotebookView";
 import { MarketInsightsView } from "@/components/MarketInsightsView";
+import { DemandsView } from "@/components/DemandsView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
@@ -342,6 +343,7 @@ export default function Home() {
     "tasks",
     "notebook",
     "market-insights",
+    "demands",
     "meetings",
     "minutes",
     "forms",
@@ -350,7 +352,7 @@ export default function Home() {
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "forms" || view === "notebook" || view === "market-insights") setCurrentView(view as NavView);
+    if (view === "forms" || view === "notebook" || view === "market-insights" || view === "demands") setCurrentView(view as NavView);
   }, []);
 
   // Fetch page governance and role access
@@ -995,6 +997,7 @@ export default function Home() {
             )}
 
             {currentView === "market-insights" && <MarketInsightsView />}
+            {currentView === "demands" && <DemandsView sector={(new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("sector") as "retail" | "industrial" | null) || "all"} />}
 
             {/* VIEW 2: MEETINGS ARCHIVE */}
             {currentView === "meetings" && (

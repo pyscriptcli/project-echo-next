@@ -13,9 +13,10 @@ import {
   Settings,
   NotebookTabs,
   Newspaper
+  ,ClipboardCheck
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "notebook" | "market-insights" | "meetings" | "minutes" | "forms" | "forms-admin";
+export type NavView = "dashboard" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -99,6 +100,7 @@ export function Sidebar({
       icon: Newspaper,
       badge: null
     },
+    { id: "demands" as NavView, label: "Demands", icon: ClipboardCheck, badge: null },
     {
       id: "meetings" as NavView,
       label: "Meetings",

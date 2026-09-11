@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   emailTemplates: [],
 };
 
-const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "meetings", "minutes", "forms"];
+const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];
 
 function client() {
   const url = process.env.SUPABASE_URL || "";
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
     allowedPages = ALL_APP_PAGES;
   }
   // The shared market brief is intentionally available to every Echo user.
-  allowedPages = Array.from(new Set([...allowedPages, "market-insights"]));
+  allowedPages = Array.from(new Set([...allowedPages, "market-insights", "demands"]));
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {
