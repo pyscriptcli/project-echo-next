@@ -136,7 +136,7 @@ export function Sidebar({
       onMouseLeave={handleMouseLeave}
     >
       <aside 
-        className={`absolute top-0 left-0 h-full flex flex-col justify-between bg-[#003366] text-[#FFFCFB] border-r-2 border-[#C9A84C] shadow-[4px_0_24px_rgba(0,51,102,0.18),2px_0_12px_rgba(201,168,76,0.18)] transition-all duration-300 ease-in-out z-40 select-none overflow-hidden ${
+        className={`absolute top-0 left-0 h-full flex flex-col justify-between bg-[#003366] text-[#FFFCFB] border-r border-[#31577D] shadow-[4px_0_24px_rgba(0,51,102,0.18)] transition-all duration-300 ease-in-out z-40 select-none overflow-hidden ${
           effectiveCollapsed ? "w-18 min-w-[72px]" : "w-64 min-w-[256px]"
         }`}
       >
