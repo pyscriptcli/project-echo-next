@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     if (Array.isArray(body.articles)) {
-      const incoming = body.articles.map(articleFrom).filter((article): article is Article => Boolean(article));
+      const incoming = (body.articles as unknown[]).map(articleFrom).filter((article): article is Article => Boolean(article));
       if (!incoming.length) return NextResponse.json({ error: "No valid article records were supplied." }, { status: 400 });
       const existing = await listTasks(token);
       const known = new Set(existing.map((item: any) => `${item.date}|${item.company}`.toLowerCase()));
