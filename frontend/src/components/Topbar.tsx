@@ -92,7 +92,7 @@ export function Topbar({
     { id: "dashboard", name: "Dashboard", description: "Executive overview & meeting metrics", icon: LayoutDashboard },
     { id: "meetings", name: "Meetings Archive", description: "Review and edit meeting minutes", icon: Calendar },
     { id: "tasks", name: "Tasks Portal (ClickUp)", description: "Track & execute meeting action items", icon: CheckSquare },
-    { id: "notebook", name: "Work Notebook", description: "Daily logs & team completeness", icon: NotebookTabs },
+    { id: "notebook", name: "Notebook", description: "Daily logs & team completeness", icon: NotebookTabs },
     { id: "minutes", name: "Notetaker Studio", description: "Transcribe audio & synthesize notes", icon: Mic },
     { id: "forms", name: "Forms", description: "Submit, track & approve requests", icon: ClipboardList },
     { id: "forms-admin", name: "Settings", description: "Configure Echo access and routing", icon: ClipboardList },
