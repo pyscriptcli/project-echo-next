@@ -1,0 +1,71 @@
+{
+  "$comment": "Canonical PRIME Philippines design tokens. Reconciles the two source brand files; see SKILL.md 'source conflicts'.",
+  "brand": {
+    "name": "PRIME Philippines",
+    "tagline": "We Advise. You Advance.",
+    "voice": ["authoritative", "sovereign", "premium", "earned-success", "never-ostentatious"]
+  },
+  "color": {
+    "prime_blue":       { "hex": "#003366", "rgb": [0, 51, 102],   "role": "foundation/authority/dominant/dark-surface", "background_allowed": true },
+    "prime_warm_white": { "hex": "#FFFCFB", "rgb": [255, 252, 251],"role": "light-surface/replaces-pure-white", "background_allowed": true },
+    "prime_gold":       { "hex": "#C9A84C", "rgb": [201, 168, 76], "role": "apex-accent", "accent_only": true, "background_allowed": false },
+    "prime_yellow":     { "hex": "#FFBF00", "rgb": [255, 191, 0],  "role": "energy/motion/arrow-mark/data-accent", "background_allowed": false },
+    "prime_gray":       { "hex": "#181D1E", "rgb": [24, 29, 30],   "role": "ink/body-text/hairlines", "text_only": true, "background_allowed": false },
+    "prime_deep_ink":   { "hex": "#0C0C0E", "rgb": [12, 12, 14],   "role": "ink/deepest-text-weight", "text_only": true, "background_allowed": false }
+  },
+  "backgrounds": {
+    "allowed": ["#003366", "#FFFCFB"],
+    "note": "Only PRIME Blue and PRIME Warm White may sit behind content. Gray and Deep Ink are text colors. Dark themes are built from PRIME Blue.",
+    "exception": "Data-viz print backgrounds are forced to #FFFFFF."
+  },
+  "dataviz": {
+    "anchors": { "blue": "#003366", "gold": "#C9AB4C" },
+    "neutrals": { "ivory": "#FFFFFF", "deep_onyx": "#111111", "stone": "#888780", "pale_rule": "#E4E0D8" },
+    "categorical_10": [
+      { "slot": "S1", "name": "Midnight",  "hex": "#003366" },
+      { "slot": "S2", "name": "Gold",      "hex": "#C9AB4C" },
+      { "slot": "S3", "name": "Ocean",     "hex": "#1A5A8A" },
+      { "slot": "S4", "name": "Brass",     "hex": "#A8862E" },
+      { "slot": "S5", "name": "Steel",     "hex": "#3D7DA8" },
+      { "slot": "S6", "name": "Bronze",    "hex": "#7A5C10" },
+      { "slot": "S7", "name": "Powder",    "hex": "#6A94B0" },
+      { "slot": "S8", "name": "Amber",     "hex": "#D4B85A" },
+      { "slot": "S9", "name": "Navy",      "hex": "#001F3F" },
+      { "slot": "S10","name": "Champagne", "hex": "#E8D494", "background_fill_only": true }
+    ],
+    "status": { "growth": "#1A6640", "decline": "#AA2E20", "watch": "#96680A", "neutral": "#4A5E6A" },
+    "regions": { "luzon": "#003366", "visayas": "#C9AB4C", "mindanao": "#3D7DA8" }
+  },
+  "typography": {
+    "fonts": {
+      "display": { "family": "Cormorant Garamond", "fallback": "Georgia, serif" },
+      "impact":  { "family": "Bebas Neue", "fallback": "Arial Narrow, Impact, sans-serif" },
+      "ui":      { "family": "Montserrat", "fallback": "Arial, Helvetica, sans-serif" }
+    },
+    "hierarchy": {
+      "display_hero":  { "font": "display", "weight": 300, "size_px": [96, 120], "line_height": 1.0, "tracking_em": -0.02, "usage": "headlines only" },
+      "section_heading":{ "font": "display", "weight": 300, "style": "italic", "size_px": [48, 72], "line_height": 1.1, "tracking_em": -0.01 },
+      "impact_data":   { "font": "impact", "weight": 400, "size_px": [36, 64], "line_height": 1.0, "tracking_em": 0.08 },
+      "labels_ui_caps":{ "font": "ui", "weight": 500, "case": "upper", "size_px": [9, 13], "line_height": 2.0, "tracking_em": 0.35 },
+      "body_copy":     { "font": "ui", "weight": 400 }
+    }
+  },
+  "shape": {
+    "radius": 0,
+    "radius_px": 0,
+    "note": "Edges stay sharp. Square right-angle corners are the default on all surfaces; only the logo, arrow mark, and icons carry curves."
+  },
+  "rules": {
+    "gold_accent_only": true,
+    "sharp_edges_no_radius": true,
+    "backgrounds_blue_or_warm_white_only": true,
+    "no_dark_gray_or_deep_ink_backgrounds": true,
+    "no_pure_black_text": "use #181D1E or #0C0C0E",
+    "no_pure_white_brand": "use #FFFCFB (data-viz print is forced #FFFFFF)",
+    "no_typeface_substitution": true,
+    "labels_uppercase_only": true,
+    "dataviz_series_must_be_blue_or_gold_lineage": true,
+    "gold_never_warning": true,
+    "champagne_background_only": true
+  }
+}

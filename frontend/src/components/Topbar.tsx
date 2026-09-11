@@ -168,7 +168,7 @@ export function Topbar({
     matchedTopics.length > 0;
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-bg-primary/95 backdrop-blur-sm border-b border-gray-200/80 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
+    <header className="sticky top-0 z-30 h-14 bg-[#FFFCFB]/95 backdrop-blur-sm border-b border-[#003366]/15 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
       {/* Left balance spacer so middle search remains centered */}
       <div className="hidden xl:block w-72 shrink-0" />
 
@@ -186,7 +186,7 @@ export function Topbar({
             }}
             onFocus={() => setIsOpen(true)}
             placeholder="Search"
-            className="w-full pl-10 pr-9 py-1.5 text-xs bg-white border border-gray-300/80 rounded-none shadow-2xs focus:outline-none focus:border-[#C9AB4C] focus:ring-1 focus:ring-[#C9AB4C] transition-all text-[#1b1d1e] placeholder:text-gray-400"
+            className="w-full pl-10 pr-9 py-1.5 text-xs bg-[#FFFCFB] border border-[#003366]/25 rounded-none shadow-2xs focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] transition-all text-[#181D1E] placeholder:text-[#53616A]"
           />
           {searchQuery ? (
             <button
@@ -406,9 +406,9 @@ export function Topbar({
           <button
             type="button"
             onClick={onOpenUniversalEcho}
-            className="flex items-center gap-1.5 bg-[#1b1d1e] text-[#FAF9F7] hover:bg-[#25282a] border border-[#C9AB4C]/60 hover:border-[#C9AB4C] px-3.5 py-1.5 rounded-none text-xs font-semibold tracking-wide shadow-2xs transition-all group"
+            className="flex items-center gap-1.5 bg-[#003366] text-[#FFFCFB] hover:bg-[#174778] border border-[#C9A84C]/60 hover:border-[#C9A84C] px-3.5 py-1.5 rounded-none text-xs font-semibold tracking-wide shadow-2xs transition-all group"
           >
-            <Sparkles size={13} className="text-[#C9AB4C] group-hover:rotate-12 transition-transform" />
+            <Sparkles size={13} className="text-[#FFBF00] group-hover:rotate-12 transition-transform" />
             <span>Ask Echo</span>
           </button>
         )}

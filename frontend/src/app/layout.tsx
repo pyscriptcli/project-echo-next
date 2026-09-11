@@ -22,8 +22,8 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Project Echo - Meeting Intelligence & Minutes",
-  description: "AI-powered Minutes of the Meeting Generator",
+  title: "Project Echo | PRIME Philippines",
+  description: "PRIME Philippines meeting intelligence and advisory workspace.",
 };
 
 export default function RootLayout({
@@ -36,7 +36,7 @@ export default function RootLayout({
       lang="en" 
       className={`${cormorant.variable} ${montserrat.variable} ${bebas.variable} h-full w-full`}
     >
-      <body className="h-full w-full bg-bg-primary font-sans antialiased text-[#1b1d1e] overflow-hidden">
+      <body className="h-full w-full bg-bg-primary font-sans antialiased text-[#181D1E] overflow-hidden">
         {children}
       </body>
     </html>

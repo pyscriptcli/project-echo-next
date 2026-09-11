@@ -1,0 +1,105 @@
+/* ============================================================
+   PRIME Philippines — Brand stylesheet
+   "Palette of Sovereign Intelligence" + "Words That Command the Room"
+   Drop into any web/HTML/React output. Import fonts (Google Fonts) and
+   use the variables + helper classes below.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Bebas+Neue&family=Montserrat:wght@400;500&display=swap');
+
+:root {
+  /* Core palette */
+  /* Backgrounds: ONLY these two may sit behind content. */
+  --prime-blue:        #003366; /* Foundation · authority — dominant color + dark surface */
+  --prime-warm-white:  #FFFCFB; /* Light surface. Replaces pure white */
+
+  /* Accents */
+  --prime-gold:        #C9A84C; /* Apex accent · distinction — ACCENT ONLY */
+  --prime-yellow:      #FFBF00; /* Amber — energy/motion, arrow mark, data accent */
+
+  /* Ink: TEXT ONLY. Never use these as a background or panel fill. */
+  --prime-gray:        #181D1E; /* Black Pearl — body copy, hairlines on Warm White */
+  --prime-deep-ink:    #0C0C0E; /* Deepest text weight; replaces pure black */
+
+  /* Data-viz anchors & key categorical slots (see data-viz reference) */
+  --dv-gold:           #C9AB4C; /* data-viz gold variant */
+  --dv-ocean:          #1A5A8A;
+  --dv-brass:          #A8862E;
+  --dv-steel:          #3D7DA8; /* Mindanao */
+  --dv-bronze:         #7A5C10;
+  --dv-powder:         #6A94B0;
+  --dv-amber:          #D4B85A;
+  --dv-navy:           #001F3F;
+  --dv-champagne:      #E8D494; /* background fill ONLY */
+  --dv-stone:          #888780; /* captions / muted labels */
+  --dv-pale-rule:      #E4E0D8; /* dividers / print grid lines */
+  --status-growth:     #1A6640;
+  --status-decline:    #AA2E20;
+  --status-watch:      #96680A;
+  --status-neutral:    #4A5E6A;
+
+  /* Type */
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-impact:  'Bebas Neue', 'Arial Narrow', Impact, sans-serif;
+  --font-ui:      'Montserrat', Arial, Helvetica, sans-serif;
+
+  /* Shape — edges stay sharp. Square corners are the brand default. */
+  --prime-radius: 0;
+}
+
+/* ---------- Base ---------- */
+/* Two backgrounds exist: Warm White and PRIME Blue. There is no dark theme beyond
+   Blue — Gray and Deep Ink are text colors and must never fill a surface. */
+body {
+  background: var(--prime-warm-white);
+  color: var(--prime-gray);
+  font-family: var(--font-ui);
+  font-weight: 400;
+}
+h1, h2, h3, h4, h5, h6 { color: var(--prime-blue); }
+
+.prime-light-bg { background: var(--prime-warm-white); color: var(--prime-gray); }
+.prime-blue-bg  { background: var(--prime-blue);       color: var(--prime-warm-white); }
+
+/* .prime-dark and .prime-ink are retired. Anything that wants weight or contrast
+   takes .prime-blue-bg. Kept as aliases so older markup can't go off-brand. */
+.prime-dark, .prime-ink { background: var(--prime-blue); color: var(--prime-warm-white); }
+
+/* ---------- Shape: edges stay sharp ---------- */
+/* PRIME geometry is square and deliberate. Keep right-angle corners on every
+   surface; the only curves allowed are the logo, arrow mark, and icons. */
+.prime-card, .prime-panel, .prime-tile,
+button, .prime-button, input, select, textarea,
+img, table, th, td, .prime-badge {
+  border-radius: var(--prime-radius); /* 0 — never round */
+}
+
+/* ---------- Type hierarchy ---------- */
+.prime-display {            /* Display Hero — headlines only */
+  font-family: var(--font-display); font-weight: 300;
+  font-size: clamp(3.5rem, 8vw, 7.5rem); line-height: 1.0; letter-spacing: -0.02em;
+}
+.prime-heading {            /* Section Heading — italic */
+  font-family: var(--font-display); font-weight: 300; font-style: italic;
+  font-size: clamp(2.25rem, 5vw, 4.5rem); line-height: 1.1; letter-spacing: -0.01em;
+}
+.prime-impact {             /* Impact / Data — big numbers */
+  font-family: var(--font-impact); font-weight: 400;
+  font-size: clamp(2.25rem, 4.5vw, 4rem); line-height: 1.0; letter-spacing: 0.08em;
+}
+.prime-label {              /* Labels / UI Caps — UPPERCASE only */
+  font-family: var(--font-ui); font-weight: 500; text-transform: uppercase;
+  font-size: 0.75rem; line-height: 2.0; letter-spacing: 0.35em;
+}
+.prime-body {               /* Body Copy */
+  font-family: var(--font-ui); font-weight: 400; line-height: 1.6;
+}
+
+/* ---------- Accents ---------- */
+.prime-gold-text { color: var(--prime-gold); }
+.prime-rule {               /* gold accent rule line — a signature moment */
+  border: 0; height: 2px; width: 64px;
+  background: var(--prime-gold);
+}
+/* Reminder: gold is an ACCENT. Do not use it as a large background fill. */
+/* Reminder: every background is var(--prime-blue) or var(--prime-warm-white). */
