@@ -25,11 +25,11 @@ const DEFAULT_CONFIG: FormsConfigData = {
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
   mappings: [],
   pagePermissions: [],
-  defaultPageAccess: ["forms"],
+  defaultPageAccess: ["forms", "market-insights"],
   emailTemplates: [],
 };
 
-const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "meetings", "minutes", "forms"];
+const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "meetings", "minutes", "forms"];
 
 function client() {
   const url = process.env.SUPABASE_URL || "";
@@ -79,10 +79,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const defaultPages =
+  const configuredDefaultPages =
     Array.isArray(config.defaultPageAccess) && config.defaultPageAccess.length > 0
       ? config.defaultPageAccess
       : ["forms"];
+  const defaultPages = Array.from(new Set([...configuredDefaultPages, "market-insights"]));
 
   // If user is not authenticated or not logged in yet, return public default page access policy
   if ((!token || !userEmail) && !testAdmin) {
@@ -116,6 +117,8 @@ export async function GET(req: NextRequest) {
   } else if (isAdmin) {
     allowedPages = ALL_APP_PAGES;
   }
+  // The shared market brief is intentionally available to every Echo user.
+  allowedPages = Array.from(new Set([...allowedPages, "market-insights"]));
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {

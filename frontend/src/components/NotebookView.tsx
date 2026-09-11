@@ -371,7 +371,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           {([
             ["today", "Today"],
             ["week", "Week"],
-            ["insights", "Insights"],
+            ["insights", "Dashboard"],
           ] as const).map(([id, label]) => (
             <button
               key={id}

@@ -26,12 +26,13 @@ import { isFormsOwner } from "@/lib/forms/owner";
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
 export type FormType = "rfp" | "po" | "pcv";
-export type AppPage = "dashboard" | "tasks" | "notebook" | "meetings" | "minutes" | "forms";
+export type AppPage = "dashboard" | "tasks" | "notebook" | "market-insights" | "meetings" | "minutes" | "forms";
 
 export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> = [
   { id: "dashboard", label: "Dashboard", desc: "Executive overview & meeting metrics" },
   { id: "tasks", label: "Tasks", desc: "ClickUp tasks portal & action items" },
   { id: "notebook", label: "Notebook", desc: "Daily logs & team completeness dashboard" },
+  { id: "market-insights", label: "Market Insights", desc: "Weekly brief & shared market source archive" },
   { id: "meetings", label: "Meetings", desc: "Archived meetings & transcripts" },
   { id: "minutes", label: "Notetaker", desc: "Studio, live recording & minutes synthesis" },
   { id: "forms", label: "Forms", desc: "Submit, track & approve company requests" },

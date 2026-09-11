@@ -33,6 +33,7 @@ import { DashboardView } from "@/components/DashboardView";
 import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { NotebookView } from "@/components/NotebookView";
+import { MarketInsightsView } from "@/components/MarketInsightsView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
@@ -340,6 +341,7 @@ export default function Home() {
     "dashboard",
     "tasks",
     "notebook",
+    "market-insights",
     "meetings",
     "minutes",
     "forms",
@@ -348,7 +350,7 @@ export default function Home() {
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "forms" || view === "notebook") setCurrentView(view);
+    if (view === "forms" || view === "notebook" || view === "market-insights") setCurrentView(view as NavView);
   }, []);
 
   // Fetch page governance and role access
@@ -987,10 +989,12 @@ export default function Home() {
               />
             )}
 
-            {/* VIEW: WORK NOTEBOOK (READ-ONLY CLICKUP DAILY LOG) */}
+            {/* VIEW: CLICKUP DAILY LOG NOTEBOOK */}
             {currentView === "notebook" && (
               <NotebookView currentUserName={authUser?.username} />
             )}
+
+            {currentView === "market-insights" && <MarketInsightsView />}
 
             {/* VIEW 2: MEETINGS ARCHIVE */}
             {currentView === "meetings" && (

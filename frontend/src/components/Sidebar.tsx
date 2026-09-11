@@ -11,10 +11,11 @@ import {
   CheckSquare,
   ClipboardList,
   Settings,
-  NotebookTabs
+  NotebookTabs,
+  Newspaper
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "notebook" | "meetings" | "minutes" | "forms" | "forms-admin";
+export type NavView = "dashboard" | "tasks" | "notebook" | "market-insights" | "meetings" | "minutes" | "forms" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -90,6 +91,12 @@ export function Sidebar({
       id: "notebook" as NavView,
       label: "Notebook",
       icon: NotebookTabs,
+      badge: null
+    },
+    {
+      id: "market-insights" as NavView,
+      label: "Market Insights",
+      icon: Newspaper,
       badge: null
     },
     {
