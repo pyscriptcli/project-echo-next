@@ -91,8 +91,9 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     let end = "";
 
     if (preset === "last-and-current") {
-      start = "2026-08-01";
-      end = "2026-09-30";
+      start = "2026-05-01";
+      const now = new Date();
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
     } else if (preset === "last-90") {
       start = "2026-06-01";
       end = "2026-09-30";
@@ -362,7 +363,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   : "text-slate-700 font-medium hover:bg-slate-200"
               }`}
             >
-              Last + current month
+              May 2026 + current
             </button>
             <button
               type="button"

@@ -88,11 +88,12 @@ export const INITIAL_DEMANDS: DemandRecord[] = [
 ];
 
 export function getDefaultHorizonDates() {
-  // Strict User Requirement: Default horizon is "Last Month & Current Month"
-  // Given current runtime date 2026-09, last month is August (2026-08-01), current month ends 2026-09-30
+  // Default horizon: May 2026 through the current reporting month.
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
   return {
-    start: '2026-08-01',
-    end: '2026-09-30',
+    start: '2026-05-01',
+    end,
     preset: 'last-and-current' as const
   };
 }
