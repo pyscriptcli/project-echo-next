@@ -51,7 +51,24 @@ export async function POST(req: NextRequest) {
   const token = tokenFor(req);
   if (!token) return NextResponse.json({ error: "ClickUp authentication required." }, { status: 401 });
   try {
-    const article = articleFrom(await req.json());
+    const body = await req.json();
+    if (Array.isArray(body.articles)) {
+      const incoming = body.articles.map(articleFrom).filter((article): article is Article => Boolean(article));
+      if (!incoming.length) return NextResponse.json({ error: "No valid article records were supplied." }, { status: 400 });
+      const existing = await listTasks(token);
+      const known = new Set(existing.map((item: any) => `${item.date}|${item.company}`.toLowerCase()));
+      const created = [];
+      for (const article of incoming) {
+        const key = `${article.date}|${article.company}`.toLowerCase();
+        if (known.has(key)) continue;
+        const response = await fetch(`https://api.clickup.com/api/v2/list/${MARKET_INSIGHTS_LIST_ID}/task`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ name: `${article.date} · ${article.company}`, description: descriptionFor(article), tags: ["market-insight", article.sector] }) });
+        if (!response.ok) throw new Error(`ClickUp could not create ${article.company}.`);
+        created.push(parseTask(await response.json()));
+        known.add(key);
+      }
+      return NextResponse.json({ success: true, created, skipped: incoming.length - created.length });
+    }
+    const article = articleFrom(body);
     if (!article) return NextResponse.json({ error: "Sector, date, company, and event are required." }, { status: 400 });
     const response = await fetch(`https://api.clickup.com/api/v2/list/${MARKET_INSIGHTS_LIST_ID}/task`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ name: `${article.date} · ${article.company}`, description: descriptionFor(article), tags: ["market-insight", article.sector] }) });
     if (!response.ok) throw new Error("ClickUp could not create this market insight.");
