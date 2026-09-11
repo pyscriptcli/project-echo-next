@@ -30,10 +30,12 @@ function parseTask(task: any) {
     const article = articleFrom(parsed?.echoMarketInsight);
     if (article) return { id: String(task.id), url: task.url || "", ...article };
   } catch {}
-  const embedded = String(text).match(/\{\s*"echoMarketInsight"[\s\S]*\}\s*$/);
-  if (embedded) {
+  const source = String(text);
+  const start = source.indexOf("{");
+  const end = source.lastIndexOf("}");
+  if (start >= 0 && end > start) {
     try {
-      const article = articleFrom(JSON.parse(embedded[0])?.echoMarketInsight);
+      const article = articleFrom(JSON.parse(source.slice(start, end + 1))?.echoMarketInsight);
       if (article) return { id: String(task.id), url: task.url || "", ...article };
     } catch {}
   }
