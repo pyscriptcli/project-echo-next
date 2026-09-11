@@ -11,7 +11,10 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  Plus,
   RefreshCw,
+  Save,
+  Trash2,
   Users,
 } from "lucide-react";
 
@@ -110,6 +113,33 @@ function monthWorkdays(month: string) {
   return days;
 }
 
+function weekdaysInRange(start: string, end: string) {
+  if (!start || !end || start > end) return [];
+  const today = localIso(new Date());
+  if (start > today) return [];
+  const finalDate = end > today ? today : end;
+  const days: string[] = [];
+  for (let date = start; date <= finalDate; date = shiftDate(date, 1)) {
+    const day = fromIso(date).getDay();
+    if (day !== 0 && day !== 6) days.push(date);
+  }
+  return days;
+}
+
+function presetRange(preset: "this-week" | "last-week" | "this-month" | "last-month") {
+  const today = localIso(new Date());
+  if (preset === "this-week") return { start: startOfWeek(today), end: today };
+  if (preset === "last-week") {
+    const lastWeekEnd = shiftDate(startOfWeek(today), -1);
+    return { start: startOfWeek(lastWeekEnd), end: lastWeekEnd };
+  }
+  const current = fromIso(today);
+  if (preset === "this-month") return { start: `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-01`, end: today };
+  const lastMonth = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+  const end = new Date(current.getFullYear(), current.getMonth(), 0);
+  return { start: localIso(lastMonth), end: localIso(end) };
+}
+
 function MemberAvatar({ member }: { member: NotebookMember }) {
   if (member.profilePicture) {
     return <img src={member.profilePicture} alt="" className="w-8 h-8 object-cover border border-[#C9AB4C]/60 shrink-0" />;
@@ -125,8 +155,15 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
   const today = localIso(new Date());
   const [activeTab, setActiveTab] = useState<"today" | "week" | "insights">("today");
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedMonth, setSelectedMonth] = useState(today.slice(0, 7));
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [insightMemberId, setInsightMemberId] = useState("all");
+  const [rangePreset, setRangePreset] = useState<"this-week" | "last-week" | "this-month" | "last-month" | "custom">("this-month");
+  const initialRange = presetRange("this-month");
+  const [rangeStart, setRangeStart] = useState(initialRange.start);
+  const [rangeEnd, setRangeEnd] = useState(initialRange.end);
+  const [draftCategories, setDraftCategories] = useState<Record<CategoryKey, string>>({ client: "", admin: "", adhoc: "", meetings: "" });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [payload, setPayload] = useState<NotebookPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -162,13 +199,18 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
     () => entries.filter((entry) => entry.date === selectedDate && entry.member.id === member?.id),
     [entries, selectedDate, member?.id],
   );
+  const selectedDayEntry = selectedDayEntries[0];
+
+  useEffect(() => {
+    setDraftCategories(selectedDayEntry?.categories || { client: "", admin: "", adhoc: "", meetings: "" });
+  }, [selectedDayEntry?.id, selectedDate, member?.id]);
 
   const weekStart = startOfWeek(selectedDate);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index)), [weekStart]);
-  const workdays = useMemo(() => monthWorkdays(selectedMonth), [selectedMonth]);
+  const workdays = useMemo(() => weekdaysInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   const completenessRows = useMemo(() => (payload?.members || []).map((person) => {
-    const personEntries = entries.filter((entry) => entry.member.id === person.id && entry.date.startsWith(`${selectedMonth}-`));
+    const personEntries = entries.filter((entry) => entry.member.id === person.id && entry.date >= rangeStart && entry.date <= rangeEnd);
     const byDate = new Map<string, NotebookEntry[]>();
     personEntries.forEach((entry) => byDate.set(entry.date, [...(byDate.get(entry.date) || []), entry]));
     const submittedDates = workdays.filter((date) => (byDate.get(date) || []).some((entry) => entry.hasContent));
@@ -182,30 +224,71 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
       percent: workdays.length ? Math.round((submittedDates.length / workdays.length) * 100) : 0,
       byDate,
     };
-  }), [payload?.members, entries, selectedMonth, workdays]);
+  }), [payload?.members, entries, rangeStart, rangeEnd, workdays]);
 
-  const activeRows = completenessRows.filter((row) =>
-    row.member.months?.includes(selectedMonth) ||
-    row.byDate.size > 0 ||
-    entries.some((entry) => entry.member.id === row.member.id && entry.date.startsWith(`${selectedMonth}-`)),
-  );
+  const activeRows = completenessRows.filter((row) => row.byDate.size > 0 || row.member.months?.some((month) => month >= rangeStart.slice(0, 7) && month <= rangeEnd.slice(0, 7)));
   const displayedRows = activeRows.length ? activeRows : completenessRows;
-  const expectedLogs = workdays.length * displayedRows.length;
-  const submittedLogs = displayedRows.reduce((sum, row) => sum + row.submittedDates.length, 0);
-  const emptyLogs = displayedRows.reduce((sum, row) => sum + row.emptyDates.length, 0);
-  const missingLogs = displayedRows.reduce((sum, row) => sum + row.missingDates.length, 0);
+  const filteredRows = insightMemberId === "all" ? displayedRows : displayedRows.filter((row) => row.member.id === insightMemberId);
+  const expectedLogs = workdays.length * filteredRows.length;
+  const submittedLogs = filteredRows.reduce((sum, row) => sum + row.submittedDates.length, 0);
+  const emptyLogs = filteredRows.reduce((sum, row) => sum + row.emptyDates.length, 0);
+  const missingLogs = filteredRows.reduce((sum, row) => sum + row.missingDates.length, 0);
   const averageCompleteness = expectedLogs ? Math.round((submittedLogs / expectedLogs) * 100) : 0;
 
   const monthCategoryTotals = CATEGORY_META.map((category) => ({
     ...category,
     count: entries
-      .filter((entry) => entry.date.startsWith(`${selectedMonth}-`))
+      .filter((entry) => entry.date >= rangeStart && entry.date <= rangeEnd && (insightMemberId === "all" || entry.member.id === insightMemberId))
       .reduce((sum, entry) => sum + itemsFromText(entry.categories[category.key]).length, 0),
   }));
   const maxCategoryTotal = Math.max(1, ...monthCategoryTotals.map((category) => category.count));
 
   const previousDay = () => setSelectedDate((value) => shiftDate(value, -1));
   const nextDay = () => setSelectedDate((value) => shiftDate(value, 1));
+
+  const applyPreset = (preset: "this-week" | "last-week" | "this-month" | "last-month" | "custom") => {
+    setRangePreset(preset);
+    if (preset === "custom") return;
+    const range = presetRange(preset);
+    setRangeStart(range.start);
+    setRangeEnd(range.end);
+  };
+
+  const saveDailyLog = async () => {
+    if (!member) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/notebook", {
+        method: selectedDayEntry ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selectedDayEntry ? { taskId: selectedDayEntry.id, categories: draftCategories } : { date: selectedDate, member: { id: member.id, name: member.name }, categories: draftCategories }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Unable to save the daily log.");
+      await loadNotebook();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save the daily log.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteDailyLog = async () => {
+    if (!selectedDayEntry || !confirm(`Delete ${formatDate(selectedDate)} from the Daily Log?`)) return;
+    setDeleting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/notebook?taskId=${encodeURIComponent(selectedDayEntry.id)}`, { method: "DELETE" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Unable to delete the daily log.");
+      await loadNotebook();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete the daily log.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading && !payload) {
     return (
@@ -281,10 +364,22 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
         </div>
 
         {activeTab === "insights" ? (
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-600">
-            Reporting month
-            <input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="h-10 bg-white border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
-          </label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={insightMemberId} onChange={(event) => setInsightMemberId(event.target.value)} aria-label="Insight team member" className="h-10 min-w-52 bg-white border border-gray-300 px-3 text-sm text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]">
+              <option value="all">All team members</option>
+              {(payload?.members || []).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+            </select>
+            <select value={rangePreset} onChange={(event) => applyPreset(event.target.value as "this-week" | "last-week" | "this-month" | "last-month" | "custom")} aria-label="Reporting range preset" className="h-10 bg-white border border-gray-300 px-3 text-sm text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]">
+              <option value="this-week">This week</option>
+              <option value="last-week">Last week</option>
+              <option value="this-month">This month</option>
+              <option value="last-month">Last month</option>
+              <option value="custom">Custom range</option>
+            </select>
+            <input type="date" value={rangeStart} onChange={(event) => { setRangePreset("custom"); setRangeStart(event.target.value); }} aria-label="Reporting range start" className="h-10 bg-white border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
+            <span className="text-sm text-gray-400">to</span>
+            <input type="date" value={rangeEnd} onChange={(event) => { setRangePreset("custom"); setRangeEnd(event.target.value); }} aria-label="Reporting range end" className="h-10 bg-white border border-gray-300 px-3 text-sm focus:outline-none focus:border-[#C9AB4C]" />
+          </div>
         ) : (
           <div className="flex items-center bg-white border border-gray-300">
             <button type="button" onClick={previousDay} aria-label="Previous day" className="w-10 h-10 grid place-items-center text-gray-500 hover:text-[#003366] hover:bg-gray-50"><ChevronLeft size={17} /></button>
@@ -325,34 +420,38 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
               <div className="bg-white border border-gray-200 divide-y divide-gray-200">
                 {CATEGORY_META.map((category) => {
-                  const categoryItems = selectedDayEntries.flatMap((entry) => itemsFromText(entry.categories[category.key]));
                   return (
                     <div key={category.key} className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 p-4 sm:p-5">
                       <div className="text-xs font-bold uppercase tracking-wider text-[#003366] pt-0.5">{category.label}</div>
-                      {categoryItems.length ? (
-                        <ul className="space-y-2">
-                          {categoryItems.map((item, index) => (
-                            <li key={`${item}-${index}`} className="text-sm text-gray-700 leading-relaxed flex gap-2.5">
-                              <Check size={15} className="text-[#C9AB4C] shrink-0 mt-0.5" /> <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : <span className="text-sm text-gray-400 italic">No activity recorded</span>}
+                      <textarea
+                        value={draftCategories[category.key]}
+                        onChange={(event) => setDraftCategories((current) => ({ ...current, [category.key]: event.target.value }))}
+                        placeholder={`Log ${category.label.toLowerCase()} work…`}
+                        rows={3}
+                        className="w-full border border-gray-200 bg-gray-50/70 px-3 py-2 text-sm text-gray-700 leading-relaxed resize-y focus:outline-none focus:border-[#C9AB4C] focus:bg-white"
+                      />
                     </div>
                   );
                 })}
+                <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-gray-50/70">
+                  <p className="text-xs text-gray-500">Saving creates the monthly task and daily subtask automatically when they do not yet exist.</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedDayEntry && <button type="button" onClick={deleteDailyLog} disabled={deleting || saving} className="h-10 px-3 border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-2"><Trash2 size={15} /> Delete</button>}
+                    <button type="button" onClick={saveDailyLog} disabled={saving || deleting} className="h-10 px-4 bg-[#003366] text-white text-sm font-semibold hover:bg-[#002244] disabled:opacity-50 inline-flex items-center gap-2"><Save size={15} /> {saving ? "Saving…" : selectedDayEntry ? "Save changes" : "Create daily log"}</button>
+                  </div>
+                </div>
               </div>
             </section>
 
             <aside className="lg:col-span-4 space-y-4">
               <div className="bg-white border border-gray-200 p-5">
                 <h3 className="text-lg flex items-center gap-2"><FileText size={17} className="text-[#C9AB4C]" /> Source record</h3>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">This notebook is a read-only view. Your team can continue using the existing ClickUp format.</p>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">Edit directly here. Echo keeps the same month parent and daily subtask structure your team already uses in ClickUp.</p>
                 {selectedDayEntries[0]?.url ? (
                   <a href={selectedDayEntries[0].url} target="_blank" rel="noreferrer" className="mt-4 btn-outline !px-4 !py-2 inline-flex items-center gap-2">
                     Open daily log <ExternalLink size={14} />
                   </a>
-                ) : <p className="text-xs text-gray-400 mt-4">No ClickUp record exists for this date.</p>}
+                ) : <p className="text-xs text-gray-400 mt-4">Save an entry to create this date in ClickUp.</p>}
               </div>
               <div className="bg-[#1b1d1e] border border-[#C9AB4C]/50 p-5 text-white">
                 <div className="text-xs uppercase tracking-widest text-[#C9AB4C] font-bold">Daily completeness</div>
@@ -405,13 +504,13 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
       {activeTab === "insights" && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-xl">{monthLabel(selectedMonth)} completeness</h2>
-            <p className="text-sm text-gray-500 mt-1">Elapsed weekdays only. Weekends and future dates are excluded.</p>
+            <h2 className="text-xl">{formatDate(rangeStart, { month: "long", day: "numeric", year: "numeric" })}–{formatDate(rangeEnd, { month: "long", day: "numeric", year: "numeric" })}</h2>
+            <p className="text-sm text-gray-500 mt-1">{insightMemberId === "all" ? "All team members" : (payload?.members.find((person) => person.id === insightMemberId)?.name || "Selected member")} · weekends and future dates are excluded from completeness.</p>
           </div>
 
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Team completeness</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{averageCompleteness}%</div><div className="text-xs text-gray-400 mt-1">{submittedLogs} of {expectedLogs} expected logs</div></div>
-            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{displayedRows.length}</div><div className="text-xs text-gray-400 mt-1">with monthly log coverage</div></div>
+            <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{filteredRows.length}</div><div className="text-xs text-gray-400 mt-1">within the selected view</div></div>
             <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty records</div><div className="text-3xl font-serif font-bold text-amber-700 mt-2">{emptyLogs}</div><div className="text-xs text-gray-400 mt-1">created but without content</div></div>
             <div className="bg-white border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Missing logs</div><div className="text-3xl font-serif font-bold text-red-700 mt-2">{missingLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
           </div>
@@ -422,7 +521,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               <div className="text-xs text-gray-500">Expected per member: <strong className="text-[#003366]">{workdays.length} days</strong></div>
             </div>
             <div className="divide-y divide-gray-200">
-              {displayedRows.map((row) => (
+              {filteredRows.map((row) => (
                 <div key={row.member.id} className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-[minmax(190px,1fr)_minmax(220px,2fr)_100px] gap-4 items-center">
                   <div className="flex items-center gap-3 min-w-0"><MemberAvatar member={row.member} /><div className="min-w-0"><div className="text-sm font-semibold text-[#1b1d1e] truncate">{row.member.name}</div><div className="text-xs text-gray-400">{row.submittedDates.length} submitted · {row.missingDates.length} missing</div></div></div>
                   <div>
@@ -450,7 +549,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   {workdays.map((date) => <div key={date} className="text-center"><div className="text-[11px] uppercase text-gray-400">{formatDate(date, { weekday: "narrow" })}</div><div className="text-xs font-bold text-[#003366]">{fromIso(date).getDate()}</div></div>)}
                 </div>
                 <div className="space-y-1.5">
-                  {displayedRows.map((row) => (
+                  {filteredRows.map((row) => (
                     <div key={row.member.id} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: `190px repeat(${workdays.length}, minmax(28px, 1fr))` }}>
                       <div className="text-sm font-semibold text-gray-700 truncate pr-3">{row.member.name}</div>
                       {workdays.map((date) => {
@@ -483,7 +582,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               <div className="text-xs uppercase tracking-widest text-[#C9AB4C] font-bold">Completeness rule</div>
               <h3 className="text-2xl text-white mt-3">Clear and non-destructive</h3>
               <p className="text-sm text-gray-300 mt-3 leading-relaxed">A weekday is submitted when at least one of the four existing fields contains content. A pre-created but blank date is marked empty. A weekday with no date record is marked missing.</p>
-              <p className="text-sm text-gray-300 mt-3 leading-relaxed">Echo only reads the KPI Monitoring list. It does not create, edit, or reorganize anything in ClickUp.</p>
+              <p className="text-sm text-gray-300 mt-3 leading-relaxed">Echo writes only the existing four Daily Log fields and creates the matching month parent and date subtask when needed.</p>
             </section>
           </div>
         </div>
