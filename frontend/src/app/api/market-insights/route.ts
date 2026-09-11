@@ -30,6 +30,13 @@ function parseTask(task: any) {
     const article = articleFrom(parsed?.echoMarketInsight);
     if (article) return { id: String(task.id), url: task.url || "", ...article };
   } catch {}
+  const embedded = String(text).match(/\{\s*"echoMarketInsight"[\s\S]*\}\s*$/);
+  if (embedded) {
+    try {
+      const article = articleFrom(JSON.parse(embedded[0])?.echoMarketInsight);
+      if (article) return { id: String(task.id), url: task.url || "", ...article };
+    } catch {}
+  }
   return null;
 }
 
