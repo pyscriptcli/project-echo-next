@@ -287,7 +287,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
-              All Demands Overview
+              All
             </button>
 
             <button
@@ -300,7 +300,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               }`}
             >
               <Building2 className="w-3.5 h-3.5 text-blue-400" />
-              Retail Subpage (/demands/retail)
+              Retail
             </button>
 
             <button
@@ -313,7 +313,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-amber-400" />
-              Industrial Subpage (/demands/industrial)
+              Industrial
             </button>
           </div>
 
@@ -323,19 +323,19 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             className="px-4 py-2 text-xs font-bold bg-[#C9AB4C] hover:bg-[#b5973b] text-[#003366] shadow-xs flex items-center gap-1.5 transition-colors ml-1 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add New Demand
+            New Demand
           </button>
         </div>
       </header>
 
       {/* 2. HORIZON & DATE RANGE PICKER BAR (DEFAULT: LAST MONTH & CURRENT MONTH) */}
-      <div className="bg-white border border-slate-200 p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 px-3 py-2 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-2">
         
         {/* Left: Quick Date Presets */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs">
             <Calendar className="w-4 h-4 text-[#003366]" />
-            <span>Date Horizon:</span>
+            <span className="sr-only">Date range</span>
           </div>
 
           <div className="inline-flex border border-slate-300 bg-slate-50">
@@ -348,7 +348,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   : "text-slate-700 font-medium hover:bg-slate-200"
               }`}
             >
-              Last Month & Current Month (Default)
+              Last + current month
             </button>
             <button
               type="button"
@@ -359,7 +359,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   : "text-slate-700 font-medium hover:bg-slate-200"
               }`}
             >
-              Last 90 Days
+              90 days
             </button>
             <button
               type="button"
@@ -370,7 +370,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   : "text-slate-700 font-medium hover:bg-slate-200"
               }`}
             >
-              2026 Year
+              This year
             </button>
             <button
               type="button"
@@ -381,12 +381,12 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   : "text-slate-700 font-medium hover:bg-slate-200"
               }`}
             >
-              All Time
+              All time
             </button>
           </div>
 
           {/* Active Date Badge */}
-          <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2.5 py-1 border border-slate-200 flex items-center gap-1.5">
+            <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-1 border border-slate-200 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             {filters.dateStart && filters.dateEnd
               ? `Horizon: ${filters.dateStart} to ${filters.dateEnd}`
@@ -400,7 +400,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
           {/* Custom Date Range Inputs */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 border border-slate-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">From:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">From</span>
               <input
                 type="date"
                 value={filters.dateStart}
@@ -410,7 +410,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             </div>
             <span className="text-slate-400 text-xs">to</span>
             <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 border border-slate-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">To:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">To</span>
               <input
                 type="date"
                 value={filters.dateEnd}

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { DemandRecord, DemandSummaryMetrics, DemandAssetClass } from "@/types/demands";
 import { 
   Building2, 
@@ -58,7 +58,7 @@ export function BigNumbersHero({
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-4xl font-extrabold text-[#003366]">{metrics.totalDeals}</span>
-            <span className="text-xs font-semibold text-slate-500">active deals</span>
+            <span className="text-xs font-semibold text-slate-500">active demands</span>
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -83,7 +83,7 @@ export function BigNumbersHero({
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Avg Deal Size</span>
+          <span>Avg Demand Size</span>
           <span className="font-mono font-bold text-[#003366]">{metrics.averageDealSizeSqm.toLocaleString()} sqm</span>
         </div>
       </div>
@@ -161,13 +161,15 @@ export function QuarterlyVelocityLineGraph({
   demands: DemandRecord[];
 }) {
   // Aggregate data by quarter: 2025Q3, 2025Q4, 2026Q1, 2026Q2, 2026Q3
-  const quarters = [
-    { label: "2025 Q3", quarter: "2025Q3", x: 70, deals: 4, area: 31000 },
-    { label: "2025 Q4", quarter: "2025Q4", x: 210, deals: 32, area: 135000 },
-    { label: "2026 Q1", quarter: "2026Q1", x: 350, deals: 4, area: 7800 },
-    { label: "2026 Q2", quarter: "2026Q2", x: 490, deals: 6, area: 2400 },
-    { label: "2026 Q3", quarter: "2026Q3", x: 630, deals: 18, area: 112000 }
-  ];
+  const quarters = useMemo(() => {
+    const grouped = new Map<string, { demands: number; area: number }>();
+    demands.forEach((d) => {
+      const key = d.quarter || `${d.date.slice(0, 4)}Q${Math.floor((Number(d.date.slice(5, 7)) - 1) / 3) + 1}`;
+      const current = grouped.get(key) || { demands: 0, area: 0 };
+      grouped.set(key, { demands: current.demands + 1, area: current.area + ((d.minSqm + d.maxSqm) / 2 || 0) });
+    });
+    return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([quarter, value], index, all) => ({ quarter, label: `${quarter.slice(0, 4)} ${quarter.slice(4)}`, x: 70 + index * (600 / Math.max(1, all.length - 1)), ...value }));
+  }, [demands]);
 
   return (
     <div className="bg-white border border-slate-200 shadow-xs p-5 flex flex-col justify-between h-full">
@@ -218,9 +220,9 @@ export function QuarterlyVelocityLineGraph({
           <text x="35" y="184" textAnchor="end" className="text-[9px] fill-slate-400 font-mono">10k</text>
           <text x="35" y="214" textAnchor="end" className="text-[9px] fill-slate-400 font-mono">0</text>
 
-          {/* Bar Chart Bars (Quarterly Deals Count) */}
+          {/* Bar Chart Bars (Quarterly Demand Count) */}
           {quarters.map((q) => {
-            const barH = Math.max(12, q.deals * 3.8);
+            const barH = Math.max(12, q.demands * 3.8);
             const barY = 210 - barH;
             return (
               <g key={q.quarter}>
@@ -238,7 +240,7 @@ export function QuarterlyVelocityLineGraph({
                   textAnchor="middle" 
                   className="text-[10px] font-bold fill-amber-900"
                 >
-                  {q.deals} deals
+                  {q.demands} demands
                 </text>
                 <text 
                   x={q.x} 
@@ -501,13 +503,13 @@ export function SpaceBracketsBarChart({ demands }: { demands: DemandRecord[] }) 
 // 6. Associate Workload Leaderboard (Horizontal Bars)
 export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecord[] }) {
   const associates = [
-    { name: "MELIZA", role: "Senior Retail Lead", deals: 34, sqm: "58,500 sqm", pct: 100 },
-    { name: "DYKSTRA", role: "Provincial & Hardware Lead", deals: 26, sqm: "42,200 sqm", pct: 76 },
-    { name: "CEDTRIX", role: "Industrial Logistics Lead", deals: 18, sqm: "108,000 sqm", pct: 53 },
-    { name: "PHIL", role: "Industrial BTS & Plants Lead", deals: 14, sqm: "92,000 sqm", pct: 41 },
-    { name: "CARLO", role: "F&B Fast Casual Lead", deals: 11, sqm: "8,400 sqm", pct: 32 },
-    { name: "ZARAH", role: "Prime Urban Flagships", deals: 6, sqm: "4,200 sqm", pct: 18 },
-    { name: "SONDI", role: "High Street & Services", deals: 5, sqm: "2,900 sqm", pct: 15 }
+    { name: "MELIZA", role: "Senior Retail Lead", demands: 34, sqm: "58,500 sqm", pct: 100 },
+    { name: "DYKSTRA", role: "Provincial & Hardware Lead", demands: 26, sqm: "42,200 sqm", pct: 76 },
+    { name: "CEDTRIX", role: "Industrial Logistics Lead", demands: 18, sqm: "108,000 sqm", pct: 53 },
+    { name: "PHIL", role: "Industrial BTS & Plants Lead", demands: 14, sqm: "92,000 sqm", pct: 41 },
+    { name: "CARLO", role: "F&B Fast Casual Lead", demands: 11, sqm: "8,400 sqm", pct: 32 },
+    { name: "ZARAH", role: "Prime Urban Flagships", demands: 6, sqm: "4,200 sqm", pct: 18 },
+    { name: "SONDI", role: "High Street & Services", demands: 5, sqm: "2,900 sqm", pct: 15 }
   ];
 
   return (
@@ -518,7 +520,7 @@ export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecor
             <Users className="w-4 h-4 text-[#003366]" />
             <h3 className="font-serif text-base font-bold text-[#003366]">Associate In Charge Workload</h3>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">Mandate deal volume and square meters pipeline by broker</p>
+          <p className="text-xs text-slate-500 mt-0.5">Mandate demand volume and square meters pipeline by broker</p>
         </div>
         <span className="text-[11px] font-bold text-[#003366] bg-blue-50 px-2 py-0.5 border border-blue-200">
           Active Team
@@ -534,7 +536,7 @@ export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecor
                 <span className="text-[10px] text-slate-400">({a.role})</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono font-bold text-slate-800">{a.deals} deals</span>
+                <span className="font-mono font-bold text-slate-800">{a.demands} demands</span>
                 <span className="font-mono text-[11px] text-slate-500">{a.sqm}</span>
               </div>
             </div>
@@ -555,3 +557,4 @@ export function AssociateLeaderboardBarChart({ demands }: { demands: DemandRecor
     </div>
   );
 }
+

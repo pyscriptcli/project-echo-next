@@ -110,23 +110,21 @@ export function NewDemandModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white border-t-4 border-[#C9AB4C] shadow-2xl w-full max-w-3xl my-8 overflow-hidden text-slate-800">
+      <div className="bg-white border-t-4 border-[#C9AB4C] shadow-2xl w-full max-w-2xl my-4 overflow-hidden text-slate-800">
         
         {/* Header */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-widest bg-[#003366] text-[#C9AB4C] px-2 py-0.5">
-                CRE Intake Engine
+              Demand intake
               </span>
-              <span className="text-xs text-slate-400 font-semibold">·</span>
-              <span className="text-xs font-semibold text-slate-600">Dual Location Processor</span>
             </div>
             <h2 className="font-serif text-2xl font-bold text-[#003366] mt-1">
-              Add Corporate Tenant Demand
+              New demand
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Input tenant mandate specifications with automated multi-location rollout duplication or either-or consolidation.
+              Add one company and its target locations.
             </p>
           </div>
           <button
@@ -139,10 +137,10 @@ export function NewDemandModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[78vh] overflow-y-auto">
           
           {/* Intake Mode Switcher Banner */}
-          <div className="bg-slate-50 border border-slate-200 p-3.5 space-y-2.5">
+          <div className="bg-slate-50 border border-slate-200 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-[#003366]" />
@@ -160,7 +158,7 @@ export function NewDemandModal({
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  Multi-Store Rollout (1 Company = N Sites)
+                  Rollout
                 </button>
                 <button
                   type="button"
@@ -172,12 +170,12 @@ export function NewDemandModal({
                   }`}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
-                  Either-Or / Alternative (1 Site from Candidates)
+                  Either / alternative
                 </button>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="hidden text-[11px] text-slate-600 leading-relaxed">
               {fulfillmentMode === "rollout" ? (
                 <>
                   <strong className="text-[#003366]">Multi-Store Rollout Mode:</strong> Client requires a store in <em>each</em> target location (e.g. Puregold 3 sites, KFC 5 sites). Submitting generates <strong>{locations.length} distinct entries</strong> with duplicated company details.
