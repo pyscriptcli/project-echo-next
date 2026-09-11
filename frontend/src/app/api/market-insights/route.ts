@@ -34,7 +34,7 @@ function parseTask(task: any) {
 }
 
 async function listTasks(token: string) {
-  const response = await fetch(`https://api.clickup.com/api/v2/list/${MARKET_INSIGHTS_LIST_ID}/task?include_closed=true&page=0`, { headers: { Authorization: token }, cache: "no-store" });
+  const response = await fetch(`https://api.clickup.com/api/v2/list/${MARKET_INSIGHTS_LIST_ID}/task?include_closed=true&include_markdown_description=true&page=0`, { headers: { Authorization: token }, cache: "no-store" });
   if (!response.ok) throw new Error("Unable to read the Market Insights archive from ClickUp.");
   const body = await response.json();
   return (body.tasks || []).map(parseTask).filter(Boolean);
