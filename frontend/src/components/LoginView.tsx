@@ -61,7 +61,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           </h2>
 
           <p className="text-xs text-gray-500 mb-8 leading-relaxed">
-            Connect with your ClickUp workspace to access live action items, tasks, and meeting notes.
+            Connect your own ClickUp account to let Echo answer questions using only the work you can access.
           </p>
 
           {/* Error Notice */}
@@ -87,7 +87,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                 </svg>
               </div>
               <span className="font-medium text-sm">
-                {isRedirecting ? "Connecting to ClickUp..." : "Log in with ClickUp"}
+                {isRedirecting ? "Connecting your ClickUp account..." : "Continue with ClickUp"}
               </span>
             </div>
             {isRedirecting ? (
