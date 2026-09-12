@@ -69,7 +69,9 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sourceMode, setSourceMode] = useState<RecordingSourceMode>("in_person");
+  // One user-facing recording mode. The browser may add tab/system audio;
+  // if unavailable or declined, recording continues with the microphone.
+  const [sourceMode, setSourceMode] = useState<RecordingSourceMode>("online_meeting");
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
@@ -152,70 +154,33 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
       let finalStream: MediaStream;
       let micDeviceLabel = "Default";
 
-      if (sourceMode === "online_meeting") {
-        // Online Meeting Mode: capture system/tab audio + mic and mix them
-        if (!navigator.mediaDevices.getDisplayMedia) {
-          throw new Error("System/Tab audio capture (getDisplayMedia) is not supported in this browser.");
-        }
-
-        // 1. Prompt for tab or screen with audio
-        let displayStream: MediaStream;
+      if (sourceMode === "online_meeting" && navigator.mediaDevices.getDisplayMedia) {
+        // Unified mode: try to include browser audio, then fall back to mic-only.
+        let displayStream: MediaStream | null = null;
         try {
-          displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true, // required by browser specification
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
-          });
-        } catch (displayErr) {
-          if (displayErr instanceof DOMException && displayErr.name === "NotAllowedError") {
-            // User cancelled the screen share prompt
-            return;
-          }
-          throw displayErr;
+          displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        } catch {
+          displayStream = null;
         }
-
-        // Stop video track immediately to save CPU/memory (we only want the audio)
-        displayStream.getVideoTracks().forEach((vt) => vt.stop());
-
-        const displayAudioTracks = displayStream.getAudioTracks();
-        if (displayAudioTracks.length === 0) {
-          displayStream.getTracks().forEach((t) => t.stop());
-          throw new Error(
-            "No meeting audio detected. Please ensure 'Share audio' or 'Share tab audio' was checked in the browser dialog."
-          );
-        }
-
-        // 2. Prompt for microphone
+        displayStream?.getVideoTracks().forEach((track) => track.stop());
+        const displayAudioTracks = displayStream?.getAudioTracks() || [];
         const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
-
-        rawStreamsRef.current = [displayStream, micStream];
-
-        // 3. Merge audio streams via Web Audio API
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AudioCtx();
-        audioContextRef.current = ctx;
-
-        const micSource = ctx.createMediaStreamSource(micStream);
-        const displaySource = ctx.createMediaStreamSource(displayStream);
-        const destination = ctx.createMediaStreamDestination();
-
-        micSource.connect(destination);
-        displaySource.connect(destination);
-
-        finalStream = destination.stream;
-
-        // Auto-stop recording gracefully if user clicks "Stop sharing" on the browser screen-share banner
-        displayAudioTracks[0].onended = () => {
-          if (statusRef.current === "recording" || statusRef.current === "paused") {
-            console.log("[Studio] Tab/system audio track ended by user");
-          }
-        };
+        if (displayStream && displayAudioTracks.length > 0) {
+          rawStreamsRef.current = [displayStream, micStream];
+          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          const ctx = new AudioCtx();
+          audioContextRef.current = ctx;
+          const destination = ctx.createMediaStreamDestination();
+          ctx.createMediaStreamSource(micStream).connect(destination);
+          ctx.createMediaStreamSource(displayStream).connect(destination);
+          finalStream = destination.stream;
+        } else {
+          displayStream?.getTracks().forEach((track) => track.stop());
+          rawStreamsRef.current = [micStream];
+          finalStream = micStream;
+        }
       } else {
-        // In-Person Mode: microphone only
         const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
         rawStreamsRef.current = [micStream];

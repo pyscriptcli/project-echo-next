@@ -223,47 +223,10 @@ export function StudioPanel({
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
           <div className={`${isFullscreen ? "w-1/2 border-r border-[#C9A84C]/30" : ""} p-5 flex flex-col gap-4 shrink-0`}>
-            {/* Meeting Source Mode Selector */}
             {recorder.status === "idle" && (
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
-                  Meeting Type
-                </label>
-                <div className="grid grid-cols-2 gap-1 bg-[#003366]/5 p-1 border border-[#003366]/15">
-                  <button
-                    type="button"
-                    onClick={() => recorder.setSourceMode("in_person")}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold transition-all ${
-                      recorder.sourceMode === "in_person"
-                        ? "bg-[#003366] text-[#FFFCFB] shadow-sm"
-                        : "text-gray-600 hover:text-[#003366] hover:bg-white/60"
-                    }`}
-                  >
-                    <Users size={14} />
-                    <span>In-Person Meeting</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => recorder.setSourceMode("online_meeting")}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold transition-all ${
-                      recorder.sourceMode === "online_meeting"
-                        ? "bg-[#003366] text-[#FFFCFB] shadow-sm"
-                        : "text-gray-600 hover:text-[#003366] hover:bg-white/60"
-                    }`}
-                  >
-                    <Monitor size={14} />
-                    <span>Online Meeting</span>
-                  </button>
-                </div>
-
-                {recorder.sourceMode === "online_meeting" && (
-                  <div className="mt-2 flex items-start gap-1.5 bg-blue-50 border border-blue-200 text-blue-800 p-2 text-[11px] leading-relaxed">
-                    <Info size={14} className="shrink-0 text-blue-600 mt-0.5" />
-                    <span>
-                      <strong>Bot-less recording:</strong> When you click Start, choose your Google Meet or Teams tab/window and ensure <em>&quot;Share audio&quot;</em> is checked. Studio will mix meeting audio with your microphone.
-                    </span>
-                  </div>
-                )}
+              <div className="border border-[#003366]/15 bg-[#003366]/[0.03] px-3 py-2 text-xs leading-relaxed text-gray-600">
+                <strong className="text-[#003366]">Record meeting</strong><br />
+                Echo uses your microphone for any meeting. If you are online, choose the meeting tab and share its audio when your browser asks.
               </div>
             )}
 
@@ -271,7 +234,7 @@ export function StudioPanel({
             {recorder.status === "idle" && (
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
-                  {recorder.sourceMode === "online_meeting" ? "Your Microphone" : "Input Device"}
+                  Input device
                 </label>
                 <div className="relative">
                   <select
