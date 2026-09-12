@@ -190,6 +190,10 @@ export function StudioPanel({
   const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
   const isStopped = recorder.status === "stopped" && recorder.recordedFile !== null;
 
+  React.useEffect(() => {
+    window.dispatchEvent(new CustomEvent("echo-recording-state", { detail: { active: isRecordingActive, paused: recorder.status === "paused", elapsedSeconds: recorder.elapsedSeconds } }));
+  }, [isRecordingActive, recorder.status, recorder.elapsedSeconds]);
+
   return (
     <>
       {/* Backdrop (panel mode only) */}
@@ -205,7 +209,10 @@ export function StudioPanel({
         {/* ── Header ──────────────────────────────────────────────────── */}
         <header className="min-h-16 px-6 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C] shrink-0">
           <div className="flex items-center gap-2.5">
-            <Mic size={18} className="text-[#C9A84C]" />
+            <span className={`relative flex h-8 w-8 items-center justify-center rounded-full ${isRecordingActive ? "bg-red-500/15" : "bg-white/10"}`}>
+              <Mic size={17} className={isRecordingActive ? "text-red-300" : "text-[#C9A84C]"} />
+              {isRecordingActive && <span className="absolute inset-0 rounded-full border border-red-300/60 animate-ping" />}
+            </span>
             <div>
               <h2 className="text-base font-semibold leading-tight tracking-tight">Recording studio</h2>
               {isRecordingActive && (
@@ -388,11 +395,11 @@ export function StudioPanel({
 
             {/* Timer */}
             {isRecordingActive && (
-              <div className="text-center">
+              <div className="text-center rounded-xl bg-white border border-slate-200 px-8 py-4 shadow-sm">
                 <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
                   {formatTime(recorder.elapsedSeconds)}
                 </span>
-                <p className={`text-[10px] uppercase tracking-wider mt-0.5 ${recorder.status === "paused" ? "text-amber-500" : "text-red-400"}`}>
+                <p className={`text-[11px] font-semibold tracking-wide mt-1 ${recorder.status === "paused" ? "text-amber-600" : "text-red-500"}`}>
                   {recorder.status === "paused" ? "Paused" : "Recording"}
                 </p>
               </div>
@@ -430,13 +437,13 @@ export function StudioPanel({
           </div>
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-1/2" : "flex-1 border-t border-[#C9A84C]/30"} flex flex-col min-h-0`}>
+          <div className={`${isFullscreen ? "w-1/2" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-white/40`}>
             <div className="px-5 pt-4 pb-2 shrink-0">
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                Meeting Notes
+              <h3 className="text-sm font-semibold tracking-tight text-[#003366]">
+                Notes
               </h3>
               <p className="text-[10px] text-gray-400 mt-0.5">
-                Notes are timestamped and sent to the Notetaker with your recording.
+                Add context as you go. Each note keeps its exact time for transcript matching.
               </p>
             </div>
 
@@ -450,10 +457,10 @@ export function StudioPanel({
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className="group flex items-start gap-2 text-xs border-l-2 border-[#C9A84C] pl-2.5 py-1"
+                  className="group flex items-start gap-3 text-xs rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
                 >
-                  <span className="text-[#003366] font-mono font-bold shrink-0">{note.timestamp}</span>
-                  <span className="text-[#181D1E] flex-1">{note.text}</span>
+                  <span className="text-[#003366] font-mono font-semibold shrink-0 bg-[#003366]/[0.06] px-1.5 py-0.5 rounded">{note.timestamp}</span>
+                  <span className="text-[#181D1E] flex-1 leading-relaxed">{note.text}</span>
                   <button
                     type="button"
                     onClick={() => removeNote(note.id)}
@@ -477,7 +484,7 @@ export function StudioPanel({
                   }}
                   className="flex items-center gap-2"
                 >
-                  <span className="text-xs font-mono text-[#003366] font-bold shrink-0">
+                  <span className="text-xs font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-1.5 py-1 rounded">
                     [{formatTime(recorder.elapsedSeconds)}]
                   </span>
                   <input
@@ -485,7 +492,7 @@ export function StudioPanel({
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     placeholder="Key decision, action item, or observation..."
-                    className="flex-1 text-xs border border-[#003366]/20 bg-[#FFFCFB] px-2.5 py-1.5 rounded-none focus:outline-none focus:border-[#C9A84C]"
+                    className="flex-1 text-xs border border-slate-200 bg-white px-3 py-2 rounded-md focus:outline-none focus:border-[#C9A84C]"
                   />
                   <button
                     type="submit"

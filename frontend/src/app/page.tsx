@@ -222,6 +222,16 @@ export default function Home() {
     checkAuth();
   }, []);
 
+  const [studioRecordingState, setStudioRecordingState] = useState({ active: false, paused: false, elapsedSeconds: 0 });
+  useEffect(() => {
+    const handleRecordingState = (event: Event) => {
+      const detail = (event as CustomEvent<{ active?: boolean; paused?: boolean; elapsedSeconds?: number }>).detail;
+      setStudioRecordingState({ active: !!detail.active, paused: !!detail.paused, elapsedSeconds: detail.elapsedSeconds || 0 });
+    };
+    window.addEventListener("echo-recording-state", handleRecordingState);
+    return () => window.removeEventListener("echo-recording-state", handleRecordingState);
+  }, []);
+
   const handleSignOut = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -933,7 +943,7 @@ export default function Home() {
           isAdmin={isAdminUser}
           studioRecording={{
             isMinimized: isStudioOpen && studioMode === "minimized",
-            elapsedSeconds: 0,
+            elapsedSeconds: studioRecordingState.elapsedSeconds,
             onRestore: () => {
               setIsStudioOpen(true);
               setStudioMode("panel");

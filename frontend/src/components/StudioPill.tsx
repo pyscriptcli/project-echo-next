@@ -26,7 +26,7 @@ export function StudioPill({ elapsedSeconds, onRestore }: StudioPillProps) {
     <button
       type="button"
       onClick={onRestore}
-      className="inline-flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 px-2.5 py-1 text-xs font-bold rounded-none hover:bg-red-100 transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 px-2.5 py-1 text-xs font-semibold rounded-md hover:bg-red-100 transition-colors cursor-pointer"
       title="Restore Recording Studio"
       aria-label={`Recording in progress: ${formatTime(elapsedSeconds)}. Click to restore studio.`}
     >
