@@ -143,12 +143,7 @@ export function Sidebar({
         {/* Top Header & Branding (Text-only Echo, no subheadings/no prime) */}
         <div>
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
-            {!effectiveCollapsed && (
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className="h-8 w-auto object-contain" />
-                <span className="w-1.5 h-1.5 bg-[#FFBF00] mt-1"></span>
-              </div>
-            )}
+            <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className={`${effectiveCollapsed ? "h-7 max-w-[52px]" : "h-10 max-w-[190px]"} w-auto object-contain`} />
 
             <button
               type="button"
@@ -175,7 +170,7 @@ export function Sidebar({
                   type="button"
                   onClick={() => onSelectView(item.id)}
                   title={effectiveCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-xs font-normal tracking-wide transition-all cursor-pointer ${
                     isActive
                       ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C] shadow-inner"
                       : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"
@@ -191,7 +186,7 @@ export function Sidebar({
 
         {/* Bottom Workspace & User Profile Section (#1b1d1e) */}
         <div className="border-t border-[#31577D] bg-[#002A55]">
-          {isProjectAdmin && <button type="button" onClick={() => onSelectView("forms-admin")} title="Settings" className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-[#31577D] text-xs font-semibold transition-colors ${currentView === "forms-admin" ? "text-[#FFBF00] bg-[#174778]" : "text-[#D7E3EF] hover:text-[#FFFCFB] hover:bg-[#174778]"} ${effectiveCollapsed ? "justify-center px-0" : ""}`}><Settings size={17} />{!effectiveCollapsed && <span>Settings</span>}</button>}
+          {isProjectAdmin && <button type="button" onClick={() => onSelectView("forms-admin")} title="Settings" className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-[#31577D] text-xs font-normal transition-colors ${currentView === "forms-admin" ? "text-[#FFBF00] bg-[#174778]" : "text-[#D7E3EF] hover:text-[#FFFCFB] hover:bg-[#174778]"} ${effectiveCollapsed ? "justify-center px-0" : ""}`}><Settings size={17} />{!effectiveCollapsed && <span>Settings</span>}</button>}
           {/* Workspace Name Header */}
           {!effectiveCollapsed ? (
             <div className="px-3.5 pt-2.5 pb-2 border-b border-[#31577D]/80 flex items-center justify-between overflow-hidden">
