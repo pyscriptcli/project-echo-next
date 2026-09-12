@@ -134,6 +134,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
+  const [newSignInDomain, setNewSignInDomain] = useState("");
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -480,13 +481,50 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           </div>
           <ShieldCheck size={19} className="text-[#003366]" />
         </div>
-        <input
-          className="w-full border border-gray-300 px-3 py-2 text-sm"
-          value={(config.allowedSignInDomains || []).join(", ")}
-          onChange={(e) => setConfig({ ...config, allowedSignInDomains: e.target.value.split(",").map((value) => value.trim().toLowerCase().replace(/^@/, "")).filter(Boolean) })}
-          placeholder="primephilippines.com, example.com"
-          aria-label="Allowed ClickUp sign-in domains"
-        />
+        <div className="flex flex-wrap gap-2 mb-3">
+          {(config.allowedSignInDomains || []).map((domain) => (
+            <span key={domain} className="inline-flex items-center gap-2 border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#003366]">
+              {domain}
+              <button
+                type="button"
+                className="cursor-pointer text-red-500 hover:text-red-700"
+                onClick={() => save({ ...config, allowedSignInDomains: config.allowedSignInDomains.filter((item) => item !== domain) })}
+                aria-label={`Remove ${domain}`}
+              >
+                <X size={13} />
+              </button>
+            </span>
+          ))}
+          {(config.allowedSignInDomains || []).length === 0 && <span className="text-xs text-gray-400">No domains configured.</span>}
+        </div>
+        <div className="flex gap-2">
+          <input
+            className="min-w-0 flex-1 border border-gray-300 px-3 py-2 text-sm"
+            value={newSignInDomain}
+            onChange={(e) => setNewSignInDomain(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const domain = newSignInDomain.trim().toLowerCase().replace(/^@/, "");
+                if (domain && !config.allowedSignInDomains.includes(domain)) save({ ...config, allowedSignInDomains: [...config.allowedSignInDomains, domain] });
+                setNewSignInDomain("");
+              }
+            }}
+            placeholder="example.com"
+            aria-label="New allowed ClickUp sign-in domain"
+          />
+          <button
+            type="button"
+            className="btn-outline whitespace-nowrap"
+            onClick={() => {
+              const domain = newSignInDomain.trim().toLowerCase().replace(/^@/, "");
+              if (domain && !config.allowedSignInDomains.includes(domain)) save({ ...config, allowedSignInDomains: [...config.allowedSignInDomains, domain] });
+              setNewSignInDomain("");
+            }}
+          >
+            <Plus size={14} className="inline mr-1" /> Add domain
+          </button>
+        </div>
         <p className="text-[11px] text-gray-500 mt-2">Save Configuration to apply this policy to new ClickUp sign-ins.</p>
       </section>
 
