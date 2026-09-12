@@ -143,7 +143,13 @@ export function Sidebar({
         {/* Top Header & Branding (Text-only Echo, no subheadings/no prime) */}
         <div>
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
-            <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className={`${effectiveCollapsed ? "h-7 max-w-[52px]" : "h-10 max-w-[190px]"} w-auto object-contain`} />
+            {!effectiveCollapsed && (
+              <img
+                src="/prime-philippines-sidebar-logo.png"
+                alt="PRIME Philippines"
+                className="h-10 max-w-[180px] w-auto object-contain"
+              />
+            )}
 
             <button
               type="button"
