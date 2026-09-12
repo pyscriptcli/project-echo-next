@@ -13,6 +13,7 @@ export interface EvidenceSource {
   due?: string;
   page?: EchoSourcePage;
   url?: string;
+  ownerIds?: string[];
 }
 
 const STOP_WORDS = new Set(["a", "all", "and", "are", "did", "do", "for", "from", "in", "is", "it", "of", "on", "the", "to", "was", "what", "when", "where", "which", "who", "with"]);
@@ -72,9 +73,15 @@ export function retrieveMeetingEvidence(
   }).filter((source) => source.excerpt.length > 0);
 }
 
-export function rankEvidenceSources(sources: EvidenceSource[], query: string, options: { maxSources: number; maxCharacters: number }) {
+export function rankEvidenceSources(sources: EvidenceSource[], query: string, options: { maxSources: number; maxCharacters: number; user?: { id?: string | number; name?: string; email?: string } }) {
   const queryTerms = terms(query);
-  const ranked = sources.map((source) => ({ source, score: score([source.meetingTitle, source.meetingDate, source.topic, source.excerpt, source.person, source.due].join(" "), queryTerms) })).sort((a, b) => b.score - a.score || b.source.meetingDate.localeCompare(a.source.meetingDate));
+  const userTerms = [options.user?.id, options.user?.name, options.user?.email].filter(Boolean).map(String).map((value) => value.toLowerCase());
+  const asksAboutSelf = /\b(me|my|mine|i)\b/i.test(query);
+  const ranked = sources.map((source) => {
+    const ownerText = [source.person, ...(source.ownerIds || [])].filter(Boolean).join(" ").toLowerCase();
+    const ownedByUser = asksAboutSelf && userTerms.some((term) => ownerText.includes(term));
+    return { source, score: score([source.meetingTitle, source.meetingDate, source.topic, source.excerpt, source.person, source.due].join(" "), queryTerms) + (ownedByUser ? 5 : 0) };
+  }).sort((a, b) => b.score - a.score || b.source.meetingDate.localeCompare(a.source.meetingDate));
   const selected = queryTerms.length && ranked.some((entry) => entry.score > 0) ? ranked.filter((entry) => entry.score > 0) : ranked;
   let remaining = options.maxCharacters;
   return selected.slice(0, options.maxSources).map(({ source }) => { const excerpt = clip(source.excerpt, remaining); remaining = Math.max(0, remaining - excerpt.length); return { ...source, excerpt }; }).filter((source) => source.excerpt);

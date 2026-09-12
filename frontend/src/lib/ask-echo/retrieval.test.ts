@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { retrieveMeetingEvidence } from "./retrieval";
+import { rankEvidenceSources, retrieveMeetingEvidence } from "./retrieval";
 
 const meetings = [
   {
@@ -24,5 +24,13 @@ describe("retrieveMeetingEvidence", () => {
     const result = retrieveMeetingEvidence(meetings, "meeting", { maxSources: 1, maxCharacters: 80 });
     expect(result).toHaveLength(1);
     expect(result[0].excerpt.length).toBeLessThanOrEqual(80);
+  });
+
+  it("prioritizes the signed-in user's items when they ask about themselves", () => {
+    const result = rankEvidenceSources([
+      { sourceId: "other", meetingId: "other", meetingTitle: "Other task", meetingDate: "2026-09-10", excerpt: "Prepare the report", person: "Jamie Lee", ownerIds: ["jamie@example.com"] },
+      { sourceId: "mine", meetingId: "mine", meetingTitle: "My task", meetingDate: "2026-09-09", excerpt: "Prepare the report", person: "Alex Cruz", ownerIds: ["alex@example.com"] },
+    ], "What are my tasks?", { maxSources: 2, maxCharacters: 1000, user: { name: "Alex Cruz", email: "alex@example.com" } });
+    expect(result[0].sourceId).toBe("mine");
   });
 });

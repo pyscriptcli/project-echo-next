@@ -8,7 +8,7 @@ import { loadClickUpContext } from "./clickup";
 
 const activeRequests = new Map<string, number>();
 
-export async function answerAskEcho(input: unknown, user: { email: string; clickUpToken: string; taskListId: string }): Promise<AskEchoResponse> {
+export async function answerAskEcho(input: unknown, user: { id?: string | number; name?: string; email: string; clickUpToken: string; taskListId: string }): Promise<AskEchoResponse> {
   const started = Date.now();
   const configuration = await loadEchoConfiguration();
   const policy = configuration.aiPolicy;
@@ -31,8 +31,8 @@ export async function answerAskEcho(input: unknown, user: { email: string; click
       loadClickUpContext({ token: user.clickUpToken, pages: enabledSources, taskListId: user.taskListId, formListIds }),
     ]);
     const meetingSources = retrieveMeetingEvidence(meetings, request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
-    const evidence = rankEvidenceSources([...meetingSources, ...clickUpSources], request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
-    const result = await askModel({ ...policy, question: request.question, conversation: request.conversation, evidence });
+    const evidence = rankEvidenceSources([...meetingSources, ...clickUpSources], request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters, user });
+    const result = await askModel({ ...policy, question: request.question, conversation: request.conversation, evidence, user });
     const sourceIds = new Set(Array.isArray(result.content.sourceIds) ? result.content.sourceIds.map(String) : []);
     const sources = evidence.filter((source) => sourceIds.has(source.sourceId));
     const confidence = result.content.confidence === "supported" && sources.length === 0 ? "insufficient" : (["supported", "partial", "insufficient"].includes(result.content.confidence) ? result.content.confidence : (sources.length ? "partial" : "insufficient"));

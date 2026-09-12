@@ -20,7 +20,7 @@ interface UniversalEchoDrawerProps {
   onOpenSource?: (page: string, recordId: string, url?: string) => void;
 }
 
-const STARTER: Message = { role: "assistant", content: "Hi — what would you like to know about your ClickUp work?", timestamp: "Just now" };
+const STARTER: Message = { role: "assistant", content: "Hi — I’m Echo. What would you like to get done today?", timestamp: "Just now" };
 const STORAGE_KEY = "echo_ask_conversation";
 
 export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: UniversalEchoDrawerProps) {
@@ -29,6 +29,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
   const [isThinking, setIsThinking] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [userName, setUserName] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -36,10 +37,11 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
     try { const stored = sessionStorage.getItem(STORAGE_KEY); if (stored) setMessages(JSON.parse(stored)); } catch {}
   }, []);
   useEffect(() => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {} }, [messages]);
+  useEffect(() => { if (!isOpen) return; fetch("/api/auth/me").then((response) => response.json()).then((data) => setUserName(data.user?.username || "")).catch(() => {}); }, [isOpen]);
   useEffect(() => { const key = (event: KeyboardEvent) => event.key === "Escape" && isOpen && onClose(); window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [isOpen, onClose]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" }); }, [messages, isThinking]);
 
-  const quickPrompts = ["How’s my daily log?", "What tasks are assigned to me?", "What decisions were made recently?", "What deadlines are coming up?"];
+  const quickPrompts = ["What needs my attention today?", "Show me my open tasks", "What changed this week?", "Give me my daily brief"];
 
   const send = async (suggestion?: string) => {
     const question = (suggestion || input).trim();
@@ -68,7 +70,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
         <header className="min-h-20 px-5 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C]">
           <div className="flex items-center gap-3">
             <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className="h-8 w-auto max-w-32 object-contain" />
-            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">Your ClickUp assistant</p></div>
+            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">{userName ? `Here for you, ${userName}` : "Your work, made clearer"}</p></div>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={reset} aria-label="New conversation" className="p-2 hover:bg-[#174778]"><Plus size={17} /></button>
@@ -97,12 +99,12 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
         </div>
 
         <footer className="p-4 bg-[#FFFCFB] border-t border-[#C9A84C]/50">
-          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">Your allowed ClickUp pages · current session</div>
+          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">Echo uses the work you’re allowed to access</div>
           <form onSubmit={(event) => { event.preventDefault(); send(); }} className="flex items-end border border-[#003366]/35 focus-within:border-[#003366]">
             <textarea aria-label="Message Ask Echo" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about your tasks, daily log, meetings, or deadlines…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
             {isThinking ? <button type="button" onClick={() => abortRef.current?.abort()} aria-label="Stop response" className="m-1.5 p-2 text-[#003366]"><Square size={15} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Send message" className="m-1.5 p-2 text-[#003366] disabled:opacity-30"><Send size={16} /></button>}
           </form>
-          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Echo only uses ClickUp areas you’re allowed to open.</p>
+          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Echo matches “me” and “my” to your signed-in profile.</p>
         </footer>
       </section>
     </div>

@@ -19,6 +19,7 @@ function taskSource(task: any, page: EchoSourcePage): EvidenceSource {
     topic: String(task.status?.status || ""),
     excerpt: description || `Status: ${task.status?.status || "Not set"}`,
     person: (task.assignees || []).map((person: any) => person.username || person.email).filter(Boolean).join(", "),
+    ownerIds: (task.assignees || []).map((person: any) => [person.id, person.email, person.username].filter(Boolean).map(String)).flat(),
     due: task.due_date ? new Date(Number(task.due_date)).toISOString().slice(0, 10) : "",
     page,
     url: task.url || "",

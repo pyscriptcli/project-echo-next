@@ -9,7 +9,7 @@ vi.mock("@/lib/api", () => ({ askEcho: vi.fn().mockResolvedValue({ answer: "Alex
 describe("UniversalEchoDrawer", () => {
   it("shows a casual greeting and grounded sources after a question", async () => {
     render(<UniversalEchoDrawer isOpen onClose={() => {}} meetings={[]} />);
-    expect(screen.getByText(/Hi — what would you like to know/)).toBeTruthy();
+    expect(screen.getByText(/Hi — I’m Echo/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Message Ask Echo"), { target: { value: "Who owns the lease?" } });
     fireEvent.click(screen.getByLabelText("Send message"));
     await waitFor(() => expect(screen.getByText("Alex owns the lease follow-up.")).toBeTruthy());

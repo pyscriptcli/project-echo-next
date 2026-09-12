@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     return NextResponse.json(await answerAskEcho(body, {
+      id: user.id,
+      name: user.username,
       email: user.email.toLowerCase().trim(),
       clickUpToken: token,
       taskListId: req.cookies.get("echo_clickup_list_id")?.value || "",
