@@ -22,7 +22,7 @@ import {
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
 import { useStudioRecorder } from "@/hooks/useStudioRecorder";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
-import { clearSession, downloadSession } from "@/lib/studioStorage";
+import { clearSession } from "@/lib/studioStorage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -135,21 +135,19 @@ export function StudioPanel({
     }
     setNotes([]);
     setNoteInput("");
+    recorder.reset();
   };
 
   const handleSaveRecording = () => {
-    if (recorder.sessionId) {
-      downloadSession(recorder.sessionId).catch(() => {});
-      return;
-    }
-    if (recorder.recordedFile) {
-      const url = URL.createObjectURL(recorder.recordedFile);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = recorder.recordedFile.name;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
+    if (!recorder.recordedFile) return;
+    const url = URL.createObjectURL(recorder.recordedFile);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = recorder.recordedFile.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // ── Don't render if not open or minimized ──────────────────────────────

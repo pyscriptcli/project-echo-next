@@ -43,6 +43,8 @@ export interface UseStudioRecorderReturn {
   resume: () => void;
   /** Stop the recording and produce the final file. */
   stop: () => void;
+  /** Reset the completed session after save or discard. */
+  reset: () => void;
 
   /** Live MediaStream for the audio visualizer hook (mixed audio). */
   audioStream: MediaStream | null;
@@ -348,6 +350,17 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
     }
   }, []);
 
+  const reset = useCallback(() => {
+    setStatus("idle");
+    setElapsedSeconds(0);
+    setSessionId(null);
+    sessionIdRef.current = null;
+    setRecordedFile(null);
+    setError(null);
+    chunksBufferRef.current = [];
+    chunkIndexRef.current = 0;
+  }, []);
+
   // ── Select Device ──────────────────────────────────────────────────────
   const selectDevice = useCallback((deviceId: string) => {
     setSelectedDeviceId(deviceId);
@@ -409,6 +422,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
     pause,
     resume,
     stop,
+    reset,
     audioStream,
     recordedFile,
     error,
