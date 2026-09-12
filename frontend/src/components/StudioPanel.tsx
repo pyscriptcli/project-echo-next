@@ -91,6 +91,7 @@ export function StudioPanel({
   const [meetingLink, setMeetingLink] = useState("");
   const [botStatus, setBotStatus] = useState("");
   const [isSendingBot, setIsSendingBot] = useState(false);
+  const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
   const notesEndRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback(() => {
@@ -252,10 +253,14 @@ export function StudioPanel({
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
                 <strong className="text-[#003366]">Choose how to capture</strong>
                 <p className="text-xs mt-1">Use Echo.ai for a meeting link, or record locally for an in-person meeting.</p>
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <button type="button" onClick={() => setCaptureMode("meeting_link")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "meeting_link" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Meeting link</button>
+                  <button type="button" onClick={() => setCaptureMode("device")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "device" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Record on this device</button>
+                </div>
               </div>
             )}
 
-            {recorder.status === "idle" && (
+            {recorder.status === "idle" && captureMode === "meeting_link" && (
               <div className="border border-[#C9D8E8] bg-white px-4 py-4 rounded-lg shadow-sm">
                 <p className="text-xs font-semibold tracking-tight text-[#003366]">Join with Echo.ai</p>
                 <p className="text-xs text-gray-500 mt-1">Paste a Zoom, Google Meet, or Teams link and Echo.ai will join for you.</p>
@@ -268,7 +273,7 @@ export function StudioPanel({
             )}
 
             {/* Mic Selector */}
-            {recorder.status === "idle" && (
+            {recorder.status === "idle" && captureMode === "device" && (
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                   Microphone
@@ -293,7 +298,7 @@ export function StudioPanel({
 
             {/* Recording Control Button */}
             <div className="flex flex-col items-center gap-3">
-              {recorder.status === "idle" && (
+              {recorder.status === "idle" && captureMode === "device" && (
                 <button
                   type="button"
                   onClick={recorder.start}
