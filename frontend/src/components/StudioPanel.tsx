@@ -3,6 +3,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   ChevronDown,
+  Download,
   Globe,
   Info,
   Maximize2,
@@ -21,7 +22,7 @@ import {
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
 import { useStudioRecorder } from "@/hooks/useStudioRecorder";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
-import { clearSession } from "@/lib/studioStorage";
+import { clearSession, downloadSession } from "@/lib/studioStorage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -134,6 +135,21 @@ export function StudioPanel({
     }
     setNotes([]);
     setNoteInput("");
+  };
+
+  const handleSaveRecording = () => {
+    if (recorder.sessionId) {
+      downloadSession(recorder.sessionId).catch(() => {});
+      return;
+    }
+    if (recorder.recordedFile) {
+      const url = URL.createObjectURL(recorder.recordedFile);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = recorder.recordedFile.name;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   // ── Don't render if not open or minimized ──────────────────────────────
@@ -342,6 +358,14 @@ export function StudioPanel({
                     >
                       <Send size={13} />
                       Send to Notetaker
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveRecording}
+                      className="inline-flex items-center justify-center gap-1.5 bg-[#FFFCFB] text-[#003366] font-semibold py-2.5 px-3 border border-[#003366]/30 text-xs hover:border-[#C9A84C] transition-colors"
+                    >
+                      <Download size={13} />
+                      Save recording
                     </button>
                     <button
                       type="button"

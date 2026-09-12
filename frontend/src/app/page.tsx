@@ -805,14 +805,19 @@ export default function Home() {
     return <LoginView onLoginSuccess={() => checkAuth()} />;
   }
 
+  const loadingSteps = ["Getting your recording ready", "Transcribing the audio", "Finding the key details", "Preparing your meeting notes"];
+  const loadingStepIndex = loadingText.toLowerCase().includes("synth") || loadingText.toLowerCase().includes("minutes") ? 3 : loadingText.toLowerCase().includes("metadata") || loadingText.toLowerCase().includes("details") ? 2 : loadingText.toLowerCase().includes("transcrib") ? 1 : 0;
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-primary font-sans text-[#1b1d1e]">
       
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-[#FFFCFB]/85 z-50 flex flex-col items-center justify-center backdrop-blur-xs">
-          <div className="relative w-20 h-20 mb-4"><svg viewBox="0 0 36 36" className="w-full h-full -rotate-90"><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#e5e7eb" strokeWidth="3" /><path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="#003366" strokeWidth="3" strokeDasharray={`${loadingProgress}, 100`} /></svg><span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#003366]">{loadingProgress}%</span></div>
-          <p className="font-bold tracking-widest uppercase text-sm text-[#003366] mb-4 px-6 text-center max-w-lg">Processing minutes of the meeting</p>
+          <div className="w-full max-w-sm px-6 py-7 bg-[#FFFCFB] border border-[#C9A84C]/50 shadow-lg">
+            <div className="flex items-center gap-3 mb-6"><div className="w-9 h-9 rounded-full border-2 border-[#003366] border-t-transparent animate-spin" /><div><p className="text-base font-semibold text-[#003366]">Working on your meeting</p><p className="text-xs text-gray-500 mt-0.5">{loadingSteps[loadingStepIndex]}</p></div></div>
+            <div className="space-y-3">{loadingSteps.map((step, index) => <div key={step} className="flex items-center gap-3 text-sm"><span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${index < loadingStepIndex ? "bg-green-600 text-white" : index === loadingStepIndex ? "bg-[#003366] text-white" : "border border-gray-300 text-gray-400"}`}>{index < loadingStepIndex ? "✓" : index + 1}</span><span className={index <= loadingStepIndex ? "text-[#003366]" : "text-gray-400"}>{step}</span></div>)}</div>
+          </div>
           <button
             type="button"
             onClick={handleCancelProcessing}
