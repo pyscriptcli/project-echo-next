@@ -183,8 +183,8 @@ export function StudioPanel({
   // ── Layout classes based on mode ───────────────────────────────────────
   const isFullscreen = mode === "fullscreen";
   const panelClasses = isFullscreen
-    ? "fixed inset-0 z-50 bg-[#FFFCFB] flex flex-col"
-    : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#FFFCFB] border-l border-[#C9A84C] shadow-2xl flex flex-col";
+    ? "fixed inset-0 z-50 bg-[#F7F9FC] flex flex-col"
+    : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
 
   const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
   const isStopped = recorder.status === "stopped" && recorder.recordedFile !== null;
@@ -202,13 +202,13 @@ export function StudioPanel({
 
       <section aria-label="Recording Studio" className={panelClasses}>
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <header className="min-h-14 px-5 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C] shrink-0">
+        <header className="min-h-16 px-6 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C] shrink-0">
           <div className="flex items-center gap-2.5">
             <Mic size={18} className="text-[#C9A84C]" />
             <div>
-              <h2 className="font-serif italic text-lg leading-tight">Recording Studio</h2>
+              <h2 className="text-base font-semibold leading-tight tracking-tight">Recording studio</h2>
               {isRecordingActive && (
-                <p className="text-[10px] text-[#FFFCFB]/70 uppercase tracking-wider font-semibold">
+                  <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
                   {recorder.status === "paused" ? "Paused" : "Recording"} • {recorder.sourceMode === "online_meeting" ? "Online Call" : "In-Person"}
                 </p>
               )}
@@ -247,21 +247,21 @@ export function StudioPanel({
         <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-row" : "flex-col"}`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-1/2 border-r border-[#C9A84C]/30" : ""} p-5 flex flex-col gap-4 shrink-0`}>
+          <div className={`${isFullscreen ? "w-1/2 border-r border-[#D9E1EA]" : ""} p-6 flex flex-col gap-5 shrink-0`}>
             {recorder.status === "idle" && (
-              <div className="border border-[#003366]/15 bg-[#003366]/[0.03] px-3 py-2 text-xs leading-relaxed text-gray-600">
-                <strong className="text-[#003366]">Record meeting</strong><br />
-                Echo uses your microphone for any meeting. If you are online, choose the meeting tab and share its audio when your browser asks.
+              <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
+                <strong className="text-[#003366]">Choose how to capture</strong>
+                <p className="text-xs mt-1">Use Echo.ai for a meeting link, or record locally for an in-person meeting.</p>
               </div>
             )}
 
             {recorder.status === "idle" && (
-              <div className="border border-[#003366]/20 bg-[#FFFCFB] px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Use Echo.ai in an online meeting</p>
+              <div className="border border-[#C9D8E8] bg-white px-4 py-4 rounded-lg shadow-sm">
+                <p className="text-xs font-semibold tracking-tight text-[#003366]">Join with Echo.ai</p>
                 <p className="text-xs text-gray-500 mt-1">Paste a Zoom, Google Meet, or Teams link and Echo.ai will join for you.</p>
                 <div className="flex gap-2 mt-2">
-                  <input value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="Paste meeting link" className="min-w-0 flex-1 border border-gray-200 px-2.5 py-2 text-xs focus:outline-none focus:border-[#C9A84C]" />
-                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-3 !text-xs rounded-none">{isSendingBot ? "Joining…" : "Join"}</button>
+                  <input value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="Paste a meeting link" className="min-w-0 flex-1 border border-slate-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-[#C9A84C]" />
+                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-4 !text-xs rounded-md">{isSendingBot ? "Joining…" : "Join"}</button>
                 </div>
                 {botStatus && <p className="text-[11px] text-[#003366] mt-2" role="status">{botStatus}</p>}
               </div>
@@ -270,14 +270,14 @@ export function StudioPanel({
             {/* Mic Selector */}
             {recorder.status === "idle" && (
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
-                  Input device
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                  Microphone
                 </label>
                 <div className="relative">
                   <select
                     value={recorder.selectedDeviceId || ""}
                     onChange={(e) => recorder.selectDevice(e.target.value)}
-                    className="w-full border border-[#003366]/20 bg-[#FFFCFB] text-sm text-[#181D1E] px-3 py-2 pr-8 appearance-none rounded-none focus:outline-none focus:border-[#C9A84C]"
+                    className="w-full border border-slate-200 bg-white text-sm text-[#181D1E] px-3 py-2.5 pr-8 appearance-none rounded-md focus:outline-none focus:border-[#C9A84C]"
                   >
                     <option value="">System Default</option>
                     {recorder.availableDevices.map((device) => (
@@ -297,7 +297,7 @@ export function StudioPanel({
                 <button
                   type="button"
                   onClick={recorder.start}
-                  className="w-24 h-24 flex items-center justify-center border-4 border-[#003366] bg-[#FFFCFB] text-[#003366] hover:bg-[#003366]/5 transition-all"
+                  className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"
                 >
                   <Mic size={40} />
                 </button>
