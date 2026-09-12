@@ -118,7 +118,6 @@ export function StudioPanel({
   });
   const [openEchoSources, setOpenEchoSources] = useState<Record<number, boolean>>({});
   const [isEchoThinking, setIsEchoThinking] = useState(false);
-  const [showShareGuide, setShowShareGuide] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
   const echoEndRef = useRef<HTMLDivElement>(null);
@@ -379,7 +378,7 @@ export function StudioPanel({
               {recorder.status === "idle" && captureMode === "device" && (
                 <button
                   type="button"
-                  onClick={() => setShowShareGuide(true)}
+                  onClick={() => void recorder.start()}
                   className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"
                 >
                   <Mic size={40} />
@@ -511,7 +510,7 @@ export function StudioPanel({
                 <p className="font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
                 <p className="mt-1 text-xs leading-relaxed">Choose again and turn on the audio option in the browser window. Recording has not started.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setShowShareGuide(true)} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Choose again</button>
+                  <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Choose again</button>
                   <button type="button" onClick={() => void recorder.start({ microphoneOnly: true })} className="border border-[#003366]/30 bg-white px-3 py-2 text-xs font-semibold text-[#003366]">Use microphone only</button>
                 </div>
               </div>
@@ -601,27 +600,6 @@ export function StudioPanel({
           </div>
         </div>
       </section>
-
-      {showShareGuide && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#001E3C]/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="share-audio-title">
-          <div className="w-full max-w-md border border-[#C9A84C] bg-[#FFFCFB] shadow-2xl">
-            <div className="border-b border-[#C9A84C]/40 px-5 py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#C9A84C]">Before recording</p>
-              <h3 id="share-audio-title" className="mt-1 text-lg font-semibold text-[#003366]">Share the meeting with audio</h3>
-            </div>
-            <div className="space-y-4 px-5 py-5 text-sm text-slate-700">
-              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">01</span><p>Choose the meeting tab for the clearest audio, or <strong>Entire Screen</strong> when you need to move between apps.</p></div>
-              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">02</span><p>Turn on <strong>Share tab audio</strong> or <strong>Share system audio</strong> at the bottom of the browser window.</p></div>
-              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">03</span><p>Click <strong>Share</strong>. Echo will verify the audio before recording begins.</p></div>
-              <p className="border-l-2 border-[#C9A84C] pl-3 text-xs text-slate-500">Browsers require you to confirm this choice. Echo cannot select a screen or enable audio for you.</p>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
-              <button type="button" onClick={() => setShowShareGuide(false)} className="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
-              <button type="button" onClick={() => { setShowShareGuide(false); void recorder.start(); }} className="bg-[#003366] px-4 py-2 text-xs font-semibold text-white">Choose what to share</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showCloseConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#001E3C]/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="close-recording-title">
