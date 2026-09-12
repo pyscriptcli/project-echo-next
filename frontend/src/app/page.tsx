@@ -942,8 +942,9 @@ export default function Home() {
           allowedPages={allowedPages as any}
           isAdmin={isAdminUser}
           studioRecording={{
-            isMinimized: isStudioOpen && studioMode === "minimized",
+            isMinimized: isStudioOpen && studioMode === "minimized" && studioRecordingState.active,
             elapsedSeconds: studioRecordingState.elapsedSeconds,
+            isPaused: studioRecordingState.paused,
             onRestore: () => {
               setIsStudioOpen(true);
               setStudioMode("panel");

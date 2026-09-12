@@ -40,6 +40,7 @@ interface TopbarProps {
   studioRecording?: {
     isMinimized: boolean;
     elapsedSeconds: number;
+    isPaused?: boolean;
     onRestore: () => void;
   };
 }
@@ -368,6 +369,7 @@ export function Topbar({
         {studioRecording?.isMinimized && (
           <StudioPill
             elapsedSeconds={studioRecording.elapsedSeconds}
+            isPaused={studioRecording.isPaused}
             onRestore={studioRecording.onRestore}
           />
         )}

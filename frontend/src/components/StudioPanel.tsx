@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ChevronDown,
   Download,
+  MessageCircle,
   Maximize2,
   Mic,
   Minimize2,
@@ -12,6 +13,7 @@ import {
   Plus,
   Send,
   Square,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -20,6 +22,7 @@ import { useStudioRecorder } from "@/hooks/useStudioRecorder";
 import { useLiveTranscription } from "@/hooks/useLiveTranscription";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
 import { clearSession } from "@/lib/studioStorage";
+import { askEcho } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -92,6 +95,10 @@ export function StudioPanel({
   const [botStatus, setBotStatus] = useState("");
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
+  const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo">("notes");
+  const [echoInput, setEchoInput] = useState("");
+  const [echoAnswer, setEchoAnswer] = useState("Ask for a recap, decisions, or follow-ups from your previous meetings.");
+  const [isEchoThinking, setIsEchoThinking] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback(() => {
@@ -178,6 +185,28 @@ export function StudioPanel({
     }
   };
 
+  const askFromStudio = async (prompt?: string) => {
+    const question = (prompt || echoInput).trim();
+    if (!question || isEchoThinking) return;
+    setEchoInput("");
+    setIsEchoThinking(true);
+    try {
+      const response = await askEcho(question, []);
+      setEchoAnswer(response.answer);
+    } catch (error) {
+      setEchoAnswer(error instanceof Error ? error.message : "Echo couldn’t answer right now.");
+    } finally {
+      setIsEchoThinking(false);
+    }
+  };
+
+  const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
+  const isStopped = recorder.status === "stopped" && recorder.recordedFile !== null;
+
+  React.useEffect(() => {
+    window.dispatchEvent(new CustomEvent("echo-recording-state", { detail: { active: isRecordingActive, paused: recorder.status === "paused", elapsedSeconds: recorder.elapsedSeconds } }));
+  }, [isRecordingActive, recorder.status, recorder.elapsedSeconds]);
+
   // ── Don't render if not open or minimized ──────────────────────────────
   if (!isOpen || mode === "minimized") return null;
 
@@ -186,13 +215,6 @@ export function StudioPanel({
   const panelClasses = isFullscreen
     ? "fixed inset-0 z-50 bg-[#F7F9FC] flex flex-col"
     : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
-
-  const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
-  const isStopped = recorder.status === "stopped" && recorder.recordedFile !== null;
-
-  React.useEffect(() => {
-    window.dispatchEvent(new CustomEvent("echo-recording-state", { detail: { active: isRecordingActive, paused: recorder.status === "paused", elapsedSeconds: recorder.elapsedSeconds } }));
-  }, [isRecordingActive, recorder.status, recorder.elapsedSeconds]);
 
   return (
     <>
@@ -214,7 +236,7 @@ export function StudioPanel({
               {isRecordingActive && <span className="absolute inset-0 rounded-full border border-red-300/60 animate-ping" />}
             </span>
             <div>
-              <h2 className="text-base font-semibold leading-tight tracking-tight">Recording studio</h2>
+              <h2 className="text-base font-semibold leading-tight tracking-tight">Meeting studio</h2>
               {isRecordingActive && (
                   <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
                   {recorder.status === "paused" ? "Paused" : "Recording"} • {recorder.sourceMode === "online_meeting" ? "Online Call" : "In-Person"}
@@ -438,73 +460,61 @@ export function StudioPanel({
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
           <div className={`${isFullscreen ? "w-1/2" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-white/40`}>
-            <div className="px-5 pt-4 pb-2 shrink-0">
-              <h3 className="text-sm font-semibold tracking-tight text-[#003366]">
-                Notes
-              </h3>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Add context as you go. Each note keeps its exact time for transcript matching.
-              </p>
-            </div>
-
-            {/* Notes list */}
-            <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-1.5">
-              {notes.length === 0 && (
-                <p className="text-xs text-gray-400 italic py-4 text-center">
-                  {isRecordingActive ? "Type a note and press Enter..." : "Notes will appear here during recording."}
-                </p>
-              )}
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="group flex items-start gap-3 text-xs rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
-                >
-                  <span className="text-[#003366] font-mono font-semibold shrink-0 bg-[#003366]/[0.06] px-1.5 py-0.5 rounded">{note.timestamp}</span>
-                  <span className="text-[#181D1E] flex-1 leading-relaxed">{note.text}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeNote(note.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 shrink-0 transition-opacity"
-                    title="Remove note"
-                  >
-                    <X size={12} />
-                  </button>
+            <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-[#003366]">Meeting workspace</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Capture context now or revisit what happened before.</p>
                 </div>
-              ))}
-              <div ref={notesEndRef} />
+                <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
+                  <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
+                </div>
+              </div>
             </div>
 
-            {/* Note input */}
-            {(isRecordingActive || isStopped) && (
-              <div className="px-5 py-3 border-t border-gray-200 shrink-0">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    addNote();
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="text-xs font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-1.5 py-1 rounded">
-                    [{formatTime(recorder.elapsedSeconds)}]
-                  </span>
-                  <input
-                    type="text"
-                    value={noteInput}
-                    onChange={(e) => setNoteInput(e.target.value)}
-                    placeholder="Key decision, action item, or observation..."
-                    className="flex-1 text-xs border border-slate-200 bg-white px-3 py-2 rounded-md focus:outline-none focus:border-[#C9A84C]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!noteInput.trim()}
-                    className="p-1.5 text-[#003366] disabled:opacity-30 hover:bg-[#003366]/5 transition-colors"
-                    title="Add note"
-                  >
-                    <Plus size={16} />
-                  </button>
-                </form>
+            {workspaceTab === "notes" ? <>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+                {notes.length === 0 && (
+                  <div className="mx-auto mt-6 max-w-xs text-center">
+                    <div className="mx-auto w-10 h-10 rounded-full bg-[#003366]/[0.06] text-[#003366] flex items-center justify-center"><MessageCircle size={18} /></div>
+                    <p className="text-sm font-medium text-slate-600 mt-3">Keep the moments that matter</p>
+                    <p className="text-xs text-slate-400 mt-1">Decisions, follow-ups, and observations will stay linked to the exact moment.</p>
+                  </div>
+                )}
+                {notes.map((note) => (
+                  <div key={note.id} className="group flex items-start gap-3 text-xs rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
+                    <span className="text-[#003366] font-mono font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1 rounded-full">{note.timestamp}</span>
+                    <span className="text-[#181D1E] flex-1 leading-relaxed pt-1">{note.text}</span>
+                    <button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-red-500 shrink-0 transition-opacity" title="Remove note"><X size={12} /></button>
+                  </div>
+                ))}
+                <div ref={notesEndRef} />
               </div>
-            )}
+              {(isRecordingActive || isStopped) && (
+                <div className="px-5 py-3 border-t border-gray-200 bg-white shrink-0">
+                  <form onSubmit={(e) => { e.preventDefault(); addNote(); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1 focus-within:border-[#C9A84C] shadow-sm">
+                    <span className="text-[11px] font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1 rounded-full">[{formatTime(recorder.elapsedSeconds)}]</span>
+                    <input type="text" value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="flex-1 text-xs bg-transparent px-1 py-2 outline-none" />
+                    <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 rounded-lg bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
+                  </form>
+                </div>
+              )}
+            </> : <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <div className="rounded-xl border border-[#C9D8E8] bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-[#003366]"><Sparkles size={15} className="text-[#C9A84C]" /><span className="text-xs font-semibold">Echo</span></div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{isEchoThinking ? "Looking through your meetings…" : echoAnswer}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                  {["Recap my last meeting", "What decisions were made?", "What should I follow up?"] .map((prompt) => <button key={prompt} type="button" onClick={() => askFromStudio(prompt)} disabled={isEchoThinking} className="text-left rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}
+                </div>
+              </div>
+              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 focus-within:border-[#C9A84C] shadow-sm">
+                <input aria-label="Ask Echo from Meeting Studio" value={echoInput} onChange={(event) => setEchoInput(event.target.value)} placeholder="Ask Echo about previous meetings…" className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs outline-none" />
+                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="w-8 h-8 rounded-lg bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Ask Echo"><Send size={14} /></button>
+              </form>
+            </div>}
           </div>
         </div>
       </section>
