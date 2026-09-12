@@ -1951,6 +1951,13 @@ export default function Home() {
           setStudioMode("panel");
         }}
         onSendToNotetaker={handleSendToNotetaker}
+        onOpenSource={(page, recordId, url) => {
+          if (page === "meetings") setSelectedMeetingId(recordId);
+          if (page === "tasks") setFocusedTaskId(recordId);
+          if (["meetings", "tasks", "notebook", "forms", "demands", "market-insights"].includes(page)) setCurrentView(page as NavView);
+          else if (url) window.open(url, "_blank", "noopener,noreferrer");
+          setIsStudioOpen(false);
+        }}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ChevronDown,
   Download,
+  ExternalLink,
   MessageCircle,
   Maximize2,
   Mic,
@@ -23,6 +24,7 @@ import { useLiveTranscription } from "@/hooks/useLiveTranscription";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
 import { clearSession } from "@/lib/studioStorage";
 import { askEcho } from "@/lib/api";
+import type { AskEchoResponse } from "@/lib/ask-echo/schema";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -34,6 +36,7 @@ interface StudioPanelProps {
   onChangeMode: (mode: StudioDisplayMode) => void;
   onClose: () => void;
   onSendToNotetaker: (file: File, notes: StudioNote[], preparedTranscript?: string) => void;
+  onOpenSource?: (page: string, recordId: string, url?: string) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,18 +54,13 @@ function formatTime(seconds: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function VolumeMeter({ level, isClipping }: { level: number; isClipping: boolean }) {
-  const barColor = isClipping
-    ? "bg-red-500"
-    : level > 60
-      ? "bg-yellow-500"
-      : "bg-green-500";
-
   return (
-    <div className="w-full h-2 bg-gray-200 overflow-hidden" title={`Volume: ${level}%`}>
-      <div
-        className={`h-full transition-all duration-75 ${barColor}`}
-        style={{ width: `${level}%` }}
-      />
+    <div className="h-9 flex items-center gap-1" title={`Microphone level: ${level}%`} aria-label={`Microphone level ${level}%`}>
+      {Array.from({ length: 24 }, (_, index) => {
+        const active = level >= (index + 1) * (100 / 24);
+        const height = 8 + ((index * 7) % 20);
+        return <span key={index} className={`w-1 transition-all duration-75 ${active ? (isClipping ? "bg-red-500" : "bg-[#003366]") : "bg-slate-200"}`} style={{ height }} />;
+      })}
     </div>
   );
 }
@@ -82,6 +80,7 @@ export function StudioPanel({
   onChangeMode,
   onClose,
   onSendToNotetaker,
+  onOpenSource,
 }: StudioPanelProps) {
   const recorder = useStudioRecorder();
   const liveTranscript = useLiveTranscription(recorder.audioStream);
@@ -98,6 +97,8 @@ export function StudioPanel({
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo">("notes");
   const [echoInput, setEchoInput] = useState("");
   const [echoAnswer, setEchoAnswer] = useState("Ask for a recap, decisions, or follow-ups from your previous meetings.");
+  const [echoResponse, setEchoResponse] = useState<AskEchoResponse | null>(null);
+  const [showEchoSources, setShowEchoSources] = useState(false);
   const [isEchoThinking, setIsEchoThinking] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +194,8 @@ export function StudioPanel({
     try {
       const response = await askEcho(question, []);
       setEchoAnswer(response.answer);
+      setEchoResponse(response);
+      setShowEchoSources(false);
     } catch (error) {
       setEchoAnswer(error instanceof Error ? error.message : "Echo couldn’t answer right now.");
     } finally {
@@ -239,7 +242,7 @@ export function StudioPanel({
               <h2 className="text-base font-semibold leading-tight tracking-tight">Meeting studio</h2>
               {isRecordingActive && (
                   <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
-                  {recorder.status === "paused" ? "Paused" : "Recording"} • {recorder.sourceMode === "online_meeting" ? "Online Call" : "In-Person"}
+                  {recorder.status === "paused" ? "Paused" : "Recording"}
                 </p>
               )}
             </div>
@@ -417,7 +420,7 @@ export function StudioPanel({
 
             {/* Timer */}
             {isRecordingActive && (
-              <div className="text-center rounded-xl bg-white border border-slate-200 px-8 py-4 shadow-sm">
+              <div className="text-center bg-white border border-slate-200 border-t-2 border-t-[#C9A84C] px-8 py-4 shadow-sm">
                 <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
                   {formatTime(recorder.elapsedSeconds)}
                 </span>
@@ -456,6 +459,21 @@ export function StudioPanel({
                 {recorder.error}
               </div>
             )}
+
+            {isFullscreen && (
+              <div className="mt-1 border-t border-slate-200 pt-5 flex flex-col min-h-0 flex-1">
+                <div className="flex items-end justify-between gap-3 mb-3">
+                  <div><h3 className="text-sm font-semibold text-[#003366]">Live notes</h3><p className="text-[11px] text-slate-500 mt-0.5">Your words stay natural; Echo keeps the exact time.</p></div>
+                  <span className="text-[10px] text-slate-400">{notes.length} {notes.length === 1 ? "note" : "notes"}</span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-5 text-center"><p className="text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="text-xs text-slate-400 mt-1">Add a decision, follow-up, question, or observation.</p></div>}
+                  {notes.map((note) => <div key={note.id} className="group flex items-start gap-3 border border-slate-200 bg-white px-3.5 py-3 shadow-sm"><span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1">{note.timestamp}</span><span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5">{note.text}</span><button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500" aria-label="Remove note"><X size={13} /></button></div>)}
+                  <div ref={notesEndRef} />
+                </div>
+                {(isRecordingActive || isStopped) && <form onSubmit={(event) => { event.preventDefault(); addNote(); }} className="mt-3 flex items-center gap-2 border border-slate-300 bg-white p-1.5 focus-within:border-[#C9A84C]"><span className="text-[11px] font-mono text-[#003366] font-semibold border-r border-slate-200 px-2">[{formatTime(recorder.elapsedSeconds)}]</span><input value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder="Write a decision, follow-up, or thought…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-xs outline-none" /><button type="submit" disabled={!noteInput.trim()} className="h-8 w-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Add note"><Plus size={15} /></button></form>}
+              </div>
+            )}
           </div>
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
@@ -463,17 +481,17 @@ export function StudioPanel({
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-[#003366]">Meeting workspace</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Capture context now or revisit what happened before.</p>
+                  <h3 className="text-sm font-semibold tracking-tight text-[#003366]">{isFullscreen ? "Ask Echo" : "Meeting workspace"}</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
                 </div>
-                <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
+                {!isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
-                </div>
+                </div>}
               </div>
             </div>
 
-            {workspaceTab === "notes" ? <>
+            {workspaceTab === "notes" && !isFullscreen ? <>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
                 {notes.length === 0 && (
                   <div className="mx-auto mt-6 max-w-xs text-center">
@@ -483,8 +501,8 @@ export function StudioPanel({
                   </div>
                 )}
                 {notes.map((note) => (
-                  <div key={note.id} className="group flex items-start gap-3 text-xs rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
-                    <span className="text-[#003366] font-mono font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1 rounded-full">{note.timestamp}</span>
+                  <div key={note.id} className="group flex items-start gap-3 text-xs border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
+                    <span className="text-[#003366] font-mono font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1">{note.timestamp}</span>
                     <span className="text-[#181D1E] flex-1 leading-relaxed pt-1">{note.text}</span>
                     <button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-red-500 shrink-0 transition-opacity" title="Remove note"><X size={12} /></button>
                   </div>
@@ -493,26 +511,27 @@ export function StudioPanel({
               </div>
               {(isRecordingActive || isStopped) && (
                 <div className="px-5 py-3 border-t border-gray-200 bg-white shrink-0">
-                  <form onSubmit={(e) => { e.preventDefault(); addNote(); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1 focus-within:border-[#C9A84C] shadow-sm">
-                    <span className="text-[11px] font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1 rounded-full">[{formatTime(recorder.elapsedSeconds)}]</span>
+                  <form onSubmit={(e) => { e.preventDefault(); addNote(); }} className="flex items-center gap-2 border border-slate-200 bg-white px-2 py-1 focus-within:border-[#C9A84C] shadow-sm">
+                    <span className="text-[11px] font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1">[{formatTime(recorder.elapsedSeconds)}]</span>
                     <input type="text" value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="flex-1 text-xs bg-transparent px-1 py-2 outline-none" />
-                    <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 rounded-lg bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
+                    <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
                   </form>
                 </div>
               )}
             </> : <div className="flex-1 min-h-0 flex flex-col">
               <div className="flex-1 overflow-y-auto px-5 py-4">
-                <div className="rounded-xl border border-[#C9D8E8] bg-white p-4 shadow-sm">
+                <div className="border border-[#C9D8E8] border-t-2 border-t-[#C9A84C] bg-white p-4 shadow-sm">
                   <div className="flex items-center gap-2 text-[#003366]"><Sparkles size={15} className="text-[#C9A84C]" /><span className="text-xs font-semibold">Echo</span></div>
                   <p className="mt-2 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{isEchoThinking ? "Looking through your meetings…" : echoAnswer}</p>
+                  {!!echoResponse?.sources?.length && <div className="mt-4 border-t border-slate-200 pt-3"><button type="button" onClick={() => setShowEchoSources((open) => !open)} className="w-full flex items-center justify-between text-xs font-semibold text-[#003366]" aria-expanded={showEchoSources}><span>Sources · {echoResponse.sources.length}</span><ChevronDown size={14} className={`transition-transform ${showEchoSources ? "rotate-180" : ""}`} /></button>{showEchoSources && <div className="mt-2 space-y-1">{echoResponse.sources.map((source, index) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="w-full flex items-start justify-between gap-3 border border-slate-200 bg-[#F7F9FC] px-3 py-2.5 text-left hover:border-[#C9A84C]"><span><span className="block text-xs font-semibold text-[#003366]">[{index + 1}] {source.meetingTitle}</span><span className="block mt-0.5 text-[11px] text-slate-500 line-clamp-2">{source.excerpt}</span></span><ExternalLink size={12} className="mt-0.5 shrink-0 text-[#003366]" /></button>)}</div>}</div>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
-                  {["Recap my last meeting", "What decisions were made?", "What should I follow up?"] .map((prompt) => <button key={prompt} type="button" onClick={() => askFromStudio(prompt)} disabled={isEchoThinking} className="text-left rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}
+                  {["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => <button key={prompt} type="button" onClick={() => askFromStudio(prompt)} disabled={isEchoThinking} className="text-left border border-slate-200 bg-white p-2.5 text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}
                 </div>
               </div>
-              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 focus-within:border-[#C9A84C] shadow-sm">
+              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-center gap-2 border border-slate-200 bg-white p-1.5 focus-within:border-[#C9A84C] shadow-sm">
                 <input aria-label="Ask Echo from Meeting Studio" value={echoInput} onChange={(event) => setEchoInput(event.target.value)} placeholder="Ask Echo about previous meetings…" className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs outline-none" />
-                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="w-8 h-8 rounded-lg bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Ask Echo"><Send size={14} /></button>
+                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Ask Echo"><Send size={14} /></button>
               </form>
             </div>}
           </div>
