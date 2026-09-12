@@ -23,6 +23,7 @@ import {
 import { ArchivedMeeting } from "@/types/meeting";
 import { ClickUpTask } from "./TasksView";
 import { formatEchoDate } from "@/lib/dateUtils";
+import { StudioPill } from "./StudioPill";
 
 interface TopbarProps {
   meetings: ArchivedMeeting[];
@@ -36,6 +37,11 @@ interface TopbarProps {
   onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms" | "forms-admin") => void;
   allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms">;
   isAdmin?: boolean;
+  studioRecording?: {
+    isMinimized: boolean;
+    elapsedSeconds: number;
+    onRestore: () => void;
+  };
 }
 
 export function Topbar({
@@ -49,7 +55,8 @@ export function Topbar({
   onGoToNotetaker,
   onNavigateToPage,
   allowedPages,
-  isAdmin
+  isAdmin,
+  studioRecording,
 }: TopbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -357,6 +364,14 @@ export function Topbar({
       {/* Right Controls: "New Meeting" (transparent fill + gold border + mic + upload) and "Ask Echo" */}
       <div className="flex items-center gap-2.5 shrink-0">
         
+        {/* Minimized Studio Recording Pill */}
+        {studioRecording?.isMinimized && (
+          <StudioPill
+            elapsedSeconds={studioRecording.elapsedSeconds}
+            onRestore={studioRecording.onRestore}
+          />
+        )}
+
         {/* New Meeting Integrated Control Group */}
         {(isAdmin || !allowedPages || allowedPages.includes("meetings") || allowedPages.includes("minutes")) && (
         <div className="inline-flex items-center rounded-none border border-[#C9AB4C] bg-transparent shadow-2xs overflow-hidden">

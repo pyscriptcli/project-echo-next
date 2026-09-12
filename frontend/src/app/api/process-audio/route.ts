@@ -55,12 +55,20 @@ Extract meeting metadata in strict valid JSON matching this schema:
   return {};
 }
 
+/** Formats a seconds value (e.g. 63.5) into [MM:SS] display. */
+function formatTimestamp(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `[${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}]`;
+}
+
 async function transcribeWithOpenAI(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
   const formData = new FormData();
   const fileBlob = new Blob([new Uint8Array(buffer)], { type: mimeType || "audio/wav" });
   formData.append("file", fileBlob, fileName || "recording.wav");
   formData.append("model", "whisper-1");
-  formData.append("response_format", "json");
+  formData.append("response_format", "verbose_json");
+  formData.append("timestamp_granularities[]", "segment");
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -76,6 +84,14 @@ async function transcribeWithOpenAI(buffer: Buffer, fileName: string, mimeType: 
   }
 
   const data = await res.json();
+  
+  // Produce timestamped transcript from segments when available
+  if (data.segments && Array.isArray(data.segments) && data.segments.length > 0) {
+    return data.segments
+      .map((seg: { start: number; text: string }) => `${formatTimestamp(seg.start)} ${seg.text.trim()}`)
+      .join("\n");
+  }
+  
   return data.text || "";
 }
 

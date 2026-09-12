@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Stepper, Stage } from "@/components/Stepper";
-import { RecordingStudio } from "@/components/RecordingStudio";
+import { StudioPanel } from "@/components/StudioPanel";
+import { StudioRecoveryBanner } from "@/components/StudioRecoveryBanner";
+import type { StudioNote, StudioDisplayMode } from "@/types/studio";
 import { 
   processSource, 
   generateMinutes, 
@@ -232,7 +234,8 @@ export default function Home() {
   };
 
   const [stage, setStage] = useState<Stage>("Input");
-  const [showStudio, setShowStudio] = useState(false);
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [studioMode, setStudioMode] = useState<StudioDisplayMode>("panel");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -320,15 +323,6 @@ export default function Home() {
   const [pastedText, setPastedText] = useState("");
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [additionalMeetingNotes, setAdditionalMeetingNotes] = useState("");
-
-  // Inline audio recorder state
-  const [isInlineRecording, setIsInlineRecording] = useState(false);
-  const [inlineAudioUrl, setInlineAudioUrl] = useState<string | null>(null);
-  const [inlineBlob, setInlineBlob] = useState<Blob | null>(null);
-  const [recordSeconds, setRecordSeconds] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<any>(null);
 
   // Navigation Shell & View State
   const [currentView, setCurrentView] = useState<NavView>("dashboard");
@@ -466,18 +460,6 @@ export default function Home() {
   const [otherDiscussions, setOtherDiscussions] = useState("");
   const [showReviewAssist, setShowReviewAssist] = useState(true);
 
-  // Page refresh protection when inline recording is active
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isInlineRecording) {
-        e.preventDefault();
-        e.returnValue = "A live recording is active. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isInlineRecording]);
-
   // Handle Drag and Drop events
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -540,44 +522,6 @@ export default function Home() {
     };
   };
 
-  // Inline recording controls
-  const startInlineRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/wav" });
-        setInlineBlob(blob);
-        setInlineAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      recorder.start();
-      setIsInlineRecording(true);
-      setRecordSeconds(0);
-      timerRef.current = setInterval(() => {
-        setRecordSeconds((prev) => prev + 1);
-      }, 1000);
-    } catch (err) {
-      alert("Could not access microphone. Please grant permission in your browser.");
-    }
-  };
-
-  const stopInlineRecording = () => {
-    if (mediaRecorderRef.current && isInlineRecording) {
-      mediaRecorderRef.current.stop();
-      setIsInlineRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  };
-
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleCancelProcessing = () => {
@@ -614,7 +558,7 @@ export default function Home() {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    setShowStudio(false);
+    setIsStudioOpen(false);
     setIsLoading(true);
     setLoadingText("Analyzing source content...");
 
@@ -678,6 +622,18 @@ export default function Home() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
+  };
+
+  const handleSendToNotetaker = (file: File, notes: StudioNote[]) => {
+    setSelectedFile(file);
+    if (notes && notes.length > 0) {
+      setAdditionalMeetingNotes(notes.map((n) => `${n.timestamp} ${n.text}`).join("\n"));
+    }
+    setCurrentView("minutes");
+    setStage("Input");
+    setIsStudioOpen(false);
+    setStudioMode("panel");
+    handleUnifiedSourceSubmission(file);
   };
 
   const handleGenerateMinutes = async () => {
@@ -869,13 +825,7 @@ export default function Home() {
 
       {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-[#FFFCFB]"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
 
-      {/* Full Recording Studio Modal */}
-      {showStudio && (
-        <RecordingStudio 
-          onClose={() => setShowStudio(false)} 
-          onAudioSecured={(file) => handleUnifiedSourceSubmission(file)} 
-        />
-      )}
+
 
       {/* Collapsible Sidebar (Deep Charcoal & Gold, Expanded by default) */}
       <Sidebar
@@ -916,7 +866,9 @@ export default function Home() {
           }}
           onOpenStudio={() => {
             if (isPageAllowed("minutes")) {
-              setShowStudio(true);
+              setIsStudioOpen(true);
+              setStudioMode("panel");
+              setIsUniversalEchoOpen(false);
             }
           }}
           onGoToNotetaker={() => {
@@ -928,7 +880,18 @@ export default function Home() {
           onNavigateToPage={(page) => handleSelectView(page as NavView)}
           allowedPages={allowedPages as any}
           isAdmin={isAdminUser}
+          studioRecording={{
+            isMinimized: isStudioOpen && studioMode === "minimized",
+            elapsedSeconds: 0,
+            onRestore: () => {
+              setIsStudioOpen(true);
+              setStudioMode("panel");
+            },
+          }}
         />
+
+        {/* Studio Recovery Banner for crash resilience */}
+        <StudioRecoveryBanner />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5">
@@ -1252,69 +1215,30 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* TAB 2: RECORD LIVE */}
+                {/* TAB 2: RECORD LIVE (Studio Mode Launcher) */}
                 {sourceTab === "record" && (
-                  <div className="border border-gray-200 bg-[#FFFCFB] p-4 flex flex-col items-center justify-center gap-3">
-                    <div className="flex justify-between w-full items-center mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Live Microphone Capture</span>
-                      <button 
-                        type="button"
-                        onClick={() => setShowStudio(true)}
-                        className="text-xs text-[#003366] font-bold hover:underline flex items-center gap-1"
-                      >
-                        <Maximize2 size={12} /> Studio Mode
-                      </button>
+                  <div className="border border-gray-200 bg-[#FFFCFB] p-8 flex flex-col items-center justify-center gap-4 text-center">
+                    <div className="w-14 h-14 bg-[#003366]/5 border border-[#003366]/20 flex items-center justify-center text-[#003366]">
+                      <Mic size={28} />
                     </div>
-
-                    {!inlineAudioUrl ? (
-                      <div className="flex flex-col items-center gap-3 my-2">
-                        <button 
-                          type="button"
-                          onClick={isInlineRecording ? stopInlineRecording : startInlineRecording}
-                          className={`w-18 h-18 rounded-none flex items-center justify-center border-2 transition-all shadow-sm ${
-                            isInlineRecording 
-                              ? "border-red-500 bg-red-50 animate-pulse text-red-500" 
-                              : "border-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] text-[#003366]"
-                          }`}
-                        >
-                          {isInlineRecording ? <Square size={24} className="fill-current" /> : <Mic size={28} />}
-                        </button>
-                        <div className="text-center">
-                          <p className={`text-xs font-bold tracking-wide ${isInlineRecording ? "text-red-500" : "text-[#003366]"}`}>
-                            {isInlineRecording ? `Recording Live... (${recordSeconds}s)` : "Click to Start Recording"}
-                          </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">Direct browser audio recording via native MediaStream</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full flex flex-col gap-3">
-                        <audio src={inlineAudioUrl} controls className="w-full" />
-                        <div className="flex gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              if (inlineBlob) {
-                                const file = new File([inlineBlob], `recording-${Date.now()}.wav`, { type: "audio/wav" });
-                                handleUnifiedSourceSubmission(file);
-                              }
-                            }}
-                            className="btn-primary flex-1 !text-xs !py-2 rounded-none"
-                          >
-                            <Sparkles size={13} className="inline mr-1" /> Transcribe Recording
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setInlineAudioUrl(null);
-                              setInlineBlob(null);
-                            }}
-                            className="btn-outline !text-xs !py-2 rounded-none"
-                          >
-                            Discard
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <h3 className="text-sm font-bold text-[#003366]">Record In-Person or Online Meetings</h3>
+                      <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                        Use the crash-resilient Recording Studio with timestamped notes, live volume feedback, and tab/screen audio capture for online calls without Fireflies bots.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsStudioOpen(true);
+                        setStudioMode("panel");
+                        setIsUniversalEchoOpen(false);
+                      }}
+                      className="btn-primary !text-xs !py-2.5 !px-5 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Mic size={14} className="text-[#C9A84C]" />
+                      <span>Open Recording Studio</span>
+                    </button>
                   </div>
                 )}
 
@@ -1986,6 +1910,18 @@ export default function Home() {
           else if (url) window.open(url, "_blank", "noopener,noreferrer");
           setIsUniversalEchoOpen(false);
         }}
+      />
+
+      {/* Recording Studio Panel */}
+      <StudioPanel
+        isOpen={isStudioOpen}
+        mode={studioMode}
+        onChangeMode={setStudioMode}
+        onClose={() => {
+          setIsStudioOpen(false);
+          setStudioMode("panel");
+        }}
+        onSendToNotetaker={handleSendToNotetaker}
       />
     </div>
   );
