@@ -239,6 +239,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveSpaceId, setArchiveSpaceId] = useState("");
   const [archiveSpaces, setArchiveSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
@@ -773,8 +774,6 @@ export default function Home() {
 
   // Stage accessibility conditions
   const isReviewAllowed = !!transcript || pastedText.trim().length > 0 || momItems.length > 0;
-  const isExportAllowed = momItems.length > 0;
-
   // Counts for the Review summary statistics
   const actionItemsCount = momItems.filter((i) => i.action_plan && i.action_plan !== "None").length;
   const assignedCount = momItems.filter((i) => i.person_in_charge && i.person_in_charge !== "Unassigned").length;
@@ -828,6 +827,32 @@ export default function Home() {
       )}
 
       {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-[#FFFCFB]"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
+
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="export-title">
+          <div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="export-title" className="text-lg font-serif italic font-semibold text-[#003366]">Export meeting minutes</h2>
+                <p className="text-sm text-gray-500 mt-1">Choose your file type.</p>
+              </div>
+              <button type="button" onClick={() => setShowExportModal(false)} aria-label="Close export options" className="p-1 text-gray-500 hover:text-[#003366]"><X size={18} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              <button type="button" onClick={() => { setShowExportModal(false); void handleExportWord(); }} className="border border-gray-200 px-4 py-6 hover:border-[#C9AB4C] transition-colors text-center">
+                <FileText size={28} className="mx-auto text-[#C9AB4C] mb-2" />
+                <span className="block text-sm font-semibold text-[#003366]">Word document</span>
+                <span className="block text-xs text-gray-400 mt-1">.docx</span>
+              </button>
+              <button type="button" onClick={() => { setShowExportModal(false); void handleExportPdf(); }} className="border border-gray-200 px-4 py-6 hover:border-[#C9AB4C] transition-colors text-center">
+                <Download size={28} className="mx-auto text-[#C9AB4C] mb-2" />
+                <span className="block text-sm font-semibold text-[#003366]">PDF</span>
+                <span className="block text-xs text-gray-400 mt-1">.pdf</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
 
@@ -1026,8 +1051,9 @@ export default function Home() {
                       </button>
                     )}
                     {stage === "Review" && (
-                      <button onClick={() => setStage("Export")} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
-                        <span>Proceed to Export</span>
+                      <button onClick={() => setShowExportModal(true)} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
+                        <Download size={14} />
+                        <span>Export</span>
                       </button>
                     )}
                   </div>
@@ -1039,7 +1065,6 @@ export default function Home() {
                     currentStage={stage} 
                     onStageChange={setStage} 
                     isReviewAllowed={isReviewAllowed}
-                    isExportAllowed={isExportAllowed}
                   />
                 </div>
 
@@ -1802,12 +1827,14 @@ export default function Home() {
                 <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
                 </button>
-                <button 
-                  onClick={() => setStage("Export")}
-                  className="btn-outline !py-2 !px-4 text-xs font-bold flex items-center gap-1.5 rounded-none"
-                >
-                  Proceed to Export <ChevronRight size={13} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleSaveToDb} className="btn-outline !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
+                    <Save size={14} /> Archive to ClickUp
+                  </button>
+                  <button onClick={() => setShowExportModal(true)} className="btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
+                    <Download size={14} /> Export
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -1826,45 +1853,6 @@ export default function Home() {
               />
             </div>
 
-          </div>
-        )}
-
-        {/* STAGE 3: EXPORT (Uniform bg-[#FFFCFB] rounded-none card) */}
-        {stage === "Export" && (
-          <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-6 shadow-2xs">
-            <h1 className="text-2xl font-serif text-[#003366] italic font-semibold mb-1">Export Minutes Package</h1>
-            <p className="text-xs font-bold tracking-wider uppercase text-gray-400 mb-8">
-              Choose an executive template and download the completed minutes package.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <button 
-                onClick={handleExportWord} 
-                className="py-12 bg-[#FFFCFB] border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
-              >
-                <FileText size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
-                <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download Word (.docx)</span>
-                <span className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">Executive Template</span>
-              </button>
-              
-              <button 
-                onClick={handleExportPdf} 
-                className="py-12 bg-[#FFFCFB] border border-gray-200 rounded-none flex flex-col items-center justify-center hover:border-[#c9ab4c] hover:shadow-md transition-all group cursor-pointer"
-              >
-                <Download size={48} className="text-[#c9ab4c] mb-4 group-hover:scale-110 transition-transform" />
-                <span className="font-bold tracking-widest uppercase text-[#003366] text-sm">Download PDF (.pdf)</span>
-                <span className="text-[11px] text-gray-400 mt-1 uppercase tracking-wider">Print-Ready Document</span>
-              </button>
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-gray-100 flex justify-between items-center">
-              <button onClick={() => setStage("Review")} className="btn-outline !py-2.5 !px-5 text-xs">
-                Back to Review
-              </button>
-              <button onClick={handleSaveToDb} className="btn-primary !py-2.5 !px-6 text-xs flex items-center gap-2">
-                <Save size={15} /> Archive to ClickUp
-              </button>
-            </div>
           </div>
         )}
 

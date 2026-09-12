@@ -3,25 +3,22 @@
 import React from "react";
 import { Check, Lock } from "lucide-react";
 
-export type Stage = "Input" | "Review" | "Export";
+export type Stage = "Input" | "Review";
 
 interface StepperProps {
   currentStage: Stage;
   onStageChange: (stage: Stage) => void;
   isReviewAllowed?: boolean;
-  isExportAllowed?: boolean;
 }
 
 export function Stepper({ 
   currentStage, 
   onStageChange,
-  isReviewAllowed = false,
-  isExportAllowed = false
+  isReviewAllowed = false
 }: StepperProps) {
   const stages: { name: Stage; label: string; allowed: boolean }[] = [
     { name: "Input", label: "1. Meeting Source & Details", allowed: true },
     { name: "Review", label: "2. Discussion Review", allowed: isReviewAllowed },
-    { name: "Export", label: "3. Export Package", allowed: isExportAllowed },
   ];
   
   return (
@@ -29,7 +26,7 @@ export function Stepper({
       {stages.map((stageItem, idx) => {
         const isActive = currentStage === stageItem.name;
         const isClickable = stageItem.allowed;
-        const isCompleted = (idx === 0 && isReviewAllowed) || (idx === 1 && isExportAllowed);
+        const isCompleted = idx === 0 && isReviewAllowed;
 
         return (
           <button
