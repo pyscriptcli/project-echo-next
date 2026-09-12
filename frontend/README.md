@@ -35,6 +35,12 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+### Echo.ai meeting bot
+
+Add `MEETSTREAM_API_KEY` as a Vercel environment variable for Production, Preview, and Development, then redeploy the project. Keep it server-only; do not prefix it with `NEXT_PUBLIC_`.
+
+Echo automatically sends MeetStream callbacks to `/api/meetstream/webhook` on the deployed app. If callbacks must use a different public deployment, optionally set `MEETSTREAM_WEBHOOK_BASE_URL` to its HTTPS origin, for example `https://project-echo-next.vercel.app`.
+
 ## Forms Portal configuration
 
 The Forms Portal is available from Echo's sidebar after signing in with ClickUp. Run `supabase/forms_rbac.sql` in the project Supabase database, then provide `SUPABASE_SERVICE_ROLE_KEY` to persist the protected Owner/Admin configuration. Dave's ClickUp email (`dave.policarpio@primephilippines.com`) is the protected Owner. Without the Supabase table, Admin configuration remains available in local browser storage for local review.
