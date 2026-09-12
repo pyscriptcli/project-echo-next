@@ -88,6 +88,9 @@ export function StudioPanel({
   const [notes, setNotes] = useState<StudioNote[]>([]);
   const [noteInput, setNoteInput] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [meetingLink, setMeetingLink] = useState("");
+  const [botStatus, setBotStatus] = useState("");
+  const [isSendingBot, setIsSendingBot] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback(() => {
@@ -155,6 +158,23 @@ export function StudioPanel({
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const sendEchoBot = async () => {
+    if (!meetingLink.trim() || isSendingBot) return;
+    setIsSendingBot(true);
+    setBotStatus("");
+    try {
+      const response = await fetch("/api/meetstream/bots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ meetingLink }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Echo.ai could not join this meeting.");
+      setBotStatus("Echo.ai is joining the meeting.");
+      setMeetingLink("");
+    } catch (error) {
+      setBotStatus(error instanceof Error ? error.message : "Echo.ai could not join this meeting.");
+    } finally {
+      setIsSendingBot(false);
+    }
   };
 
   // ── Don't render if not open or minimized ──────────────────────────────
@@ -232,6 +252,18 @@ export function StudioPanel({
               <div className="border border-[#003366]/15 bg-[#003366]/[0.03] px-3 py-2 text-xs leading-relaxed text-gray-600">
                 <strong className="text-[#003366]">Record meeting</strong><br />
                 Echo uses your microphone for any meeting. If you are online, choose the meeting tab and share its audio when your browser asks.
+              </div>
+            )}
+
+            {recorder.status === "idle" && (
+              <div className="border border-[#003366]/20 bg-[#FFFCFB] px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Use Echo.ai in an online meeting</p>
+                <p className="text-xs text-gray-500 mt-1">Paste a Zoom, Google Meet, or Teams link and Echo.ai will join for you.</p>
+                <div className="flex gap-2 mt-2">
+                  <input value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="Paste meeting link" className="min-w-0 flex-1 border border-gray-200 px-2.5 py-2 text-xs focus:outline-none focus:border-[#C9A84C]" />
+                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-3 !text-xs rounded-none">{isSendingBot ? "Joining…" : "Join"}</button>
+                </div>
+                {botStatus && <p className="text-[11px] text-[#003366] mt-2" role="status">{botStatus}</p>}
               </div>
             )}
 

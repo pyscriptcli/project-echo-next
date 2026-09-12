@@ -234,6 +234,9 @@ export default function Home() {
   };
 
   const [stage, setStage] = useState<Stage>("Input");
+  const [missedTopics, setMissedTopics] = useState<Array<{ topic: string; quote: string; confidence?: string }>>([]);
+  const [topicQuery, setTopicQuery] = useState("");
+  const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<StudioDisplayMode>("panel");
   const [isLoading, setIsLoading] = useState(false);
@@ -610,6 +613,7 @@ export default function Home() {
           ...item,
         }))
       );
+      setMissedTopics(Array.isArray(momRes.recommended_missed_points) ? momRes.recommended_missed_points.map((item: any) => ({ topic: item.topic || "Untitled topic", quote: item.quote || "", confidence: item.confidence })) : []);
       setOtherDiscussions(momRes.other_discussions || "");
       setStage("Review");
     } catch (err: any) {
@@ -692,17 +696,35 @@ export default function Home() {
   };
 
   const addMissedTopic = () => {
+    const suggestion = missedTopics[0];
+    if (!suggestion) return;
     setMomItems([
       ...momItems,
       {
-        topic_title: "Decision Rule for Tool Selection",
-        discussion_point: "Defined criteria for choosing between Plaud, Fellow, and custom integrations.",
-        evidence_quote: "[00:00] Decision Rule: Recommended Architecture (Plaud Route) ... Recommended Architecture (Fellow Route) ...",
-        action_plan: "Validate tool pricing and enterprise compliance.",
-        indicative_delivery_date: "Next Friday",
-        person_in_charge: "Dave Policarpio"
+        topic_title: suggestion.topic,
+        discussion_point: "Review this topic and complete the discussion details.",
+        evidence_quote: suggestion.quote,
+        action_plan: "None",
+        indicative_delivery_date: "TBD",
+        person_in_charge: "Unassigned"
       }
     ]);
+    setMissedTopics((topics) => topics.slice(1));
+  };
+
+  const discoverTopics = async () => {
+    if (!transcript || isDiscoveringTopics) return;
+    setIsDiscoveringTopics(true);
+    try {
+      const response = await fetch("/api/discover-topics", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getStoredApiKey() || "" }, body: JSON.stringify({ transcript, query: topicQuery, existingTopics: momItems.map((item) => item.topic_title) }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to discover topics.");
+      setMissedTopics(data.topics || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to discover topics.");
+    } finally {
+      setIsDiscoveringTopics(false);
+    }
   };
 
   // Export handlers with effective metadata
@@ -1554,28 +1576,32 @@ export default function Home() {
               </div>
             )}
 
-            {/* Potential Missed Topic Detection Banner (Compact, Edgy) */}
-            <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
+            {/* Dynamic missed-topic suggestions */}
+            <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 p-3.5 shadow-2xs rounded-none">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="w-1.5 h-10 bg-[#c9ab4c] shrink-0"></div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#003366]">Potential Missed Topic Detected</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#003366]">Potential Missed Topics</span>
                     <span className="text-[9px] bg-[#c9ab4c]/15 text-[#8c7329] font-bold px-1.5 py-0.5">AI Suggestion</span>
                   </div>
-                  <p className="text-xs font-bold text-[#003366]">Decision Rule for Tool Selection</p>
-                  <p className="text-[11px] text-gray-500 italic mt-0.5">
-                    [00:00] Recommended Architecture (Plaud Route vs Fellow Route)...
-                  </p>
+                  {missedTopics.length ? <><p className="text-xs font-bold text-[#003366]">{missedTopics[0].topic}</p><p className="text-[11px] text-gray-500 italic mt-0.5">{missedTopics[0].quote || "Echo found a topic worth reviewing."}</p></> : <p className="text-[11px] text-gray-500">No additional topics found yet. Ask Echo to look for a specific kind of topic.</p>}
                 </div>
               </div>
-              <button 
+              <button
                 type="button" 
                 onClick={addMissedTopic} 
+                disabled={!missedTopics.length}
                 className="btn-outline !py-1.5 !px-3.5 !text-xs shrink-0 flex items-center justify-center gap-1.5 rounded-none shadow-2xs"
               >
                 <Plus size={13} /> Add to Discussion Matrix
               </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-[#c9ab4c]/20">
+                <input value={topicQuery} onChange={(event) => setTopicQuery(event.target.value)} placeholder="Ask for a topic, e.g. risks or budget" className="flex-1 border border-gray-200 px-3 py-1.5 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#003366]" />
+                <button type="button" onClick={discoverTopics} disabled={isDiscoveringTopics || !transcript} className="btn-primary !py-1.5 !px-3.5 !text-xs rounded-none">{isDiscoveringTopics ? "Looking…" : "Discover topics"}</button>
+              </div>
             </div>
 
             {/* EXECUTIVE MINUTES MATRIX */}
