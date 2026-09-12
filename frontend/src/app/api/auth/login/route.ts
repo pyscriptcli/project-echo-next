@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthCredentials, getWorkspaceApiToken, setAuthCookies, ClickUpUserProfile } from "@/lib/auth";
+import { getOAuthCredentials, getWorkspaceApiToken, setAuthCookies, ClickUpUserProfile, isAllowedClickUpSignIn } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const { clientId, redirectUri: configuredUri } = getOAuthCredentials();
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      if (!userProfile.email.toLowerCase().endsWith("@primephilippines.com")) {
+      if (!(await isAllowedClickUpSignIn(userProfile.email))) {
         return NextResponse.redirect(new URL("/?auth_error=company_email_required", req.url));
       }
 

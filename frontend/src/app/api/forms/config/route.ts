@@ -17,6 +17,7 @@ interface FormsConfigData {
   pagePermissions: UserPagePermission[];
   defaultPageAccess?: string[];
   emailTemplates?: any[];
+  allowedSignInDomains: string[];
 }
 
 const DEFAULT_CONFIG: FormsConfigData = {
@@ -27,6 +28,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   pagePermissions: [],
   defaultPageAccess: ["forms", "market-insights"],
   emailTemplates: [],
+  allowedSignInDomains: ["primephilippines.com"],
 };
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];

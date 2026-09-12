@@ -98,6 +98,7 @@ export interface FormsConfig {
   pagePermissions?: UserPagePermission[];
   defaultPageAccess?: AppPage[];
   emailTemplates?: FormEmailTemplate[];
+  allowedSignInDomains: string[];
 }
 
 const DEFAULT_CONFIG: FormsConfig = {
@@ -108,6 +109,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   pagePermissions: [],
   defaultPageAccess: ["forms"],
   emailTemplates: [],
+  allowedSignInDomains: ["primephilippines.com"],
 };
 
 function normalizeEmail(email?: string) {
@@ -468,6 +470,24 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <div className="mt-4 text-xs text-gray-600">
           Protected Owner: <span className="font-bold text-[#003366]">{OWNER_EMAIL}</span>
         </div>
+      </section>
+
+      <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">ClickUp sign-in domains</h2>
+            <p className="text-xs text-gray-500 mt-1">Only ClickUp users whose email ends with one of these domains can sign in. Enter domains without the @ symbol, separated by commas.</p>
+          </div>
+          <ShieldCheck size={19} className="text-[#003366]" />
+        </div>
+        <input
+          className="w-full border border-gray-300 px-3 py-2 text-sm"
+          value={(config.allowedSignInDomains || []).join(", ")}
+          onChange={(e) => setConfig({ ...config, allowedSignInDomains: e.target.value.split(",").map((value) => value.trim().toLowerCase().replace(/^@/, "")).filter(Boolean) })}
+          placeholder="primephilippines.com, example.com"
+          aria-label="Allowed ClickUp sign-in domains"
+        />
+        <p className="text-[11px] text-gray-500 mt-2">Save Configuration to apply this policy to new ClickUp sign-ins.</p>
       </section>
 
       {/* NEW: Page Access Governance */}

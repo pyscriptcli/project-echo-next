@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setAuthCookies, ClickUpUserProfile, getOAuthCredentials } from "@/lib/auth";
+import { setAuthCookies, ClickUpUserProfile, getOAuthCredentials, isAllowedClickUpSignIn } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
       console.warn("[ClickUp OAuth] Error fetching user profile:", err);
     }
 
-    if (!userProfile?.email.toLowerCase().endsWith("@primephilippines.com")) {
+    if (!userProfile?.email || !(await isAllowedClickUpSignIn(userProfile.email))) {
       return NextResponse.redirect(new URL("/?auth_error=company_email_required", req.url));
     }
 

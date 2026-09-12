@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const COOKIE_TOKEN_NAME = "echo_clickup_token";
 export const COOKIE_USER_NAME = "echo_user_profile";
@@ -93,6 +94,27 @@ export function getWorkspaceApiToken(): string {
   }
 
   return "";
+}
+
+export async function isAllowedClickUpSignIn(email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const emailDomain = normalizedEmail.split("@").pop() || "";
+  if (!normalizedEmail.includes("@") || !emailDomain) return false;
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  let domains = ["primephilippines.com"];
+  if (url && key) {
+    try {
+      const { data } = await createClient(url, key).from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
+      if (Array.isArray(data?.config?.allowedSignInDomains) && data.config.allowedSignInDomains.length > 0) domains = data.config.allowedSignInDomains;
+    } catch (error) {
+      console.error("[ClickUp Auth] Could not read sign-in domain policy:", error);
+    }
+  }
+  return domains.some((domain: unknown) => {
+    const normalizedDomain = String(domain).trim().toLowerCase().replace(/^@/, "");
+    return normalizedDomain && (emailDomain === normalizedDomain || emailDomain.endsWith(`.${normalizedDomain}`));
+  });
 }
 
 /**
