@@ -13,6 +13,7 @@ describe("UniversalEchoDrawer", () => {
     fireEvent.change(screen.getByLabelText("Message Ask Echo"), { target: { value: "Who owns the lease?" } });
     fireEvent.click(screen.getByLabelText("Send message"));
     await waitFor(() => expect(screen.getByText("Alex owns the lease follow-up.")).toBeTruthy());
+    fireEvent.click(screen.getByText(/Sources · 1/));
     expect(screen.getByText("Leasing review")).toBeTruthy();
     expect(screen.getByText("When is it due?")).toBeTruthy();
   });

@@ -36,7 +36,9 @@ export async function answerAskEcho(input: unknown, user: { id?: string | number
     const sourceIds = new Set(Array.isArray(result.content.sourceIds) ? result.content.sourceIds.map(String) : []);
     const sources = evidence.filter((source) => sourceIds.has(source.sourceId));
     const confidence = result.content.confidence === "supported" && sources.length === 0 ? "insufficient" : (["supported", "partial", "insufficient"].includes(result.content.confidence) ? result.content.confidence : (sources.length ? "partial" : "insufficient"));
-    const response: AskEchoResponse = { answer: String(result.content.answer || "I couldn't find enough in the meeting archive to answer that."), sources, confidence, followUps: Array.isArray(result.content.followUps) ? result.content.followUps.map(String).slice(0, 3) : [], usage: result.usage };
+    const allowedSourceIds = new Set(sources.map((source) => source.sourceId));
+    const citations = Array.isArray(result.content.citations) ? result.content.citations.map((citation: any, index: number) => ({ marker: String(citation?.marker || `[${index + 1}]`), sourceId: String(citation?.sourceId || "") })).filter((citation: { marker: string; sourceId: string }) => allowedSourceIds.has(citation.sourceId)).slice(0, 8) : [];
+    const response: AskEchoResponse = { answer: String(result.content.answer || "I couldn't find enough in the workspace to answer that."), sources, citations, confidence, followUps: Array.isArray(result.content.followUps) ? result.content.followUps.map(String).slice(0, 3) : [], usage: result.usage };
     await recordUsage({ userEmail, model: policy.model, status: "success", latencyMs: Date.now() - started, ...result.usage });
     return response;
   } catch (error) {

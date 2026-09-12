@@ -7,6 +7,7 @@ export interface AskEchoResponse {
   sources: EvidenceSource[];
   confidence: "supported" | "partial" | "insufficient";
   followUps: string[];
+  citations?: Array<{ marker: string; sourceId: string }>;
   usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
 }
 
