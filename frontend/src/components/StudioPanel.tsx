@@ -4,23 +4,20 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ChevronDown,
   Download,
-  Globe,
-  Info,
   Maximize2,
   Mic,
   Minimize2,
-  Monitor,
   Pause,
   Play,
   Plus,
   Send,
   Square,
   Trash2,
-  Users,
   X,
 } from "lucide-react";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
 import { useStudioRecorder } from "@/hooks/useStudioRecorder";
+import { useLiveTranscription } from "@/hooks/useLiveTranscription";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
 import { clearSession } from "@/lib/studioStorage";
 
@@ -33,7 +30,7 @@ interface StudioPanelProps {
   mode: StudioDisplayMode;
   onChangeMode: (mode: StudioDisplayMode) => void;
   onClose: () => void;
-  onSendToNotetaker: (file: File, notes: StudioNote[]) => void;
+  onSendToNotetaker: (file: File, notes: StudioNote[], preparedTranscript?: string) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,11 +81,13 @@ export function StudioPanel({
   onSendToNotetaker,
 }: StudioPanelProps) {
   const recorder = useStudioRecorder();
+  const liveTranscript = useLiveTranscription(recorder.audioStream);
   const visualizer = useAudioVisualizer(recorder.audioStream);
 
   // ── Notes State ────────────────────────────────────────────────────────
   const [notes, setNotes] = useState<StudioNote[]>([]);
   const [noteInput, setNoteInput] = useState("");
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback(() => {
@@ -119,13 +118,20 @@ export function StudioPanel({
     onClose();
   };
 
-  const handleSendToNotetaker = () => {
-    if (recorder.recordedFile) {
-      onSendToNotetaker(recorder.recordedFile, notes);
+  const handleSendToNotetaker = async () => {
+    if (recorder.recordedFile && !isFinalizing) {
+      setIsFinalizing(true);
+      const preparedTranscript = await liveTranscript.finalize();
+      onSendToNotetaker(recorder.recordedFile, notes, preparedTranscript || undefined);
       // Clean up IndexedDB session after successful handoff
       if (recorder.sessionId) {
         clearSession(recorder.sessionId).catch(() => {});
       }
+      setNotes([]);
+      setNoteInput("");
+      liveTranscript.reset();
+      recorder.reset();
+      setIsFinalizing(false);
     }
   };
 
@@ -135,6 +141,7 @@ export function StudioPanel({
     }
     setNotes([]);
     setNoteInput("");
+    liveTranscript.reset();
     recorder.reset();
   };
 
@@ -315,10 +322,11 @@ export function StudioPanel({
                     <button
                       type="button"
                       onClick={handleSendToNotetaker}
+                      disabled={isFinalizing}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0c0c0e] text-white font-semibold py-2.5 px-4 border border-[#C9A84C] text-xs hover:bg-[#1a1a1e] transition-colors"
                     >
                       <Send size={13} />
-                      Send to Notetaker
+                      {isFinalizing ? "Finishing…" : "Send to Notetaker"}
                     </button>
                     <button
                       type="button"
@@ -350,6 +358,12 @@ export function StudioPanel({
                 <p className={`text-[10px] uppercase tracking-wider mt-0.5 ${recorder.status === "paused" ? "text-amber-500" : "text-red-400"}`}>
                   {recorder.status === "paused" ? "Paused" : "Recording"}
                 </p>
+              </div>
+            )}
+
+            {(isRecordingActive || isStopped) && (
+              <div className="text-center text-xs text-[#003366]/70">
+                {liveTranscript.status === "waiting" ? "Some audio will be finished when you send it." : liveTranscript.status === "processing" ? "Keeping your notes ready…" : liveTranscript.status === "ready" ? "Ready for Notetaker" : "Recording and keeping your notes ready"}
               </div>
             )}
 

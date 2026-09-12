@@ -452,3 +452,22 @@ export async function discoverClickUpLists(tokenOverride?: string) {
   }
   return res.json();
 }
+
+export async function transcribeRecordingBatch(
+  audio: Blob,
+  batchIndex: number,
+  signal?: AbortSignal
+): Promise<string> {
+  const headers = getAudioApiHeaders();
+  const extension = audio.type.includes("webm") ? "webm" : audio.type.includes("ogg") ? "ogg" : "wav";
+  const formData = new FormData();
+  formData.append("file", audio, `live_batch_${batchIndex + 1}.${extension}`);
+  formData.append("action", "transcribe_chunk");
+  const response = await fetch("/api/process-audio", { method: "POST", headers, body: formData, signal });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || "This part could not be transcribed yet.");
+  }
+  const body = await response.json();
+  return String(body.transcript || "").trim();
+}

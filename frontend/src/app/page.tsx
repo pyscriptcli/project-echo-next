@@ -542,7 +542,7 @@ export default function Home() {
   };
 
   // Unified submission: handles files (audio, pdf, docx, txt) OR direct pasted text
-  const handleUnifiedSourceSubmission = async (fileOverride?: File) => {
+  const handleUnifiedSourceSubmission = async (fileOverride?: File, preparedTranscript?: string) => {
     const fileToUse = fileOverride || selectedFile;
     const hasFile = !!fileToUse;
     const hasText = pastedText.trim().length > 0;
@@ -564,15 +564,14 @@ export default function Home() {
 
     try {
       const res = await processSource(
-        {
-          file: fileToUse,
-          text: !fileToUse && hasText ? pastedText : undefined,
-        },
+        preparedTranscript
+          ? { text: preparedTranscript }
+          : { file: fileToUse, text: !fileToUse && hasText ? pastedText : undefined },
         (status) => setLoadingText(status),
         abortController.signal
       );
 
-      setTranscript(res.transcript || "");
+      setTranscript(preparedTranscript || res.transcript || "");
       if (res.telemetry) {
         setAudioTelemetry(res.telemetry);
       }
@@ -599,8 +598,8 @@ export default function Home() {
       setLoadingText("Synthesizing structured Minutes of the Meeting...");
       const topics = "1. Project Updates\n2. Key Decisions\n3. Action Items";
       const momRes = await generateMinutes(
-        res.transcript || pastedText, 
-        topics, 
+        preparedTranscript || res.transcript || pastedText,
+        topics,
         additionalMeetingNotes
       );
 
@@ -624,7 +623,7 @@ export default function Home() {
     }
   };
 
-  const handleSendToNotetaker = (file: File, notes: StudioNote[]) => {
+  const handleSendToNotetaker = (file: File, notes: StudioNote[], preparedTranscript?: string) => {
     setSelectedFile(file);
     if (notes && notes.length > 0) {
       setAdditionalMeetingNotes(notes.map((n) => `${n.timestamp} ${n.text}`).join("\n"));
@@ -633,7 +632,7 @@ export default function Home() {
     setStage("Input");
     setIsStudioOpen(false);
     setStudioMode("panel");
-    handleUnifiedSourceSubmission(file);
+    handleUnifiedSourceSubmission(file, preparedTranscript);
   };
 
   const handleGenerateMinutes = async () => {
