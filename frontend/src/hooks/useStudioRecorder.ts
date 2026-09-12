@@ -14,6 +14,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type RecorderStatus = "idle" | "recording" | "paused" | "stopped";
+export type CaptureIssue = "share_cancelled" | "missing_shared_audio" | null;
 
 export interface UseStudioRecorderReturn {
   /** Current recording lifecycle state. */
@@ -36,7 +37,7 @@ export interface UseStudioRecorderReturn {
   selectDevice: (deviceId: string) => void;
 
   /** Start a new recording session. */
-  start: () => Promise<void>;
+  start: (options?: { microphoneOnly?: boolean }) => Promise<void>;
   /** Pause the active recording. */
   pause: () => void;
   /** Resume a paused recording. */
@@ -52,6 +53,8 @@ export interface UseStudioRecorderReturn {
   recordedFile: File | null;
   /** Error message from the last failed operation. */
   error: string | null;
+  /** Recoverable issue raised before recording begins. */
+  captureIssue: CaptureIssue;
 }
 
 /** How often (ms) to flush audio chunks to IndexedDB. */
@@ -79,6 +82,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [captureIssue, setCaptureIssue] = useState<CaptureIssue>(null);
 
   // ── Refs (mutable across renders without triggering re-renders) ────────
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -108,9 +112,10 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
   }, []);
 
   useEffect(() => {
-    enumerateDevices();
+    const initialEnumeration = window.setTimeout(() => void enumerateDevices(), 0);
     navigator.mediaDevices.addEventListener("devicechange", enumerateDevices);
     return () => {
+      window.clearTimeout(initialEnumeration);
       navigator.mediaDevices.removeEventListener("devicechange", enumerateDevices);
     };
   }, [enumerateDevices]);
@@ -134,8 +139,9 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
   }, []);
 
   // ── Start Recording ────────────────────────────────────────────────────
-  const start = useCallback(async () => {
+  const start = useCallback(async (options?: { microphoneOnly?: boolean }) => {
     setError(null);
+    setCaptureIssue(null);
     setRecordedFile(null);
 
     // Clean up any lingering previous streams or audio context
@@ -156,32 +162,48 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
       let finalStream: MediaStream;
       let micDeviceLabel = "Default";
 
-      if (sourceMode === "online_meeting" && navigator.mediaDevices.getDisplayMedia) {
-        // Unified mode: try to include browser audio, then fall back to mic-only.
+      if (sourceMode === "online_meeting" && !options?.microphoneOnly && !navigator.mediaDevices.getDisplayMedia) {
+        setCaptureIssue("missing_shared_audio");
+        return;
+      }
+
+      if (sourceMode === "online_meeting" && !options?.microphoneOnly && navigator.mediaDevices.getDisplayMedia) {
+        // Browsers own this picker. We can suggest a monitor and request audio,
+        // but the user must make the final selection and enable audio.
         let displayStream: MediaStream | null = null;
         try {
-          displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        } catch {
-          displayStream = null;
+          const displayOptions = {
+            video: { displaySurface: "monitor" },
+            audio: true,
+            preferCurrentTab: false,
+            selfBrowserSurface: "exclude",
+            surfaceSwitching: "include",
+            systemAudio: "include",
+          } as unknown as DisplayMediaStreamOptions;
+          displayStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
+        } catch (shareError) {
+          const cancelled = shareError instanceof DOMException && (shareError.name === "NotAllowedError" || shareError.name === "AbortError");
+          setCaptureIssue("share_cancelled");
+          if (!cancelled) console.error("[Studio] Screen sharing failed:", shareError);
+          return;
         }
         displayStream?.getVideoTracks().forEach((track) => track.stop());
         const displayAudioTracks = displayStream?.getAudioTracks() || [];
+        if (!displayStream || displayAudioTracks.length === 0) {
+          displayStream?.getTracks().forEach((track) => track.stop());
+          setCaptureIssue("missing_shared_audio");
+          return;
+        }
         const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
-        if (displayStream && displayAudioTracks.length > 0) {
-          rawStreamsRef.current = [displayStream, micStream];
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          const ctx = new AudioCtx();
-          audioContextRef.current = ctx;
-          const destination = ctx.createMediaStreamDestination();
-          ctx.createMediaStreamSource(micStream).connect(destination);
-          ctx.createMediaStreamSource(displayStream).connect(destination);
-          finalStream = destination.stream;
-        } else {
-          displayStream?.getTracks().forEach((track) => track.stop());
-          rawStreamsRef.current = [micStream];
-          finalStream = micStream;
-        }
+        rawStreamsRef.current = [displayStream, micStream];
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioCtx();
+        audioContextRef.current = ctx;
+        const destination = ctx.createMediaStreamDestination();
+        ctx.createMediaStreamSource(micStream).connect(destination);
+        ctx.createMediaStreamSource(displayStream).connect(destination);
+        finalStream = destination.stream;
       } else {
         const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
@@ -357,6 +379,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
     sessionIdRef.current = null;
     setRecordedFile(null);
     setError(null);
+    setCaptureIssue(null);
     chunksBufferRef.current = [];
     chunkIndexRef.current = 0;
   }, []);
@@ -426,5 +449,6 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
     audioStream,
     recordedFile,
     error,
+    captureIssue,
   };
 }

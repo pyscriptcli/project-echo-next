@@ -3,6 +3,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   ChevronDown,
+  Clock,
   Download,
   ExternalLink,
   MessageCircle,
@@ -16,6 +17,7 @@ import {
   Square,
   Sparkles,
   Trash2,
+  User,
   X,
 } from "lucide-react";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
@@ -38,6 +40,16 @@ interface StudioPanelProps {
   onSendToNotetaker: (file: File, notes: StudioNote[], preparedTranscript?: string) => void;
   onOpenSource?: (page: string, recordId: string, url?: string) => void;
 }
+
+interface EchoMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  response?: AskEchoResponse;
+}
+
+const ECHO_STORAGE_KEY = "echo_ask_conversation";
+const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m Echo. What would you like to get done today?", timestamp: "Just now" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -96,11 +108,20 @@ export function StudioPanel({
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo">("notes");
   const [echoInput, setEchoInput] = useState("");
-  const [echoAnswer, setEchoAnswer] = useState("Ask for a recap, decisions, or follow-ups from your previous meetings.");
-  const [echoResponse, setEchoResponse] = useState<AskEchoResponse | null>(null);
-  const [showEchoSources, setShowEchoSources] = useState(false);
+  const [echoMessages, setEchoMessages] = useState<EchoMessage[]>(() => {
+    try {
+      const stored = typeof window !== "undefined" ? sessionStorage.getItem(ECHO_STORAGE_KEY) : null;
+      return stored ? JSON.parse(stored) : [ECHO_STARTER];
+    } catch {
+      return [ECHO_STARTER];
+    }
+  });
+  const [openEchoSources, setOpenEchoSources] = useState<Record<number, boolean>>({});
   const [isEchoThinking, setIsEchoThinking] = useState(false);
+  const [showShareGuide, setShowShareGuide] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
+  const echoEndRef = useRef<HTMLDivElement>(null);
 
   const addNote = useCallback(() => {
     const text = noteInput.trim();
@@ -122,9 +143,8 @@ export function StudioPanel({
 
   // ── Handlers ───────────────────────────────────────────────────────────
   const handleClose = () => {
-    // While recording, X minimizes instead of closing
     if (recorder.status === "recording" || recorder.status === "paused") {
-      onChangeMode("minimized");
+      setShowCloseConfirm(true);
       return;
     }
     onClose();
@@ -191,17 +211,52 @@ export function StudioPanel({
     if (!question || isEchoThinking) return;
     setEchoInput("");
     setIsEchoThinking(true);
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const nextMessages = [...echoMessages, { role: "user" as const, content: question, timestamp }];
+    setEchoMessages(nextMessages);
     try {
-      const response = await askEcho(question, []);
-      setEchoAnswer(response.answer);
-      setEchoResponse(response);
-      setShowEchoSources(false);
+      const conversation = nextMessages.slice(1, -1).map(({ role, content }) => ({ role, content }));
+      const response = await askEcho(question, conversation);
+      setEchoMessages((current) => [...current, { role: "assistant", content: response.answer, response, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
     } catch (error) {
-      setEchoAnswer(error instanceof Error ? error.message : "Echo couldn’t answer right now.");
+      setEchoMessages((current) => [...current, { role: "assistant", content: error instanceof Error ? error.message : "Echo couldn’t answer right now.", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
     } finally {
       setIsEchoThinking(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const stored = sessionStorage.getItem(ECHO_STORAGE_KEY);
+      if (stored) setEchoMessages(JSON.parse(stored));
+    } catch {}
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem(ECHO_STORAGE_KEY, JSON.stringify(echoMessages));
+      window.dispatchEvent(new CustomEvent("echo-conversation-updated", { detail: echoMessages }));
+    } catch {}
+    echoEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
+  }, [echoMessages, isEchoThinking]);
+
+  const renderEchoInline = (message: EchoMessage, text: string, lineKey: string) => text.split(/(\[\d+\])/g).map((part, index) => {
+    const match = part.match(/^\[(\d+)\]$/);
+    if (!match) return <React.Fragment key={index}>{part}</React.Fragment>;
+    const number = Number(match[1]);
+    const citation = message.response?.citations?.find((item) => item.marker === `[${number}]`) || message.response?.citations?.[number - 1];
+    const source = citation ? message.response?.sources.find((item) => item.sourceId === citation.sourceId) : message.response?.sources[number - 1];
+    return <button key={`${lineKey}-${index}`} type="button" disabled={!source} onClick={() => source && onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="align-super mx-0.5 text-[10px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-2 disabled:cursor-default">[{number}]</button>;
+  });
+
+  const renderEchoAnswer = (message: EchoMessage) => message.content.split("\n").map((line, index) => {
+    const cleaned = line.replace(/\*\*/g, "").trim();
+    if (!cleaned) return <div key={index} className="h-2" />;
+    const bullet = /^[-•]\s/.test(cleaned);
+    const content = bullet ? cleaned.replace(/^[-•]\s*/, "") : cleaned;
+    return <div key={index} className={bullet ? "flex gap-2 pl-1" : ""}>{bullet && <span className="text-[#C9A84C]">•</span>}<span>{renderEchoInline(message, content, String(index))}</span></div>;
+  });
 
   const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
   const isStopped = recorder.status === "stopped" && recorder.recordedFile !== null;
@@ -248,15 +303,6 @@ export function StudioPanel({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {/* Mode toggles */}
-            <button
-              type="button"
-              onClick={() => onChangeMode("minimized")}
-              title="Minimize to topbar"
-              className="p-2 hover:bg-[#174778] transition-colors"
-            >
-              <Minimize2 size={15} />
-            </button>
             <button
               type="button"
               onClick={() => onChangeMode(isFullscreen ? "panel" : "fullscreen")}
@@ -268,7 +314,7 @@ export function StudioPanel({
             <button
               type="button"
               onClick={handleClose}
-              title={isRecordingActive ? "Minimize (recording active)" : "Close"}
+              title="Close"
               className="p-2 hover:bg-[#174778] transition-colors"
             >
               <X size={16} />
@@ -333,7 +379,7 @@ export function StudioPanel({
               {recorder.status === "idle" && captureMode === "device" && (
                 <button
                   type="button"
-                  onClick={recorder.start}
+                  onClick={() => setShowShareGuide(true)}
                   className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"
                 >
                   <Mic size={40} />
@@ -449,7 +495,7 @@ export function StudioPanel({
             {/* Status text for idle */}
             {recorder.status === "idle" && (
               <p className="text-xs text-gray-500 text-center">
-                Click the mic to start recording. Audio is auto-saved every 10 seconds.
+                Click the mic to start. Echo will check that meeting audio is included before recording.
               </p>
             )}
 
@@ -457,6 +503,17 @@ export function StudioPanel({
             {recorder.error && (
               <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2">
                 {recorder.error}
+              </div>
+            )}
+
+            {recorder.captureIssue && (
+              <div role="alert" className="border border-amber-300 border-l-4 border-l-[#C9A84C] bg-amber-50 px-4 py-3 text-sm text-slate-700">
+                <p className="font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
+                <p className="mt-1 text-xs leading-relaxed">Choose again and turn on the audio option in the browser window. Recording has not started.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setShowShareGuide(true)} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Choose again</button>
+                  <button type="button" onClick={() => void recorder.start({ microphoneOnly: true })} className="border border-[#003366]/30 bg-white px-3 py-2 text-xs font-semibold text-[#003366]">Use microphone only</button>
+                </div>
               </div>
             )}
 
@@ -518,25 +575,66 @@ export function StudioPanel({
                   </form>
                 </div>
               )}
-            </> : <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <div className="border border-[#C9D8E8] border-t-2 border-t-[#C9A84C] bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-[#003366]"><Sparkles size={15} className="text-[#C9A84C]" /><span className="text-xs font-semibold">Echo</span></div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{isEchoThinking ? "Looking through your meetings…" : echoAnswer}</p>
-                  {!!echoResponse?.sources?.length && <div className="mt-4 border-t border-slate-200 pt-3"><button type="button" onClick={() => setShowEchoSources((open) => !open)} className="w-full flex items-center justify-between text-xs font-semibold text-[#003366]" aria-expanded={showEchoSources}><span>Sources · {echoResponse.sources.length}</span><ChevronDown size={14} className={`transition-transform ${showEchoSources ? "rotate-180" : ""}`} /></button>{showEchoSources && <div className="mt-2 space-y-1">{echoResponse.sources.map((source, index) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="w-full flex items-start justify-between gap-3 border border-slate-200 bg-[#F7F9FC] px-3 py-2.5 text-left hover:border-[#C9A84C]"><span><span className="block text-xs font-semibold text-[#003366]">[{index + 1}] {source.meetingTitle}</span><span className="block mt-0.5 text-[11px] text-slate-500 line-clamp-2">{source.excerpt}</span></span><ExternalLink size={12} className="mt-0.5 shrink-0 text-[#003366]" /></button>)}</div>}</div>}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
-                  {["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => <button key={prompt} type="button" onClick={() => askFromStudio(prompt)} disabled={isEchoThinking} className="text-left border border-slate-200 bg-white p-2.5 text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}
-                </div>
+            </> : <div className="flex-1 min-h-0 flex flex-col bg-[#FFFCFB]">
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {echoMessages.map((message, messageIndex) => <div key={`${messageIndex}-${message.timestamp}`} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                  <div className={`h-7 w-7 shrink-0 flex items-center justify-center ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
+                  <div className={`max-w-[86%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-white"}`}>
+                    <div className="space-y-1">{message.role === "assistant" ? renderEchoAnswer(message) : message.content}</div>
+                    {!!message.response?.sources?.length && <div className="mt-4 border-t border-[#C9A84C]/40 pt-3">
+                      <button type="button" onClick={() => setOpenEchoSources((current) => ({ ...current, [messageIndex]: !current[messageIndex] }))} className="flex w-full items-center justify-between text-left text-[10px] font-medium uppercase tracking-[0.18em] text-[#003366]" aria-expanded={!!openEchoSources[messageIndex]}><span>Sources · {message.response.sources.length}</span><span className="normal-case tracking-normal">{openEchoSources[messageIndex] ? "Hide" : "Show"}</span></button>
+                      {openEchoSources[messageIndex] && <div className="mt-3 space-y-2">{message.response.sources.map((source, sourceIndex) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="block w-full border-l-2 border-[#C9A84C] py-2 pl-3 text-left hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]"><span><span className="mr-2 text-[10px] text-[#C9A84C]">[{sourceIndex + 1}]</span>{source.meetingTitle}</span><ExternalLink size={11} /></span><span className="mt-1 block text-xs text-[#181D1E]/75">{source.excerpt}</span></button>)}</div>}
+                    </div>}
+                    {!!message.response?.followUps?.length && <div className="mt-3 flex flex-wrap gap-2">{message.response.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => void askFromStudio(followUp)} className="border border-[#003366]/25 px-2 py-1 text-[11px] text-[#003366] hover:border-[#C9A84C]">{followUp}</button>)}</div>}
+                    <div className={`mt-2 flex items-center gap-1 text-[9px] ${message.role === "user" ? "justify-end text-white/60" : "text-[#181D1E]/45"}`}><Clock size={10} />{message.timestamp}</div>
+                  </div>
+                </div>)}
+                {isEchoThinking && <div className="flex gap-3"><div className="h-7 w-7 bg-[#003366] text-[#C9A84C] flex items-center justify-center"><Sparkles size={13} /></div><div className="border border-[#003366]/15 p-3 text-sm text-[#181D1E]/60">Looking through your meetings…</div></div>}
+                <div ref={echoEndRef} />
               </div>
-              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-center gap-2 border border-slate-200 bg-white p-1.5 focus-within:border-[#C9A84C] shadow-sm">
-                <input aria-label="Ask Echo from Meeting Studio" value={echoInput} onChange={(event) => setEchoInput(event.target.value)} placeholder="Ask Echo about previous meetings…" className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs outline-none" />
-                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Ask Echo"><Send size={14} /></button>
+              {echoMessages.length <= 1 && <div className="grid grid-cols-1 gap-2 px-5 pb-3 sm:grid-cols-3">{["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => <button key={prompt} type="button" onClick={() => void askFromStudio(prompt)} disabled={isEchoThinking} className="border border-[#003366]/20 bg-white p-2.5 text-left text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}</div>}
+              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-end border border-[#003366]/35 bg-white focus-within:border-[#003366]">
+                <textarea aria-label="Ask Echo from Meeting Studio" rows={1} value={echoInput} onChange={(event) => setEchoInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void askFromStudio(); } }} placeholder="Ask about your meetings, decisions, or follow-ups…" className="min-h-11 max-h-28 min-w-0 flex-1 resize-y bg-transparent px-3 py-3 text-sm outline-none" />
+                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="m-1.5 p-2 text-[#003366] disabled:opacity-30" aria-label="Ask Echo"><Send size={16} /></button>
               </form>
             </div>}
           </div>
         </div>
       </section>
+
+      {showShareGuide && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#001E3C]/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="share-audio-title">
+          <div className="w-full max-w-md border border-[#C9A84C] bg-[#FFFCFB] shadow-2xl">
+            <div className="border-b border-[#C9A84C]/40 px-5 py-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#C9A84C]">Before recording</p>
+              <h3 id="share-audio-title" className="mt-1 text-lg font-semibold text-[#003366]">Share the meeting with audio</h3>
+            </div>
+            <div className="space-y-4 px-5 py-5 text-sm text-slate-700">
+              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">01</span><p>Choose the meeting tab for the clearest audio, or <strong>Entire Screen</strong> when you need to move between apps.</p></div>
+              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">02</span><p>Turn on <strong>Share tab audio</strong> or <strong>Share system audio</strong> at the bottom of the browser window.</p></div>
+              <div className="grid grid-cols-[24px_1fr] gap-3"><span className="font-mono text-xs text-[#C9A84C]">03</span><p>Click <strong>Share</strong>. Echo will verify the audio before recording begins.</p></div>
+              <p className="border-l-2 border-[#C9A84C] pl-3 text-xs text-slate-500">Browsers require you to confirm this choice. Echo cannot select a screen or enable audio for you.</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+              <button type="button" onClick={() => setShowShareGuide(false)} className="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
+              <button type="button" onClick={() => { setShowShareGuide(false); void recorder.start(); }} className="bg-[#003366] px-4 py-2 text-xs font-semibold text-white">Choose what to share</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#001E3C]/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="close-recording-title">
+          <div className="w-full max-w-sm border border-[#C9A84C] bg-[#FFFCFB] p-5 shadow-2xl">
+            <h3 id="close-recording-title" className="text-lg font-semibold text-[#003366]">Recording is still active</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Stop the recording before closing Studio so your audio stays safe.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowCloseConfirm(false)} className="px-3 py-2 text-xs font-semibold text-slate-600">Keep recording</button>
+              <button type="button" onClick={() => { recorder.stop(); setShowCloseConfirm(false); onClose(); }} className="border border-red-500 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700">Stop and close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

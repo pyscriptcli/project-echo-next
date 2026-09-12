@@ -24,7 +24,14 @@ const STARTER: Message = { role: "assistant", content: "Hi — I’m Echo. What 
 const STORAGE_KEY = "echo_ask_conversation";
 
 export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: UniversalEchoDrawerProps) {
-  const [messages, setMessages] = useState<Message[]>([STARTER]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const stored = typeof window !== "undefined" ? sessionStorage.getItem(STORAGE_KEY) : null;
+      return stored ? JSON.parse(stored) : [STARTER];
+    } catch {
+      return [STARTER];
+    }
+  });
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
@@ -35,7 +42,12 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    try { const stored = sessionStorage.getItem(STORAGE_KEY); if (stored) setMessages(JSON.parse(stored)); } catch {}
+    const syncConversation = (event: Event) => {
+      const nextMessages = (event as CustomEvent<Message[]>).detail;
+      if (Array.isArray(nextMessages)) setMessages(nextMessages);
+    };
+    window.addEventListener("echo-conversation-updated", syncConversation);
+    return () => window.removeEventListener("echo-conversation-updated", syncConversation);
   }, []);
   useEffect(() => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {} }, [messages]);
   useEffect(() => { if (!isOpen) return; fetch("/api/auth/me").then((response) => response.json()).then((data) => setUserName(data.user?.username || "")).catch(() => {}); }, [isOpen]);
