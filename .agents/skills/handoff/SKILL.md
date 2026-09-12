@@ -1,13 +1,19 @@
 ---
 name: handoff
-description: Compact the current conversation into a handoff document for another agent to pick up.
+description: Update the repository handoff.md with current project context and keep a rolling record of the two latest explicit handoffs.
 argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Update the repository root's `handoff.md`. This is the working file and canonical handoff location for this project. Do not create a separate temporary handoff file.
 
-Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
+Keep the permanent project guide in place. Add or replace only the `Recent handoffs` section. That section must contain exactly the two newest explicit handoff entries, newest first. Prepend each new entry. Remove the oldest entry only when a third entry would exist. A handoff tomorrow must not erase today's entry unless two newer handoffs have been recorded.
+
+Create a new entry only when the user explicitly asks for a handoff. Do not update the rolling entries after every ordinary coding session.
+
+Include a `Suggested skills` line in each dated entry. Use `caveman` for the compressed entry style. Use `ponytail` only if that skill is installed and available; if unavailable, record `ponytail unavailable` and continue with `caveman`. Never invent a missing skill.
+
+Each dated entry should include: date and focus; current state and decisions; relevant files; verification status; commit/branch status when known; blockers or risks; next actions; and `Suggested skills`.
 
 Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
 

@@ -17,6 +17,44 @@ Echo should feel casual, conversational, and useful. Avoid provider language, �
 - The Next.js app lives in `frontend/`; the repository root does not contain a `package.json`.
 - Use `frontend/` as the working directory for npm commands.
 
+## Handoff workflow
+
+`handoff.md` is a working file, not a one-time report. Keep the permanent guide above this section current. Keep exactly two dated entries under `Recent handoffs`, newest first.
+
+When the user explicitly requests a handoff:
+
+1. Add one compressed entry at the top of `Recent handoffs`.
+2. Keep the previous entry.
+3. Delete the oldest entry only when a third entry would exist.
+4. Update the entry with current focus, decisions, files, verification, commit/branch state, risks, blockers, and next actions.
+5. Use Caveman style for the dated entry. Use `ponytail` only if installed; current repository has no `ponytail` skill, so write `ponytail unavailable` in `Suggested skills` and continue with Caveman.
+
+This preserves today's handoff through tomorrow. It is replaced only after two newer handoffs exist.
+
+## Recent handoffs
+
+### 2026-09-12 — Rolling handoff workflow
+
+- Focus: make `handoff.md` reusable, rolling, and agent-readable.
+- State: permanent guide retained; exactly two recent entries required; newest first.
+- Files: `handoff.md`; `.agents/skills/handoff/SKILL.md`.
+- Verification: pending after documentation update.
+- Commit: pending.
+- Risk: `ponytail` skill unavailable; Caveman remains available.
+- Next: preserve two-entry rotation on every explicit handoff; update changelog when behavior changes.
+- Suggested skills: `caveman`; `ponytail unavailable`.
+
+### 2026-09-12 — Project Echo baseline
+
+- Focus: hand off Echo product, auth, retrieval, UI, admin AI, and recent commits.
+- State: per-user OAuth; page-gated retrieval; identity matching; clickable citations; collapsed sources; read-only Echo.
+- Files: `handoff.md`; `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md`; `frontend/src/lib/ask-echo/`; `frontend/src/components/UniversalEchoDrawer.tsx`.
+- Verification: 17 tests passed; production build passed before documentation update.
+- Commit: `8454715` created repository handoff guide.
+- Risk: mapped workspace sources only; no persistent chat; no write actions.
+- Next: test two users with different ClickUp permissions; apply Supabase schema; preserve Echo-first copy.
+- Suggested skills: `caveman`; `prime-philippines-brand`; `tdd` for behavior changes; `ponytail unavailable`.
+
 ## What is implemented
 
 ### Authentication and user connections
@@ -248,4 +286,3 @@ The user preference for this repository is to commit and push directly to `main`
 - Run tests/build/lint proportional to the change.
 - Update this file's changelog when behavior or architecture changes materially.
 - Commit and push to `main` only when the user explicitly asks for it.
-
