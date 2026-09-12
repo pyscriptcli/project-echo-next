@@ -62,17 +62,24 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
   };
 
   const reset = () => { abortRef.current?.abort(); setMessages([STARTER]); setInput(""); setShowSuggestions(true); sessionStorage.removeItem(STORAGE_KEY); };
-  const renderAnswer = (message: Message) => {
+  const renderInline = (message: Message, text: string, lineKey: string) => {
     const citations = message.response?.citations || [];
-    return message.content.split(/(\[\d+\])/g).map((part, index) => {
+    return text.split(/(\[\d+\])/g).map((part, index) => {
       const match = part.match(/^\[(\d+)\]$/);
       if (!match) return <React.Fragment key={index}>{part}</React.Fragment>;
       const number = Number(match[1]);
-      const citation = citations[number - 1];
-      const source = citation ? message.response?.sources.find((item) => item.sourceId === citation.sourceId) : undefined;
-      return <button key={index} type="button" aria-label={`Open source ${number}`} onClick={() => source && onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="align-super mx-0.5 text-[10px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-2">[{number}]</button>;
+      const citation = citations.find((item) => item.marker === `[${number}]`) || citations[number - 1];
+      const source = citation ? message.response?.sources.find((item) => item.sourceId === citation.sourceId) : message.response?.sources[number - 1];
+      return <button key={`${lineKey}-${index}`} type="button" aria-label={`Open source ${number}`} disabled={!source} onClick={() => source && onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="align-super mx-0.5 text-[10px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-2 disabled:cursor-default">[{number}]</button>;
     });
   };
+  const renderAnswer = (message: Message) => message.content.split("\n").map((line, index) => {
+    const cleaned = line.replace(/\*\*/g, "").trim();
+    if (!cleaned) return <div key={index} className="h-2" />;
+    const isBullet = /^[-•]\s/.test(cleaned);
+    const content = isBullet ? cleaned.replace(/^[-•]\s*/, "") : cleaned;
+    return <div key={index} className={`${isBullet ? "flex gap-2 pl-1" : ""} ${/^(your |today|summary|open items|next steps|deadlines|decisions)/i.test(content) ? "font-medium text-[#003366]" : ""}`}>{isBullet && <span className="text-[#C9A84C]">•</span>}<span>{renderInline(message, content, String(index))}</span></div>;
+  });
   if (!isOpen) return null;
 
   return (
@@ -100,8 +107,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
           {messages.map((message, index) => <div key={`${index}-${message.timestamp}`} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
             <div className={`w-7 h-7 flex items-center justify-center shrink-0 ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
             <div className={`max-w-[85%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-[#FFFCFB]"}`}>
-              <p className="whitespace-pre-line">{message.role === "assistant" ? renderAnswer(message) : message.content}</p>
-              {message.role === "assistant" && message.response?.sources?.length ? <div className="mt-4 grid grid-cols-2 gap-2"><div className="border border-[#003366]/10 bg-[#003366]/[0.03] px-3 py-2"><div className="text-[9px] uppercase tracking-[0.18em] text-[#003366]/60">Evidence</div><div className="mt-1 text-sm font-medium text-[#003366]">{message.response.sources.length} {message.response.sources.length === 1 ? "item" : "items"}</div></div><div className="border border-[#003366]/10 bg-[#003366]/[0.03] px-3 py-2"><div className="text-[9px] uppercase tracking-[0.18em] text-[#003366]/60">Match</div><div className="mt-1 text-sm font-medium capitalize text-[#003366]">{message.response.confidence}</div></div></div> : null}
+              <div className="space-y-1">{message.role === "assistant" ? renderAnswer(message) : message.content}</div>
               {message.response?.sources?.length ? <div className="mt-4 border-t border-[#C9A84C]/40 pt-3"><button type="button" onClick={() => setOpenSources((current) => ({ ...current, [index]: !current[index] }))} className="flex w-full items-center justify-between text-left text-[10px] font-medium tracking-[0.2em] uppercase text-[#003366]"><span>Sources · {message.response.sources.length}</span><span className="text-xs normal-case tracking-normal">{openSources[index] ? "Hide" : "Show"}</span></button>{openSources[index] && <div className="mt-3 space-y-2">{message.response.sources.map((source, sourceIndex) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="block w-full text-left border-l-2 border-[#C9A84C] pl-3 py-2 hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]"><span><span className="mr-2 text-[10px] text-[#C9A84C]">[{sourceIndex + 1}]</span>{source.meetingTitle}</span><ExternalLink size={11} /></span><span className="block text-[10px] uppercase tracking-wide text-[#003366]/55">{source.page || "workspace"}{source.meetingDate ? ` · ${source.meetingDate}` : ""}{source.topic ? ` · ${source.topic}` : ""}</span><span className="block mt-1 text-xs text-[#181D1E]/80">{source.excerpt}</span></button>)}</div>}</div> : null}
               {message.response?.followUps?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.response.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} className="border border-[#003366]/25 px-2 py-1 text-[11px] text-[#003366] hover:border-[#C9A84C]">{followUp}</button>)}</div> : null}
               <div className={`text-[9px] mt-2 flex items-center gap-1 ${message.role === "user" ? "justify-end text-[#FFFCFB]/60" : "text-[#181D1E]/45"}`}><Clock size={10} />{message.timestamp}</div>
