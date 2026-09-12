@@ -1,14 +1,18 @@
 import { checkUsagePolicy } from "./limits";
-import { retrieveMeetingEvidence } from "./retrieval";
+import { rankEvidenceSources, retrieveMeetingEvidence } from "./retrieval";
 import { parseAskEchoRequest, type AskEchoResponse } from "./schema";
 import { askModel } from "./provider";
-import { getUsageSnapshot, loadAiPolicy, loadMeetingsForUser, recordUsage } from "./store";
+import { getUsageSnapshot, loadEchoConfiguration, loadMeetingsForUser, recordUsage } from "./store";
+import { resolveAllowedPages, sourcesEnabledForPages } from "./access";
+import { loadClickUpContext } from "./clickup";
 
 const activeRequests = new Map<string, number>();
 
-export async function answerAskEcho(input: unknown, userEmail: string): Promise<AskEchoResponse> {
+export async function answerAskEcho(input: unknown, user: { email: string; clickUpToken: string; taskListId: string }): Promise<AskEchoResponse> {
   const started = Date.now();
-  const policy = await loadAiPolicy();
+  const configuration = await loadEchoConfiguration();
+  const policy = configuration.aiPolicy;
+  const userEmail = user.email;
   const request = parseAskEchoRequest(input, policy);
   const usageSnapshot = await getUsageSnapshot(userEmail);
   usageSnapshot.concurrentRequests = activeRequests.get(userEmail) || 0;
@@ -19,8 +23,15 @@ export async function answerAskEcho(input: unknown, userEmail: string): Promise<
   }
   activeRequests.set(userEmail, usageSnapshot.concurrentRequests + 1);
   try {
-    const meetings = await loadMeetingsForUser(userEmail);
-    const evidence = retrieveMeetingEvidence(meetings, request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
+    const allowedPages = resolveAllowedPages(userEmail, configuration);
+    const enabledSources = sourcesEnabledForPages(allowedPages);
+    const formListIds = configuration.mappings.map((mapping) => String(mapping.listId || "").trim()).filter(Boolean);
+    const [meetings, clickUpSources] = await Promise.all([
+      enabledSources.includes("meetings") ? loadMeetingsForUser(userEmail) : Promise.resolve([]),
+      loadClickUpContext({ token: user.clickUpToken, pages: enabledSources, taskListId: user.taskListId, formListIds }),
+    ]);
+    const meetingSources = retrieveMeetingEvidence(meetings, request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
+    const evidence = rankEvidenceSources([...meetingSources, ...clickUpSources], request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
     const result = await askModel({ ...policy, question: request.question, conversation: request.conversation, evidence });
     const sourceIds = new Set(Array.isArray(result.content.sourceIds) ? result.content.sourceIds.map(String) : []);
     const sources = evidence.filter((source) => sourceIds.has(source.sourceId));

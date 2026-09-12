@@ -8,7 +8,11 @@ export async function POST(req: NextRequest) {
   if (!token || !user?.email) return NextResponse.json({ error: "Please sign in before using Ask Echo." }, { status: 401 });
   try {
     const body = await req.json();
-    return NextResponse.json(await answerAskEcho(body, user.email.toLowerCase().trim()));
+    return NextResponse.json(await answerAskEcho(body, {
+      email: user.email.toLowerCase().trim(),
+      clickUpToken: token,
+      taskListId: req.cookies.get("echo_clickup_list_id")?.value || "",
+    }));
   } catch (error) {
     const status = Number((error as { status?: number }).status || 500);
     const message = error instanceof Error ? error.message : "Ask Echo couldn’t answer right now. Please try again.";

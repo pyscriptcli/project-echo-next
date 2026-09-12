@@ -17,13 +17,13 @@ interface UniversalEchoDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   meetings: ArchivedMeeting[];
-  onOpenMeeting?: (meetingId: string) => void;
+  onOpenSource?: (page: string, recordId: string, url?: string) => void;
 }
 
-const STARTER: Message = { role: "assistant", content: "Hi — what would you like to know about your meetings?", timestamp: "Just now" };
+const STARTER: Message = { role: "assistant", content: "Hi — what would you like to know about your ClickUp work?", timestamp: "Just now" };
 const STORAGE_KEY = "echo_ask_conversation";
 
-export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: UniversalEchoDrawerProps) {
+export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: UniversalEchoDrawerProps) {
   const [messages, setMessages] = useState<Message[]>([STARTER]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -39,7 +39,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: Universa
   useEffect(() => { const key = (event: KeyboardEvent) => event.key === "Escape" && isOpen && onClose(); window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [isOpen, onClose]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" }); }, [messages, isThinking]);
 
-  const quickPrompts = ["What decisions were made recently?", "What action items are still open?", "What is assigned to me?", "What deadlines are coming up?"];
+  const quickPrompts = ["How’s my daily log?", "What tasks are assigned to me?", "What decisions were made recently?", "What deadlines are coming up?"];
 
   const send = async (suggestion?: string) => {
     const question = (suggestion || input).trim();
@@ -68,7 +68,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: Universa
         <header className="min-h-20 px-5 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C]">
           <div className="flex items-center gap-3">
             <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className="h-8 w-auto max-w-32 object-contain" />
-            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">Your meeting assistant</p></div>
+            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">Your ClickUp assistant</p></div>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={reset} aria-label="New conversation" className="p-2 hover:bg-[#174778]"><Plus size={17} /></button>
@@ -87,7 +87,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: Universa
             <div className={`w-7 h-7 flex items-center justify-center shrink-0 ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
             <div className={`max-w-[85%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-[#FFFCFB]"}`}>
               <p className="whitespace-pre-line">{message.content}</p>
-              {message.response?.sources?.length ? <div className="mt-4 border-t border-[#C9A84C]/40 pt-3 space-y-2"><div className="text-[10px] font-medium tracking-[0.2em] uppercase text-[#003366]">Sources</div>{message.response.sources.map((source) => <button key={source.sourceId} type="button" onClick={() => onOpenMeeting?.(source.meetingId)} className="block w-full text-left border-l-2 border-[#C9A84C] pl-3 py-1 hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]">{source.meetingTitle}<ExternalLink size={11} /></span><span className="block text-[10px] text-[#181D1E]/60">{source.meetingDate}{source.topic ? ` · ${source.topic}` : ""}</span><span className="block mt-1 text-xs text-[#181D1E]/80">{source.excerpt}</span></button>)}</div> : null}
+              {message.response?.sources?.length ? <div className="mt-4 border-t border-[#C9A84C]/40 pt-3 space-y-2"><div className="text-[10px] font-medium tracking-[0.2em] uppercase text-[#003366]">Sources</div>{message.response.sources.map((source) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="block w-full text-left border-l-2 border-[#C9A84C] pl-3 py-1 hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]">{source.meetingTitle}<ExternalLink size={11} /></span><span className="block text-[10px] uppercase tracking-wide text-[#003366]/55">{source.page || "meetings"}{source.meetingDate ? ` · ${source.meetingDate}` : ""}{source.topic ? ` · ${source.topic}` : ""}</span><span className="block mt-1 text-xs text-[#181D1E]/80">{source.excerpt}</span></button>)}</div> : null}
               {message.response?.followUps?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.response.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} className="border border-[#003366]/25 px-2 py-1 text-[11px] text-[#003366] hover:border-[#C9A84C]">{followUp}</button>)}</div> : null}
               <div className={`text-[9px] mt-2 flex items-center gap-1 ${message.role === "user" ? "justify-end text-[#FFFCFB]/60" : "text-[#181D1E]/45"}`}><Clock size={10} />{message.timestamp}</div>
             </div>
@@ -97,12 +97,12 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: Universa
         </div>
 
         <footer className="p-4 bg-[#FFFCFB] border-t border-[#C9A84C]/50">
-          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">All meetings · current session</div>
+          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">Your allowed ClickUp pages · current session</div>
           <form onSubmit={(event) => { event.preventDefault(); send(); }} className="flex items-end border border-[#003366]/35 focus-within:border-[#003366]">
-            <textarea aria-label="Message Ask Echo" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about a decision, action item, or deadline…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
+            <textarea aria-label="Message Ask Echo" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about your tasks, daily log, meetings, or deadlines…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
             {isThinking ? <button type="button" onClick={() => abortRef.current?.abort()} aria-label="Stop response" className="m-1.5 p-2 text-[#003366]"><Square size={15} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Send message" className="m-1.5 p-2 text-[#003366] disabled:opacity-30"><Send size={16} /></button>}
           </form>
-          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Echo answers from meeting records and shows its sources.</p>
+          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Echo only uses ClickUp areas you’re allowed to open.</p>
         </footer>
       </section>
     </div>

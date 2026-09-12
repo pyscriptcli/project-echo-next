@@ -16,7 +16,7 @@ describe("POST /api/ask-echo", () => {
     const response = await POST(new NextRequest("http://localhost/api/ask-echo", { method: "POST", body: JSON.stringify({ question: "Who owns it?", conversation: [] }), headers: { "content-type": "application/json" } }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ answer: "Alex owns it.", confidence: "supported" });
-    expect(answerAskEcho).toHaveBeenCalledWith({ question: "Who owns it?", conversation: [] }, "user@primephilippines.com");
+    expect(answerAskEcho).toHaveBeenCalledWith({ question: "Who owns it?", conversation: [] }, { email: "user@primephilippines.com", clickUpToken: "token", taskListId: "" });
   });
 
   it("rejects an unauthenticated request before reading meeting data", async () => {

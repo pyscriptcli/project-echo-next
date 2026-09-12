@@ -1,4 +1,5 @@
 import type { ArchivedMeeting } from "@/types/meeting";
+import type { EchoSourcePage } from "./access";
 
 export interface EvidenceSource {
   sourceId: string;
@@ -10,6 +11,8 @@ export interface EvidenceSource {
   excerpt: string;
   person?: string;
   due?: string;
+  page?: EchoSourcePage;
+  url?: string;
 }
 
 const STOP_WORDS = new Set(["a", "all", "and", "are", "did", "do", "for", "from", "in", "is", "it", "of", "on", "the", "to", "was", "what", "when", "where", "which", "who", "with"]);
@@ -39,7 +42,7 @@ export function retrieveMeetingEvidence(
   for (const meeting of meetings) {
     const meetingText = [meeting.title, meeting.date, meeting.meeting_type, meeting.location, meeting.summary, ...(meeting.attendees_prime || []), ...(meeting.attendees_external || [])].join(" ");
     if (meeting.summary) {
-      candidates.push({ sourceId: `meeting:${meeting.id}`, meetingId: meeting.id, meetingTitle: meeting.title, meetingDate: meeting.date, excerpt: meeting.summary, score: score(meetingText, queryTerms) });
+      candidates.push({ sourceId: `meeting:${meeting.id}`, meetingId: meeting.id, meetingTitle: meeting.title, meetingDate: meeting.date, excerpt: meeting.summary, page: "meetings", score: score(meetingText, queryTerms) });
     }
     for (const item of meeting.items || []) {
       const itemText = [meetingText, item.topic, item.evidence, item.discussion_point, item.action_plan, item.person_in_charge, item.target_date].join(" ");
@@ -53,6 +56,7 @@ export function retrieveMeetingEvidence(
         excerpt: [item.discussion_point, item.action_plan].filter(Boolean).join(" "),
         person: item.person_in_charge,
         due: item.target_date,
+        page: "meetings",
         score: score(itemText, queryTerms) + score([item.topic, item.person_in_charge].join(" "), queryTerms),
       });
     }
@@ -66,4 +70,12 @@ export function retrieveMeetingEvidence(
     remaining = Math.max(0, remaining - excerpt.length);
     return { ...source, excerpt };
   }).filter((source) => source.excerpt.length > 0);
+}
+
+export function rankEvidenceSources(sources: EvidenceSource[], query: string, options: { maxSources: number; maxCharacters: number }) {
+  const queryTerms = terms(query);
+  const ranked = sources.map((source) => ({ source, score: score([source.meetingTitle, source.meetingDate, source.topic, source.excerpt, source.person, source.due].join(" "), queryTerms) })).sort((a, b) => b.score - a.score || b.source.meetingDate.localeCompare(a.source.meetingDate));
+  const selected = queryTerms.length && ranked.some((entry) => entry.score > 0) ? ranked.filter((entry) => entry.score > 0) : ranked;
+  let remaining = options.maxCharacters;
+  return selected.slice(0, options.maxSources).map(({ source }) => { const excerpt = clip(source.excerpt, remaining); remaining = Math.max(0, remaining - excerpt.length); return { ...source, excerpt }; }).filter((source) => source.excerpt);
 }

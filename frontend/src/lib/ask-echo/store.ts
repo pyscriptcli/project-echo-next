@@ -2,6 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy, type UsageSnapshot } from "./limits";
 import { INITIAL_ARCHIVED_MEETINGS } from "@/lib/meetingsData";
 import type { ArchivedMeeting } from "@/types/meeting";
+import type { EchoPage } from "./access";
+
+export interface EchoConfiguration {
+  aiPolicy: AiPolicy;
+  defaultPageAccess: EchoPage[];
+  pagePermissions: Array<{ email: string; allowedPages: EchoPage[] }>;
+  admins: Array<{ email: string; active?: boolean }>;
+  mappings: Array<{ listId?: string }>;
+}
 
 function db() {
   const url = process.env.SUPABASE_URL || "";
@@ -14,6 +23,21 @@ export async function loadAiPolicy(): Promise<AiPolicy> {
   if (!client) return DEFAULT_AI_POLICY;
   const { data } = await client.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
   return normalizeAiPolicy(data?.config?.aiPolicy);
+}
+
+export async function loadEchoConfiguration(): Promise<EchoConfiguration> {
+  const client = db();
+  const fallback: EchoConfiguration = { aiPolicy: DEFAULT_AI_POLICY, defaultPageAccess: ["forms", "market-insights", "demands"], pagePermissions: [], admins: [], mappings: [] };
+  if (!client) return fallback;
+  const { data } = await client.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
+  if (!data?.config) return fallback;
+  return {
+    aiPolicy: normalizeAiPolicy(data.config.aiPolicy),
+    defaultPageAccess: data.config.defaultPageAccess || fallback.defaultPageAccess,
+    pagePermissions: data.config.pagePermissions || [],
+    admins: data.config.admins || [],
+    mappings: data.config.mappings || [],
+  };
 }
 
 export async function loadMeetingsForUser(_email: string): Promise<ArchivedMeeting[]> {

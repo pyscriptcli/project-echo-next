@@ -1979,9 +1979,11 @@ export default function Home() {
         isOpen={isUniversalEchoOpen}
         onClose={() => setIsUniversalEchoOpen(false)}
         meetings={archivedMeetings}
-        onOpenMeeting={(meetingId) => {
-          setSelectedMeetingId(meetingId);
-          setCurrentView("meetings");
+        onOpenSource={(page, recordId, url) => {
+          if (page === "meetings") setSelectedMeetingId(recordId);
+          if (page === "tasks") setFocusedTaskId(recordId);
+          if (["meetings", "tasks", "notebook", "forms", "demands", "market-insights"].includes(page)) setCurrentView(page as NavView);
+          else if (url) window.open(url, "_blank", "noopener,noreferrer");
           setIsUniversalEchoOpen(false);
         }}
       />
