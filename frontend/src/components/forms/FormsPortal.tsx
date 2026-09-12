@@ -22,6 +22,7 @@ import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
 import FormsApprovalsView from "./FormsApprovalsView";
 import { isFormsOwner } from "@/lib/forms/owner";
+import { APPROVED_MODELS, DEFAULT_AI_POLICY, type AiPolicy } from "@/lib/ask-echo/limits";
 
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
@@ -99,6 +100,7 @@ export interface FormsConfig {
   defaultPageAccess?: AppPage[];
   emailTemplates?: FormEmailTemplate[];
   allowedSignInDomains: string[];
+  aiPolicy?: AiPolicy;
 }
 
 const DEFAULT_CONFIG: FormsConfig = {
@@ -110,6 +112,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   defaultPageAccess: ["forms"],
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
+  aiPolicy: DEFAULT_AI_POLICY,
 };
 
 function normalizeEmail(email?: string) {
@@ -131,10 +134,11 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
-  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email">("rbac");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
   const [newSignInDomain, setNewSignInDomain] = useState("");
+  const [aiUsage, setAiUsage] = useState<{ today: { requests: number; tokens: number }; month: { requests: number; tokens: number }; recentLimitHits: number; credentialConfigured: boolean } | null>(null);
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -174,6 +178,11 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (settingsTab !== "ai") return;
+    fetch("/api/admin/ai").then((response) => response.ok ? response.json() : null).then((data) => data && setAiUsage(data)).catch(() => {});
+  }, [settingsTab]);
 
   const save = async (next: FormsConfig = config) => {
     setConfig(next);
@@ -445,12 +454,45 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       )}
 
       <div className="flex gap-1 border-b border-gray-200 pb-2">
-        {(["rbac", "configurations", "email"] as const).map((item) => (
+        {(["rbac", "configurations", "email", "ai"] as const).map((item) => (
           <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
-            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : "Email"}
+            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : "AI"}
           </button>
         ))}
       </div>
+
+      <section className={`space-y-4 ${settingsTab !== "ai" ? "hidden" : ""}`}>
+        <div className="panel">
+          <div className="flex items-start justify-between gap-4">
+            <div><h2 className="text-lg font-serif italic text-[#003366]">Ask Echo</h2><p className="mt-1 text-xs text-[#181D1E]/65">Choose the model and keep usage within comfortable limits.</p></div>
+            <span className={`text-[10px] uppercase tracking-widest ${aiUsage?.credentialConfigured ? "text-[#003366]" : "text-red-700"}`}>{aiUsage?.credentialConfigured ? "Ready" : "API key missing"}</span>
+          </div>
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="border-l-2 border-[#C9A84C] px-3"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">Today</div><div className="mt-1 text-2xl font-normal text-[#003366]">{(aiUsage?.today.tokens || 0).toLocaleString()}</div><div className="text-xs text-[#181D1E]/55">tokens · {aiUsage?.today.requests || 0} requests</div></div>
+            <div className="border-l-2 border-[#C9A84C] px-3"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">This month</div><div className="mt-1 text-2xl font-normal text-[#003366]">{(aiUsage?.month.tokens || 0).toLocaleString()}</div><div className="text-xs text-[#181D1E]/55">of {(config.aiPolicy || DEFAULT_AI_POLICY).monthlyOrganizationTokens.toLocaleString()} tokens</div></div>
+            <div className="border-l-2 border-[#C9A84C] px-3"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">Remaining</div><div className="mt-1 text-2xl font-normal text-[#003366]">{Math.max(0, (config.aiPolicy || DEFAULT_AI_POLICY).monthlyOrganizationTokens - (aiUsage?.month.tokens || 0)).toLocaleString()}</div><div className="text-xs text-[#181D1E]/55">shared tokens this month</div></div>
+          </div>
+        </div>
+
+        <div className="panel">
+          <h3 className="text-sm font-medium text-[#003366]">Model</h3>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="text-xs text-[#181D1E]">Main model<select value={(config.aiPolicy || DEFAULT_AI_POLICY).model} onChange={(event) => setConfig({ ...config, aiPolicy: { ...(config.aiPolicy || DEFAULT_AI_POLICY), model: event.target.value } })} className="mt-1 block w-full border border-[#003366]/30 bg-[#FFFCFB] px-3 py-2">{APPROVED_MODELS.map((model) => <option key={model.id} value={model.id}>{model.label} — {model.note}</option>)}</select></label>
+            <label className="text-xs text-[#181D1E]">Backup model<select value={(config.aiPolicy || DEFAULT_AI_POLICY).fallbackModel} onChange={(event) => setConfig({ ...config, aiPolicy: { ...(config.aiPolicy || DEFAULT_AI_POLICY), fallbackModel: event.target.value } })} className="mt-1 block w-full border border-[#003366]/30 bg-[#FFFCFB] px-3 py-2">{APPROVED_MODELS.map((model) => <option key={model.id} value={model.id}>{model.label} — {model.note}</option>)}</select></label>
+          </div>
+          <p className="mt-3 text-[11px] text-[#181D1E]/55">The API key stays in the server settings and is never shown here.</p>
+        </div>
+
+        <div className="panel">
+          <h3 className="text-sm font-medium text-[#003366]">Limits</h3>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {([
+              ["requestsPerMinute", "Requests per minute"], ["concurrentRequestsPerUser", "Replies at the same time"], ["dailyTokensPerUser", "Tokens per user each day"], ["monthlyOrganizationTokens", "Shared tokens each month"], ["maxOutputTokens", "Maximum reply tokens"], ["maxSources", "Sources per answer"],
+            ] as Array<[keyof AiPolicy, string]>).map(([key, label]) => <label key={key} className="text-xs text-[#181D1E]">{label}<input type="number" min={1} value={(config.aiPolicy || DEFAULT_AI_POLICY)[key]} onChange={(event) => setConfig({ ...config, aiPolicy: { ...(config.aiPolicy || DEFAULT_AI_POLICY), [key]: Number(event.target.value) } })} className="mt-1 block w-full border border-[#003366]/30 bg-[#FFFCFB] px-3 py-2" /></label>)}
+          </div>
+          <p className="mt-4 text-xs text-[#181D1E]/60">Use Save Configuration at the top when you’re done.</p>
+        </div>
+      </section>
 
       {/* Role access summary */}
       <section className={`panel ${settingsTab !== "rbac" ? "hidden" : ""}`}>

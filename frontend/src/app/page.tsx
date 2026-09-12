@@ -1979,6 +1979,11 @@ export default function Home() {
         isOpen={isUniversalEchoOpen}
         onClose={() => setIsUniversalEchoOpen(false)}
         meetings={archivedMeetings}
+        onOpenMeeting={(meetingId) => {
+          setSelectedMeetingId(meetingId);
+          setCurrentView("meetings");
+          setIsUniversalEchoOpen(false);
+        }}
       />
     </div>
   );

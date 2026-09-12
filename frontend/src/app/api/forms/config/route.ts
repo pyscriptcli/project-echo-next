@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
+import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
 
 const OWNER_EMAIL = "admin@primephilippines.com";
 interface UserPagePermission {
@@ -18,6 +19,7 @@ interface FormsConfigData {
   defaultPageAccess?: string[];
   emailTemplates?: any[];
   allowedSignInDomains: string[];
+  aiPolicy?: AiPolicy;
 }
 
 const DEFAULT_CONFIG: FormsConfigData = {
@@ -29,6 +31,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   defaultPageAccess: ["forms", "market-insights"],
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
+  aiPolicy: DEFAULT_AI_POLICY,
 };
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];
@@ -176,6 +179,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  body.aiPolicy = normalizeAiPolicy(body.aiPolicy);
   const { data: existing } = await supabase.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
   if (!isOwnerOrAdmin(req, existing?.config || DEFAULT_CONFIG)) {
     return NextResponse.json({ error: "Forms admin permission required" }, { status: 403 });

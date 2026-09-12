@@ -256,23 +256,15 @@ export async function generateMinutes(transcript: string, user_topics: string, n
 }
 
 export async function askEcho(
-  items: any[], 
-  prompt?: string, 
-  action_type?: "actions" | "wording" | "responsibility",
-  transcript?: string
+  question: string,
+  conversation: Array<{ role: "user" | "assistant"; content: string }> = [],
+  signal?: AbortSignal
 ) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  const storedKey = getStoredApiKey();
-  if (storedKey) {
-    headers["x-api-key"] = storedKey;
-  }
-
   const res = await fetch("/api/ask-echo", {
     method: "POST",
-    headers,
-    body: JSON.stringify({ items, prompt, action_type, transcript }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, conversation }),
+    signal,
   });
 
   if (!res.ok) {

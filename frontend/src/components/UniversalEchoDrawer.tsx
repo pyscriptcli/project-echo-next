@@ -1,278 +1,110 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  X, 
-  Sparkles, 
-  Send, 
-  ChevronDown, 
-  ChevronUp, 
-  Loader2, 
-  User,
-  Clock,
-  BookOpen
-} from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { BookOpen, ChevronDown, ChevronUp, Clock, ExternalLink, Maximize2, Minimize2, Plus, Send, Sparkles, Square, User, X } from "lucide-react";
 import { askEcho } from "@/lib/api";
-import { ArchivedMeeting } from "@/types/meeting";
+import type { ArchivedMeeting } from "@/types/meeting";
+import type { AskEchoResponse } from "@/lib/ask-echo/schema";
 
 interface Message {
-  role: "user" | "echo";
+  role: "user" | "assistant";
   content: string;
   timestamp: string;
+  response?: AskEchoResponse;
 }
 
 interface UniversalEchoDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   meetings: ArchivedMeeting[];
+  onOpenMeeting?: (meetingId: string) => void;
 }
 
-export function UniversalEchoDrawer({
-  isOpen,
-  onClose,
-  meetings
-}: UniversalEchoDrawerProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "echo",
-      content: "Hello Dave. I am your Echo intelligence assistant. You can ask me to summarize recent decisions, find specific action items, or review meeting archives.",
-      timestamp: "Just now"
-    }
-  ]);
-  const [inputPrompt, setInputPrompt] = useState("");
+const STARTER: Message = { role: "assistant", content: "Hi — what would you like to know about your meetings?", timestamp: "Just now" };
+const STORAGE_KEY = "echo_ask_conversation";
+
+export function UniversalEchoDrawer({ isOpen, onClose, onOpenMeeting }: UniversalEchoDrawerProps) {
+  const [messages, setMessages] = useState<Message[]>([STARTER]);
+  const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [isPromptsOpen, setIsPromptsOpen] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Close on ESC
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+    try { const stored = sessionStorage.getItem(STORAGE_KEY); if (stored) setMessages(JSON.parse(stored)); } catch {}
+  }, []);
+  useEffect(() => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {} }, [messages]);
+  useEffect(() => { const key = (event: KeyboardEvent) => event.key === "Escape" && isOpen && onClose(); window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [isOpen, onClose]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" }); }, [messages, isThinking]);
 
-  // Scroll to bottom on new message
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isThinking]);
+  const quickPrompts = ["What decisions were made recently?", "What action items are still open?", "What is assigned to me?", "What deadlines are coming up?"];
 
-  const quickPrompts = [
-    "Summarize key decisions across all recent meetings",
-    "What action items are assigned to Dave Policarpio?",
-    "List all external client deliverables due this month",
-    "Compare internal meeting discussions vs external partners"
-  ];
-
-  const handleSend = async (textToSend?: string) => {
-    const prompt = (textToSend || inputPrompt).trim();
-    if (!prompt || isThinking) return;
-
-    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const userMsg: Message = { role: "user", content: prompt, timestamp: timeStr };
-    setMessages((prev) => [...prev, userMsg]);
-    setInputPrompt("");
-    setIsThinking(true);
-
+  const send = async (suggestion?: string) => {
+    const question = (suggestion || input).trim();
+    if (!question || isThinking) return;
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const nextMessages = [...messages, { role: "user" as const, content: question, timestamp }];
+    setMessages(nextMessages); setInput(""); setIsThinking(true); setShowSuggestions(false);
+    const controller = new AbortController(); abortRef.current = controller;
     try {
-      const contextSummary = meetings.map((m) => ({
-        title: m.title,
-        date: m.date,
-        venue: m.location,
-        type: m.meeting_type,
-        attendees: [...(m.attendees_prime || []), ...(m.attendees_external || [])],
-        summary: m.summary,
-        items: m.items.map((i) => ({
-          topic: i.topic,
-          point: i.discussion_point,
-          action: i.action_plan,
-          person: i.person_in_charge,
-          due: i.target_date
-        }))
-      }));
-
-      const res = await askEcho(
-        contextSummary.flatMap((c) => c.items),
-        `MEETING ARCHIVES CONTEXT: ${JSON.stringify(contextSummary)}. USER QUESTION: ${prompt}`,
-        undefined,
-        `All meetings context: ${JSON.stringify(contextSummary)}`
-      );
-
-      const echoReply = res.response || res.result || res.message || "I have analyzed your archives. Let me know if you need deeper details.";
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "echo",
-          content: echoReply,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        }
-      ]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "echo",
-          content: "I encountered an error querying the intelligence repository: " + (err.message || "Please check your network."),
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        }
-      ]);
-    } finally {
-      setIsThinking(false);
-    }
+      const conversation = nextMessages.slice(1, -1).map(({ role, content }) => ({ role, content }));
+      const response = await askEcho(question, conversation, controller.signal);
+      setMessages((current) => [...current, { role: "assistant", content: response.answer, response, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    } catch (error) {
+      const content = error instanceof DOMException && error.name === "AbortError" ? "Stopped." : error instanceof Error ? error.message : "I couldn’t answer that. Please try again.";
+      setMessages((current) => [...current, { role: "assistant", content, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    } finally { setIsThinking(false); abortRef.current = null; }
   };
 
+  const reset = () => { abortRef.current?.abort(); setMessages([STARTER]); setInput(""); setShowSuggestions(true); sessionStorage.removeItem(STORAGE_KEY); };
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-      {/* Backdrop */}
-      <div 
-        onClick={onClose}
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
-      />
-
-      {/* Drawer */}
-      <div className="relative w-full max-w-md md:max-w-lg bg-[#FFFCFB] h-full shadow-2xl flex flex-col z-10 border-l border-gray-200 animate-in slide-in-from-right duration-300">
-        {/* Header (Clean, no prime / firm-wide subheadings) */}
-        <div className="h-16 px-6 bg-[#1b1d1e] text-white flex items-center justify-between border-b border-[#2c2f32]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-none bg-[#25282a] border border-[#C9AB4C]/60 flex items-center justify-center text-[#C9AB4C]">
-              <Sparkles size={16} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-serif font-bold tracking-wider text-base text-[#FAF9F7]">Ask Echo</span>
-                <span className="text-[9px] font-bold tracking-widest text-[#C9AB4C] bg-[#C9AB4C]/10 border border-[#C9AB4C]/30 px-1.5 py-0.5 rounded-none uppercase">
-                  AI Assistant
-                </span>
-              </div>
-              <p className="text-[10px] text-gray-400">Meeting Intelligence & Archives</p>
-            </div>
+      <button aria-label="Close Ask Echo" onClick={onClose} className="fixed inset-0 bg-[#003366]/30 backdrop-blur-[2px]" />
+      <section aria-label="Ask Echo" className={`relative h-full bg-[#FFFCFB] border-l border-[#C9A84C] shadow-2xl flex flex-col transition-[width] duration-300 ${expanded ? "w-full" : "w-full max-w-xl"}`}>
+        <header className="min-h-20 px-5 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C]">
+          <div className="flex items-center gap-3">
+            <img src="/prime-philippines-sidebar-logo.png" alt="PRIME Philippines" className="h-8 w-auto max-w-32 object-contain" />
+            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">Your meeting assistant</p></div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-white rounded-none hover:bg-[#25282a] transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={reset} aria-label="New conversation" className="p-2 hover:bg-[#174778]"><Plus size={17} /></button>
+            <button type="button" onClick={() => setExpanded(!expanded)} aria-label={expanded ? "Close full view" : "Open full view"} className="p-2 hover:bg-[#174778]">{expanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button>
+            <button type="button" onClick={onClose} aria-label="Close" className="p-2 hover:bg-[#174778]"><X size={18} /></button>
+          </div>
+        </header>
 
-        {/* Collapsible Suggested Prompts */}
-        <div className="border-b border-gray-100 bg-[#FAF9F7] px-5 py-3">
-          <button
-            type="button"
-            onClick={() => setIsPromptsOpen(!isPromptsOpen)}
-            className="w-full flex items-center justify-between text-[11px] font-bold tracking-wider uppercase text-gray-500 hover:text-[#003366] transition-colors"
-          >
-            <span className="flex items-center gap-1.5">
-              <BookOpen size={13} className="text-[#C9AB4C]" /> Suggested Queries
-            </span>
-            {isPromptsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+        {showSuggestions && <div className="border-b border-[#C9A84C]/40 px-5 py-4 bg-[#FFFCFB]">
+          <button type="button" onClick={() => setShowSuggestions(!showSuggestions)} className="w-full flex justify-between text-[10px] font-medium tracking-[0.2em] uppercase text-[#003366]"><span className="flex items-center gap-2"><BookOpen size={13} /> Try asking</span>{showSuggestions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">{quickPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => send(prompt)} disabled={isThinking} className="text-left text-xs text-[#181D1E] border border-[#003366]/20 px-3 py-2 hover:border-[#C9A84C] bg-[#FFFCFB]">{prompt}</button>)}</div>
+        </div>}
 
-          {isPromptsOpen && (
-            <div className="mt-2.5 grid grid-cols-1 gap-1.5">
-              {quickPrompts.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSend(prompt)}
-                  disabled={isThinking}
-                  className="text-left text-xs bg-[#FFFCFB] hover:bg-[#F4F1EC] text-gray-700 hover:text-[#003366] border border-gray-200/80 hover:border-[#C9AB4C] px-3 py-1.5 rounded-none transition-all line-clamp-1 disabled:opacity-50"
-                >
-                  &ldquo;{prompt}&rdquo;
-                </button>
-              ))}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#FFFCFB]">
+          {messages.map((message, index) => <div key={`${index}-${message.timestamp}`} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div className={`w-7 h-7 flex items-center justify-center shrink-0 ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
+            <div className={`max-w-[85%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-[#FFFCFB]"}`}>
+              <p className="whitespace-pre-line">{message.content}</p>
+              {message.response?.sources?.length ? <div className="mt-4 border-t border-[#C9A84C]/40 pt-3 space-y-2"><div className="text-[10px] font-medium tracking-[0.2em] uppercase text-[#003366]">Sources</div>{message.response.sources.map((source) => <button key={source.sourceId} type="button" onClick={() => onOpenMeeting?.(source.meetingId)} className="block w-full text-left border-l-2 border-[#C9A84C] pl-3 py-1 hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]">{source.meetingTitle}<ExternalLink size={11} /></span><span className="block text-[10px] text-[#181D1E]/60">{source.meetingDate}{source.topic ? ` · ${source.topic}` : ""}</span><span className="block mt-1 text-xs text-[#181D1E]/80">{source.excerpt}</span></button>)}</div> : null}
+              {message.response?.followUps?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.response.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} className="border border-[#003366]/25 px-2 py-1 text-[11px] text-[#003366] hover:border-[#C9A84C]">{followUp}</button>)}</div> : null}
+              <div className={`text-[9px] mt-2 flex items-center gap-1 ${message.role === "user" ? "justify-end text-[#FFFCFB]/60" : "text-[#181D1E]/45"}`}><Clock size={10} />{message.timestamp}</div>
             </div>
-          )}
-        </div>
-
-        {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#FFFCFB]/50">
-          {messages.map((msg, index) => {
-            const isEcho = msg.role === "echo";
-            return (
-              <div 
-                key={index} 
-                className={`flex gap-3 ${isEcho ? "" : "flex-row-reverse"}`}
-              >
-                <div 
-                  className={`w-7 h-7 rounded-none flex items-center justify-center shrink-0 text-xs font-bold ${
-                    isEcho 
-                      ? "bg-[#1b1d1e] text-[#C9AB4C] border border-[#C9AB4C]/40" 
-                      : "bg-[#003366] text-white"
-                  }`}
-                >
-                  {isEcho ? <Sparkles size={13} /> : <User size={13} />}
-                </div>
-
-                <div 
-                  className={`max-w-[82%] rounded-none p-3 text-xs leading-relaxed shadow-xs ${
-                    isEcho 
-                      ? "bg-[#FFFCFB] border border-gray-200 text-gray-800" 
-                      : "bg-[#003366] text-white"
-                  }`}
-                >
-                  <p className="whitespace-pre-line">{msg.content}</p>
-                  <div 
-                    className={`text-[9px] mt-1.5 flex items-center gap-1 ${
-                      isEcho ? "text-gray-400" : "text-white/60 justify-end"
-                    }`}
-                  >
-                    <Clock size={10} /> {msg.timestamp}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {isThinking && (
-            <div className="flex gap-3">
-              <div className="w-7 h-7 rounded-none bg-[#161616] text-[#C9AB4C] border border-[#C9AB4C]/40 flex items-center justify-center shrink-0">
-                <Sparkles size={13} />
-              </div>
-              <div className="bg-[#FFFCFB] border border-gray-200 rounded-none p-3 text-xs text-gray-500 flex items-center gap-2 shadow-xs">
-                <Loader2 size={14} className="animate-spin text-[#C9AB4C]" />
-                Echo is analyzing meeting archives...
-              </div>
-            </div>
-          )}
+          </div>)}
+          {isThinking && <div className="flex gap-3"><div className="w-7 h-7 bg-[#003366] text-[#C9A84C] flex items-center justify-center"><Sparkles size={13} /></div><div className="border border-[#003366]/15 p-3 text-sm text-[#181D1E]/60">Looking through your meetings…</div></div>}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Bar */}
-        <div className="p-4 bg-[#FFFCFB] border-t border-gray-200">
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }} 
-            className="relative flex items-center"
-          >
-            <input
-              type="text"
-              value={inputPrompt}
-              onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Ask anything about meetings, action items, or decisions..."
-              disabled={isThinking}
-              className="w-full pl-3 pr-10 py-2.5 text-xs bg-[#FFFCFB] border border-gray-300 rounded-none focus:outline-none focus:border-[#003366] focus:bg-[#FFFCFB] transition-all text-gray-800"
-            />
-            <button
-              type="submit"
-              disabled={!inputPrompt.trim() || isThinking}
-              className="absolute right-2 text-[#003366] hover:text-[#C9AB4C] disabled:opacity-30 p-1.5 transition-colors rounded-none"
-            >
-              <Send size={15} />
-            </button>
+        <footer className="p-4 bg-[#FFFCFB] border-t border-[#C9A84C]/50">
+          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">All meetings · current session</div>
+          <form onSubmit={(event) => { event.preventDefault(); send(); }} className="flex items-end border border-[#003366]/35 focus-within:border-[#003366]">
+            <textarea aria-label="Message Ask Echo" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about a decision, action item, or deadline…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
+            {isThinking ? <button type="button" onClick={() => abortRef.current?.abort()} aria-label="Stop response" className="m-1.5 p-2 text-[#003366]"><Square size={15} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Send message" className="m-1.5 p-2 text-[#003366] disabled:opacity-30"><Send size={16} /></button>}
           </form>
-          <div className="text-[10px] text-gray-400 text-center mt-2">
-            Answers are synthesized directly from your archived meeting records.
-          </div>
-        </div>
-      </div>
+          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Echo answers from meeting records and shows its sources.</p>
+        </footer>
+      </section>
     </div>
   );
 }
