@@ -34,6 +34,7 @@ interface SidebarProps {
   } | null;
   onSignOut?: () => void;
   allowedPages?: NavView[];
+  sidebarOrder?: NavView[];
   isAdmin?: boolean;
 }
 
@@ -45,6 +46,7 @@ export function Sidebar({
   user,
   onSignOut,
   allowedPages,
+  sidebarOrder,
   isAdmin
 }: SidebarProps) {
   const [isHovered, setIsHovered] = React.useState(false);
@@ -121,7 +123,11 @@ export function Sidebar({
     }
   ];
 
-  const navItems = allNavItems.filter((item) => {
+  const orderIndex = new Map((sidebarOrder || []).map((id, index) => [id, index]));
+  const navItems = allNavItems.slice().sort((a, b) => {
+    const fallback = allNavItems.length;
+    return (orderIndex.get(a.id) ?? fallback) - (orderIndex.get(b.id) ?? fallback);
+  }).filter((item) => {
     if (isProjectAdmin) return true;
     if (!allowedPages || allowedPages.length === 0) return true;
     return allowedPages.includes(item.id);

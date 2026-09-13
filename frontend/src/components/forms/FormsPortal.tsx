@@ -17,7 +17,7 @@ import {
   RotateCcw,
   Users,
   Mail
-  ,BarChart3, Download
+  ,BarChart3, Download, ChevronUp, ChevronDown
 } from "lucide-react";
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
@@ -99,6 +99,7 @@ export interface FormsConfig {
   mappings: FormMapping[];
   pagePermissions?: UserPagePermission[];
   defaultPageAccess?: AppPage[];
+  sidebarOrder?: AppPage[];
   emailTemplates?: FormEmailTemplate[];
   allowedSignInDomains: string[];
   aiPolicy?: AiPolicy;
@@ -111,6 +112,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   mappings: [],
   pagePermissions: [],
   defaultPageAccess: ["forms"],
+  sidebarOrder: APP_PAGE_LIST.map((page) => page.id),
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
   aiPolicy: DEFAULT_AI_POLICY,
@@ -135,7 +137,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
-  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry">("rbac");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry" | "navigation">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
   const [newSignInDomain, setNewSignInDomain] = useState("");
@@ -162,6 +164,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           ...parsed,
           pagePermissions: parsed.pagePermissions || [],
           emailTemplates: parsed.emailTemplates || [],
+          sidebarOrder: parsed.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
         });
       } catch {}
     }
@@ -176,6 +179,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             pagePermissions: data.config.pagePermissions || [],
             defaultPageAccess: data.config.defaultPageAccess || ["forms"],
             emailTemplates: data.config.emailTemplates || [],
+            sidebarOrder: data.config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
           });
         }
       })
@@ -464,12 +468,44 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       )}
 
       <div className="flex gap-1 border-b border-gray-200 pb-2">
-        {(["rbac", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
+        {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
           <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
-            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : item === "ai" ? "AI" : "Telemetry"}
+            {item === "rbac" ? "RBAC" : item === "navigation" ? "Navigation" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : item === "ai" ? "AI" : "Telemetry"}
           </button>
         ))}
       </div>
+
+      <section className={`space-y-4 ${settingsTab !== "navigation" ? "hidden" : ""}`}>
+        <div className="panel">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-serif italic text-[#003366]">Sidebar order</h2>
+              <p className="mt-1 text-xs text-[#181D1E]/65">Choose the order of the main workspace navigation. Changes apply to every user who can access those pages.</p>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest text-[#003366]/60">Drag-free controls</span>
+          </div>
+          <div className="mt-5 max-w-2xl space-y-2">
+            {(config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder || []).map((pageId, index, order) => {
+              const page = APP_PAGE_LIST.find((item) => item.id === pageId);
+              if (!page) return null;
+              const move = (direction: -1 | 1) => {
+                const target = index + direction;
+                if (target < 0 || target >= order.length) return;
+                const next = [...order];
+                [next[index], next[target]] = [next[target], next[index]];
+                setConfig({ ...config, sidebarOrder: next });
+              };
+              return <div key={page.id} className="flex items-center gap-3 border border-[#003366]/15 bg-[#FFFCFB] px-3 py-3">
+                <span className="w-6 text-center text-xs font-bold text-[#003366]/55">{index + 1}</span>
+                <div className="min-w-0 flex-1"><div className="text-sm font-semibold text-[#003366]">{page.label}</div><div className="text-xs text-[#181D1E]/55">{page.desc}</div></div>
+                <button type="button" aria-label={`Move ${page.label} up`} disabled={index === 0} onClick={() => move(-1)} className="border border-[#003366]/20 p-2 text-[#003366] disabled:cursor-not-allowed disabled:opacity-25"><ChevronUp size={15} /></button>
+                <button type="button" aria-label={`Move ${page.label} down`} disabled={index === order.length - 1} onClick={() => move(1)} className="border border-[#003366]/20 p-2 text-[#003366] disabled:cursor-not-allowed disabled:opacity-25"><ChevronDown size={15} /></button>
+              </div>;
+            })}
+          </div>
+          <p className="mt-4 text-xs text-[#181D1E]/60">Use Save Configuration above to publish the new order.</p>
+        </div>
+      </section>
 
       <section className={`space-y-4 ${settingsTab !== "telemetry" ? "hidden" : ""}`}>
         <div className="panel">

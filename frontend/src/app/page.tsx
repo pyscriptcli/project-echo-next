@@ -356,6 +356,9 @@ export default function Home() {
     "minutes",
     "forms",
   ]);
+  const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
+    "dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms",
+  ]);
   const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
@@ -383,6 +386,9 @@ export default function Home() {
                 return prev;
               });
             }
+          }
+          if (Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0) {
+            setSidebarOrder(data.config.sidebarOrder as NavView[]);
           }
         })
         .catch(() => {});
@@ -897,6 +903,7 @@ export default function Home() {
         user={authUser}
         onSignOut={handleSignOut}
         allowedPages={allowedPages}
+        sidebarOrder={sidebarOrder}
         isAdmin={isAdminUser}
       />
 

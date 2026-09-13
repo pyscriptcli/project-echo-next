@@ -17,6 +17,7 @@ interface FormsConfigData {
   mappings: any[];
   pagePermissions: UserPagePermission[];
   defaultPageAccess?: string[];
+  sidebarOrder?: string[];
   emailTemplates?: any[];
   allowedSignInDomains: string[];
   aiPolicy?: AiPolicy;
@@ -29,6 +30,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   mappings: [],
   pagePermissions: [],
   defaultPageAccess: ["forms", "market-insights"],
+  sidebarOrder: ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"],
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
   aiPolicy: DEFAULT_AI_POLICY,
@@ -79,6 +81,7 @@ export async function GET(req: NextRequest) {
         ...data.config,
         pagePermissions: data.config.pagePermissions || [],
         defaultPageAccess: data.config.defaultPageAccess || ["forms"],
+        sidebarOrder: data.config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
       };
       source = "supabase";
     }
@@ -96,6 +99,7 @@ export async function GET(req: NextRequest) {
       allowedPages: defaultPages,
       userAllowedPages: defaultPages,
       defaultPageAccess: defaultPages,
+      sidebarOrder: config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
       isAdmin: false,
       source,
     });
@@ -131,6 +135,7 @@ export async function GET(req: NextRequest) {
       config: {
         ...config,
         defaultPageAccess: defaultPages,
+        sidebarOrder: config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
       },
       allowedPages,
       userAllowedPages: allowedPages,
