@@ -204,7 +204,7 @@ export function StudioPanel({
       const response = await fetch("/api/meetstream/bots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ meetingLink }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Echo.ai could not join this meeting.");
-      setBotStatus("Echo.ai is joining the meeting.");
+      setBotStatus("Meeting in progress · Echo.ai is capturing audio.");
       setMeetingLink("");
     } catch (error) {
       setBotStatus(error instanceof Error ? error.message : "Echo.ai could not join this meeting.");
