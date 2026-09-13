@@ -221,8 +221,8 @@ export function StudioPanel({
         notes: notes.map(({ timestamp, text }) => ({ timestamp, text })),
       });
       setEchoMessages((current) => [...current, { role: "assistant", content: response.answer, response, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
-    } catch (error) {
-      setEchoMessages((current) => [...current, { role: "assistant", content: error instanceof Error ? error.message : "Echo couldn’t answer right now.", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    } catch {
+      setEchoMessages((current) => [...current, { role: "assistant", content: "I couldn’t answer that just now. Your meeting is still being captured — try again in a moment.", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
     } finally {
       setIsEchoThinking(false);
     }
@@ -298,11 +298,9 @@ export function StudioPanel({
             </span>
             <div>
               <h2 className="text-base font-semibold leading-tight tracking-tight">Meeting studio</h2>
-              {isRecordingActive && (
-                  <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
-                  {recorder.status === "paused" ? "Paused" : "Recording"}
-                </p>
-              )}
+              <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
+                {recorder.status === "paused" ? "Paused" : isRecordingActive ? "Recording" : isStopped ? "Recording complete" : "Ready when you are"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -326,10 +324,10 @@ export function StudioPanel({
         </header>
 
         {/* ── Content ─────────────────────────────────────────────────── */}
-        <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-row" : "flex-col"}`}>
+        <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-1/2 border-r border-[#D9E1EA]" : ""} p-6 flex flex-col gap-5 shrink-0`}>
+          <div className={`${isFullscreen ? "w-[46%] border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
                 <strong className="text-[#003366]">Choose how to capture</strong>
@@ -469,7 +467,7 @@ export function StudioPanel({
 
             {/* Timer */}
             {isRecordingActive && (
-              <div className="text-center bg-white border border-slate-200 border-t-2 border-t-[#C9A84C] px-8 py-4 shadow-sm">
+              <div className="text-center bg-white border border-slate-200 border-t-2 border-t-[#C9A84C] px-8 py-4 shadow-sm rounded-sm">
                 <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
                   {formatTime(recorder.elapsedSeconds)}
                 </span>
@@ -537,7 +535,7 @@ export function StudioPanel({
           </div>
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-1/2" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-white/40`}>
+          <div className={`${isFullscreen ? "w-[54%]" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>

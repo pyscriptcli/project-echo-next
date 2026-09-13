@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }));
   } catch (error) {
     const status = Number((error as { status?: number }).status || 500);
-    const message = error instanceof Error ? error.message : "Ask Echo couldn’t answer right now. Please try again.";
+    const message = status >= 500 ? "Echo couldn’t answer that just now. Please try again." : (error instanceof Error ? error.message : "Ask Echo couldn’t answer right now. Please try again.");
     if (status >= 500) console.error("[Ask Echo] Request failed:", error);
     return NextResponse.json({ error: message }, { status });
   }

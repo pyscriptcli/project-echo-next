@@ -1,6 +1,41 @@
 import type { ConversationTurn } from "./schema";
 import type { EvidenceSource } from "./retrieval";
 
+/** Recover the first JSON object from model output that may include fences or trailing prose. */
+export interface ParsedModelResponse {
+  answer: string;
+  sourceIds: unknown[];
+  citations: unknown[];
+  confidence: "supported" | "partial" | "insufficient";
+  followUps: unknown[];
+  [key: string]: unknown;
+}
+
+export function parseModelJson(content: string): ParsedModelResponse {
+  const normalized = content.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+  const start = normalized.indexOf("{");
+  if (start < 0) throw new Error("Ask Echo returned an unreadable response.");
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < normalized.length; index += 1) {
+    const character = normalized[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') inString = true;
+    else if (character === "{") depth += 1;
+    else if (character === "}") {
+      depth -= 1;
+      if (depth === 0) return JSON.parse(normalized.slice(start, index + 1)) as ParsedModelResponse;
+    }
+  }
+  throw new Error("Ask Echo returned an incomplete response.");
+}
+
 export async function askModel(args: { model: string; fallbackModel: string; maxOutputTokens: number; question: string; conversation: ConversationTurn[]; evidence: EvidenceSource[]; user?: { id?: string | number; name?: string; email?: string } }) {
   const apiKey = process.env.DEEPSEEK_API_KEY || "";
   if (!apiKey) throw new Error("Ask Echo isn’t configured yet. Please contact an admin.");
@@ -18,6 +53,6 @@ export async function askModel(args: { model: string; fallbackModel: string; max
   };
   let data;
   try { data = await call(args.model); } catch (error) { if (args.fallbackModel === args.model) throw error; data = await call(args.fallbackModel); }
-  const content = JSON.parse(String(data.choices?.[0]?.message?.content || "{}"));
+  const content = parseModelJson(String(data.choices?.[0]?.message?.content || "{}"));
   return { content, usage: { inputTokens: Number(data.usage?.prompt_tokens || 0), outputTokens: Number(data.usage?.completion_tokens || 0), totalTokens: Number(data.usage?.total_tokens || 0) } };
 }
