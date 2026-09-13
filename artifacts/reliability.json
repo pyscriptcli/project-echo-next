@@ -1,0 +1,408 @@
+{
+  "generatedAt": "2026-09-13T12:05:15.804458+00:00",
+  "url": "https://project-echo-next.vercel.app/",
+  "configuration": {
+    "durationSeconds": 120.0,
+    "users": 5,
+    "sampleInterval": 10
+  },
+  "successCriteria": {
+    "longSessionHours": 8,
+    "concurrencyUsers": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "principle": "Measure continuous recording before considering segmentation."
+  },
+  "results": [
+    {
+      "name": "continuous_recording",
+      "status": "passed",
+      "duration_seconds": 120.0,
+      "users": 1,
+      "samples": [
+        {
+          "elapsed_seconds": 0.006787199999962468,
+          "heap_used_bytes": 7514492,
+          "heap_total_bytes": 11695724,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Echo x ClickUp\nCLICK UP INTEGRATION\nSign In\n\nConnect your own ClickUp account to let Echo answer questions using only the work you can access.\n\nContinue with ClickUp",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 10.256389899997885,
+          "heap_used_bytes": 231556356,
+          "heap_total_bytes": 307939476,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nTo connect echo-next, please log in:\n\nContinue with SSO\nor\nLog In",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 20.067537699997047,
+          "heap_used_bytes": 259874662,
+          "heap_total_bytes": 320005706,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nTo connect echo-next, please log in:\n\nContinue with SSO\nor\nLog In",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 30.09624099999928,
+          "heap_used_bytes": 251200623,
+          "heap_total_bytes": 315240787,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nSelect Workspaces to connect with echo-next:\n\nC\nCollaborate@PRIME\nP\nPrimephilippines\nCancelConnect Workspaces",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 40.14350189999823,
+          "heap_used_bytes": 7595946,
+          "heap_total_bytes": 10908522,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 50.20133299999725,
+          "heap_used_bytes": 7986401,
+          "heap_total_bytes": 11172473,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 60.027956499998254,
+          "heap_used_bytes": 8002617,
+          "heap_total_bytes": 11172473,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 70.10950559999765,
+          "heap_used_bytes": 6401375,
+          "heap_total_bytes": 7218379,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 80.18511979999676,
+          "heap_used_bytes": 6414110,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 90.27070420000018,
+          "heap_used_bytes": 6424418,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 100.1047510999997,
+          "heap_used_bytes": 6434894,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 110.18946579999829,
+          "heap_used_bytes": 6445282,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        }
+      ],
+      "observations": [
+        "JS heap start=7,514,492 bytes, end=6,445,282 bytes, peak=259,874,662 bytes, delta=-1,069,210 bytes.",
+        "No large heap increase detected during this run."
+      ],
+      "limitations": [
+        "No --start-selector supplied; this run measures page stability but does not start recording."
+      ],
+      "errors": []
+    },
+    {
+      "name": "concurrent_users",
+      "status": "passed",
+      "duration_seconds": 30,
+      "users": 5,
+      "samples": [],
+      "observations": [
+        "Opened and held 5 independent browser contexts for 30s."
+      ],
+      "limitations": [],
+      "errors": []
+    },
+    {
+      "name": "network_recovery",
+      "status": "passed",
+      "duration_seconds": 10,
+      "users": 1,
+      "samples": [],
+      "observations": [
+        "API requests were blocked temporarily, then restored and the page was reloaded."
+      ],
+      "limitations": [
+        "This validates UI/API recovery only; it cannot prove microphone buffer recovery without an active recording."
+      ],
+      "errors": []
+    }
+  ],
+  "executiveSummary": "This report measures the existing continuous recorder before any segmentation is added.",
+  "currentArchitectureTested": "Continuous browser recording with background chunk transcription; no recording segmentation was introduced by this harness.",
+  "longSessionResults": {
+    "2h": "not measured unless --duration-seconds=7200",
+    "4h": "not measured unless --duration-seconds=14400",
+    "6h": "not measured unless --duration-seconds=21600",
+    "8h": "not measured unless --duration-seconds=28800",
+    "currentRun": {
+      "name": "continuous_recording",
+      "status": "passed",
+      "duration_seconds": 120.0,
+      "users": 1,
+      "samples": [
+        {
+          "elapsed_seconds": 0.006787199999962468,
+          "heap_used_bytes": 7514492,
+          "heap_total_bytes": 11695724,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Echo x ClickUp\nCLICK UP INTEGRATION\nSign In\n\nConnect your own ClickUp account to let Echo answer questions using only the work you can access.\n\nContinue with ClickUp",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 10.256389899997885,
+          "heap_used_bytes": 231556356,
+          "heap_total_bytes": 307939476,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nTo connect echo-next, please log in:\n\nContinue with SSO\nor\nLog In",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 20.067537699997047,
+          "heap_used_bytes": 259874662,
+          "heap_total_bytes": 320005706,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nTo connect echo-next, please log in:\n\nContinue with SSO\nor\nLog In",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 30.09624099999928,
+          "heap_used_bytes": 251200623,
+          "heap_total_bytes": 315240787,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "Connect ClickUp\n\nSelect Workspaces to connect with echo-next:\n\nC\nCollaborate@PRIME\nP\nPrimephilippines\nCancelConnect Workspaces",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 40.14350189999823,
+          "heap_used_bytes": 7595946,
+          "heap_total_bytes": 10908522,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 50.20133299999725,
+          "heap_used_bytes": 7986401,
+          "heap_total_bytes": 11172473,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 60.027956499998254,
+          "heap_used_bytes": 8002617,
+          "heap_total_bytes": 11172473,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 70.10950559999765,
+          "heap_used_bytes": 6401375,
+          "heap_total_bytes": 7218379,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 80.18511979999676,
+          "heap_used_bytes": 6414110,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 90.27070420000018,
+          "heap_used_bytes": 6424418,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 100.1047510999997,
+          "heap_used_bytes": 6434894,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        },
+        {
+          "elapsed_seconds": 110.18946579999829,
+          "heap_used_bytes": 6445282,
+          "heap_total_bytes": 7219586,
+          "js_heap_limit_bytes": 4395630592,
+          "cpu_seconds": null,
+          "audio_state": "unknown",
+          "recorder_text": "NTELLIGENCE & OPERATIONAL CADENCE\n\nAll\nDate\nRange\nTOTAL MEETINGS\n1\nRecorded sessions\nTEAM MEETINGS\n0\nInternal departments\nINTERNAL MEETINGS\n1\nExecutive leadership\nEXTERNAL MEETINGS\n0\nClients & partners\nPERIOD DISTRIBUTION\nInternal: 100.0%\nExternal: 0.0%\nRECENT MEETINGS\nCore Strategy Meeting\nINTERNAL\nSeptember 8, 2026\n\u2022 GreatWork Mega Tower 32F - Secret Room\nOPEN MEETING RECORD\n\n\u201cThe Executive Core Meeting convened to establish procedural priorities for executive workflows, focusing on AI-assisted minutes transcription, standardized action-item matrices, and automated document compilation. Attendees finalized timelines for tool selection and assigned responsibility for platform integration to Dave Policarpio.\u201d\n\n2 Structured Discussion Points\nAttendees: Dave Policarpio, Internal Leadership Team\nMEETING CALENDAR\nSeptember 2026\nSU\nMO\nTU\nWE\nTH\nFR\nSA\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\nDates with scheduled or recorded meetings\nClick date to filter",
+          "errors": []
+        }
+      ],
+      "observations": [
+        "JS heap start=7,514,492 bytes, end=6,445,282 bytes, peak=259,874,662 bytes, delta=-1,069,210 bytes.",
+        "No large heap increase detected during this run."
+      ],
+      "limitations": [
+        "No --start-selector supplied; this run measures page stability but does not start recording."
+      ],
+      "errors": []
+    }
+  },
+  "concurrentUserResults": {
+    "1": "not measured",
+    "5": "run with --users=5",
+    "10": "run with --users=10",
+    "20": "run with --users=20",
+    "currentRun": {
+      "name": "concurrent_users",
+      "status": "passed",
+      "duration_seconds": 30,
+      "users": 5,
+      "samples": [],
+      "observations": [
+        "Opened and held 5 independent browser contexts for 30s."
+      ],
+      "limitations": [],
+      "errors": []
+    }
+  },
+  "browserResourceResults": "Chromium JS heap samples are included when performance.memory is available. CPU and system RAM require OS-level measurement on the local laptop.",
+  "recordingReliability": "Requires a real microphone run with --start-selector; synthetic page stability alone cannot prove audio capture.",
+  "networkRecovery": {
+    "name": "network_recovery",
+    "status": "passed",
+    "duration_seconds": 10,
+    "users": 1,
+    "samples": [],
+    "observations": [
+      "API requests were blocked temporarily, then restored and the page was reloaded."
+    ],
+    "limitations": [
+      "This validates UI/API recovery only; it cannot prove microphone buffer recovery without an active recording."
+    ],
+    "errors": []
+  },
+  "browserFailureRecovery": "Not safely simulated; requires browser crash/restart test on a real device.",
+  "microphoneFailureRecovery": "Not safely simulated; requires unplug/replug and permission revocation on a real device.",
+  "pauseResume": "Not exercised automatically because selectors are app-specific; provide selectors and add a scenario before relying on this result.",
+  "transcriptionBacklog": "Not measured by this browser harness; correlate with Echo telemetry exports after instrumentation is active.",
+  "askEchoDuringProcessing": "Not measured by this harness; run with an active recording and verify Ask Echo remains responsive.",
+  "meetingIsolation": "Independent browser contexts are used for concurrency; backend identity isolation still requires production tests.",
+  "clickUpFinalization": "Not automated; requires an authenticated end-to-end test and should be verified separately.",
+  "identifiedBottlenecks": [],
+  "failureModes": [],
+  "maximumPotentialAudioLoss": "Not established by simulation. Measure the recorder's last persisted buffer and network recovery behavior on a real device.",
+  "segmentationAnalysis": {
+    "tested": false,
+    "reason": "This harness measures the existing continuous architecture and does not add segmentation for testing.",
+    "comparisonFields": [
+      "memory",
+      "CPU",
+      "network",
+      "browser stability",
+      "failure recovery",
+      "maximum audio loss",
+      "upload reliability",
+      "transcription integration",
+      "complexity",
+      "failure points"
+    ]
+  },
+  "finalDecision": "CONTINUOUS RECORDING WITH ADDITIONAL SAFEGUARDS",
+  "recommendations": [
+    {
+      "priority": "MUST FIX",
+      "item": "Investigate any failed scenario and reproduce it with a focused test."
+    },
+    {
+      "priority": "SHOULD FIX",
+      "item": "Run the same harness on a real laptop with microphone and camera permissions."
+    },
+    {
+      "priority": "DO NOT CHANGE YET",
+      "item": "Do not add recording segmentation unless continuous recording fails the defined thresholds."
+    }
+  ],
+  "realWorldTestsStillRequired": [
+    "8-hour recording with a real microphone and real browser tab.",
+    "Laptop sleep/wake, browser crash/restart, microphone unplug/replug, and permission revocation.",
+    "Actual network drop while recording and verification of recovered audio boundaries.",
+    "20 simultaneous real users and final ClickUp archival under production credentials."
+  ]
+}
