@@ -24,6 +24,7 @@ import FormsTrackView from "./FormsTrackView";
 import FormsApprovalsView from "./FormsApprovalsView";
 import { isFormsOwner } from "@/lib/forms/owner";
 import { APPROVED_MODELS, DEFAULT_AI_POLICY, type AiPolicy } from "@/lib/ask-echo/limits";
+import { REPOSITORY_FORM_MAPPINGS } from "./forms.config";
 
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
@@ -109,7 +110,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   admins: [],
   members: [],
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
-  mappings: [],
+  mappings: REPOSITORY_FORM_MAPPINGS,
   pagePermissions: [],
   defaultPageAccess: ["forms"],
   sidebarOrder: APP_PAGE_LIST.map((page) => page.id),

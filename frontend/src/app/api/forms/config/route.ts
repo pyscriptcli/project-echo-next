@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
+import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
 
 const OWNER_EMAIL = "admin@primephilippines.com";
 interface UserPagePermission {
@@ -27,7 +28,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
   admins: [],
   members: [],
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
-  mappings: [],
+  mappings: REPOSITORY_FORM_MAPPINGS,
   pagePermissions: [],
   defaultPageAccess: ["forms", "market-insights"],
   sidebarOrder: ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"],
@@ -79,6 +80,7 @@ export async function GET(req: NextRequest) {
       config = {
         ...DEFAULT_CONFIG,
         ...data.config,
+        mappings: Array.isArray(data.config.mappings) && data.config.mappings.length > 0 ? data.config.mappings : REPOSITORY_FORM_MAPPINGS,
         pagePermissions: data.config.pagePermissions || [],
         defaultPageAccess: data.config.defaultPageAccess || ["forms"],
         sidebarOrder: data.config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,

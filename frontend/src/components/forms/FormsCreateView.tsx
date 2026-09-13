@@ -24,6 +24,7 @@ import ITHelpdeskSupportForm from "@/components/forms/IT/templates/ITHelpdeskSup
 import ITBugErrorReportForm from "@/components/forms/IT/templates/ITBugErrorReportForm";
 import { SubmissionLoadingModal, SubmissionStage } from "@/components/forms/SubmissionLoadingModal";
 import { ValidationAlertBanner } from "@/components/forms/ValidationAlertBanner";
+import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
 import { generateRfpPdf, downloadPdfBlob, generateRfpImageBlob } from "@/lib/forms/pdfGenerator";
 import {
   validateRfpForm,
@@ -848,10 +849,10 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
 export default function FormsCreateView({ user }: { user?: FormsUser | null }) {
   const [category, setCategory] = useState("Finance");
   const [itFormKey, setItFormKey] = useState("it-asset-request-form");
-  const [mappings, setMappings] = useState<Array<{ department: string; formType: string; listId?: string }>>([]);
+  const [mappings, setMappings] = useState<Array<{ department: string; formType: string; listId?: string }>>(REPOSITORY_FORM_MAPPINGS);
   const [submissionResult, setSubmissionResult] = useState<{ taskUrl?: string; taskId?: string; formRequestId?: string } | null>(null);
   const departments = ["Finance", "Marketing", "IT", "Research & Advisory"];
-  useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setMappings(data?.config?.mappings || [])).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => { if (data?.config?.mappings?.length) setMappings(data.config.mappings); }).catch(() => {}); }, []);
   useEffect(() => {
     const showConfirmation = (event: Event) => setSubmissionResult((event as CustomEvent<{ taskUrl?: string; taskId?: string; formRequestId?: string }>).detail || {});
     window.addEventListener("echo-form-submitted", showConfirmation);
