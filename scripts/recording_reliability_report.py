@@ -290,9 +290,28 @@ async def main(args: argparse.Namespace) -> None:
             launch_args += ["--use-fake-ui-for-media-stream", f"--use-file-for-fake-audio-capture={args.fake_media}"]
         browser = await playwright.chromium.launch(headless=not args.headed, args=launch_args)
         try:
-            results = [await run_long_session(browser, args)]
-            results.append(await run_concurrency(browser, args))
-            results.append(await run_network_recovery(browser, args))
+            results: list[ScenarioResult] = []
+            if args.overnight:
+                print("[SUITE] Overnight suite enabled. This may run for 20+ hours.", flush=True)
+                for label, duration in (("2h", 7200), ("4h", 14400), ("6h", 21600), ("8h", 28800)):
+                    print(f"[SUITE] Starting long-session checkpoint {label}", flush=True)
+                    checkpoint_args = argparse.Namespace(**vars(args))
+                    checkpoint_args.duration_seconds = duration
+                    result = await run_long_session(browser, checkpoint_args)
+                    result.name = f"continuous_recording_{label}"
+                    results.append(result)
+                for users in (1, 5, 10, 20):
+                    print(f"[SUITE] Starting concurrency checkpoint users={users}", flush=True)
+                    checkpoint_args = argparse.Namespace(**vars(args))
+                    checkpoint_args.users = users
+                    result = await run_concurrency(browser, checkpoint_args)
+                    result.name = f"concurrent_users_{users}"
+                    results.append(result)
+                results.append(await run_network_recovery(browser, args))
+            else:
+                results = [await run_long_session(browser, args)]
+                results.append(await run_concurrency(browser, args))
+                results.append(await run_network_recovery(browser, args))
             payload = report_payload(args, results)
         finally:
             await browser.close()
@@ -315,6 +334,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--users", type=int, default=5)
     parser.add_argument("--concurrency-seconds", type=float, default=30)
     parser.add_argument("--recovery-seconds", type=float, default=10)
+    parser.add_argument("--overnight", action="store_true", help="Run unattended 2h/4h/6h/8h and 1/5/10/20-user checkpoints.")
     parser.add_argument("--start-selector", help="Optional selector for the Echo start-recording button.")
     parser.add_argument("--stop-selector", help="Optional selector for the Echo stop-recording button.")
     parser.add_argument("--fake-media", help="Optional WAV path for Chromium fake microphone input.")
