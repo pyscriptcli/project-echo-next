@@ -527,7 +527,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                         ) : null;
                       })}
                     </span>
-                  ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Not counted in daily log" : dayEntries.length ? "Empty log" : "Empty day"}</span>}
+                  ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Weekend" : dayEntries.length ? "Empty log" : "Empty day"}</span>}
                 </button>
               );
             })}
@@ -572,7 +572,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs and days without any logs.</p></div>
-              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-[#C9A84C]" /> Empty log</span></div>
+              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-yellow-300" /> Empty log</span></div>
             </div>
             <div className="overflow-x-auto p-5">
               <div style={{ minWidth: `${Math.max(720, 210 + workdays.length * 35)}px` }}>
@@ -587,7 +587,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                       {workdays.map((date) => {
                         const dayEntries = row.byDate.get(date) || [];
                         const status = dayEntries.some((entry) => entry.hasContent) ? "submitted" : "empty";
-                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-[#C9A84C]/25 text-[#8A6818] border border-[#C9A84C]/40"}`}>{status === "submitted" ? "✓" : "·"}</div>;
+                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-yellow-100 text-yellow-800 border border-yellow-300"}`}>{status === "submitted" ? "✓" : "·"}</div>;
                       })}
                     </div>
                   ))}
