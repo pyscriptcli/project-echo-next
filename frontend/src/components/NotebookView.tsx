@@ -528,6 +528,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                       })}
                     </span>
                   ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Weekend" : "Empty log"}</span>}
+                  {!isWeekend && <span className={`block mt-4 pt-3 border-t text-[11px] font-semibold uppercase tracking-wider ${isWeekend ? "border-white/15 text-white/60" : "border-gray-100 text-[#003366]"}`}>{total ? "Edit day" : "Add log"} <span aria-hidden="true">→</span></span>}
                 </button>
               );
             })}
