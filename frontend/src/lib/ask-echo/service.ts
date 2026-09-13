@@ -5,6 +5,7 @@ import { askModel } from "./provider";
 import { getUsageSnapshot, loadEchoConfiguration, loadMeetingsForUser, recordUsage } from "./store";
 import { resolveAllowedPages, sourcesEnabledForPages } from "./access";
 import { loadClickUpContext } from "./clickup";
+import { recordTelemetry } from "@/lib/telemetry";
 
 const activeRequests = new Map<string, number>();
 
@@ -66,10 +67,14 @@ export async function answerAskEcho(input: unknown, user: { id?: string | number
       return { marker: String(item.marker || `[${index + 1}]`), sourceId: String(item.sourceId || "") };
     }).filter((citation: { marker: string; sourceId: string }) => allowedSourceIds.has(citation.sourceId)).slice(0, 8) : [];
     const response: AskEchoResponse = { answer: String(result.content.answer || "I couldn't find enough in the workspace to answer that."), sources, citations, confidence, followUps: Array.isArray(result.content.followUps) ? result.content.followUps.map(String).slice(0, 3) : [], usage: result.usage };
-    await recordUsage({ userEmail, model: policy.model, status: "success", latencyMs: Date.now() - started, ...result.usage });
+    const latencyMs = Date.now() - started;
+    await recordUsage({ userEmail, model: policy.model, status: "success", latencyMs, ...result.usage });
+    void recordTelemetry({ userId: String(user.id || ""), userEmail, source: "ask_echo", operation: "ask_echo", provider: "deepseek", model: policy.model, processingMs: latencyMs, success: true, metadata: { sourceCount: sources.length } });
     return response;
   } catch (error) {
-    await recordUsage({ userEmail, model: policy.model, status: "failed", latencyMs: Date.now() - started, inputTokens: 0, outputTokens: 0, totalTokens: 0 });
+    const latencyMs = Date.now() - started;
+    await recordUsage({ userEmail, model: policy.model, status: "failed", latencyMs, inputTokens: 0, outputTokens: 0, totalTokens: 0 });
+    void recordTelemetry({ userId: String(user.id || ""), userEmail, source: "ask_echo", operation: "ask_echo", provider: "deepseek", model: policy.model, processingMs: latencyMs, success: false, errorCategory: "ask_echo_error", errorMessage: error instanceof Error ? error.message : String(error) });
     throw error;
   } finally {
     const remaining = (activeRequests.get(userEmail) || 1) - 1;

@@ -5,6 +5,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import mammoth from "mammoth";
+import { getUserFromRequest } from "@/lib/auth";
+import { recordTelemetry } from "@/lib/telemetry";
 
 async function extractMetadataWithAI(text: string, apiKey: string) {
   if (!apiKey) return {};
@@ -195,12 +197,14 @@ async function transcribeAudioBuffer(
 
 export async function POST(req: NextRequest) {
   let tempFilePath: string | null = null;
+  const requestStarted = Date.now();
   try {
     const headerKey = req.headers.get("x-api-key") || req.headers.get("x-deepseek-api-key");
     const aiKey = headerKey || process.env.DEEPSEEK_API_KEY || "";
     const openrouterKey = req.headers.get("x-openrouter-api-key") || process.env.OPENROUTER_API_KEY || "";
     const geminiKey = req.headers.get("x-gemini-api-key") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
     const groqKey = process.env.GROQ_API_KEY || "";
+    const requestUser = getUserFromRequest(req);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -226,6 +230,7 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
+      void recordTelemetry({ userId: String(requestUser?.id || ""), userEmail: requestUser?.email, source: "echo_recording", operation: "audio_chunk", captureMode: "botless", provider, model: provider === "groq" ? (process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo") : (process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3"), fileSizeBytes: buffer.length, processingMs: Date.now() - requestStarted, fallbackUsed: provider === "openrouter", success: true, transcriptCharacters: text.length });
       return NextResponse.json({ transcript: text, provider });
     }
 
@@ -321,6 +326,7 @@ export async function POST(req: NextRequest) {
 
     transcript = text;
     metadata = await extractMetadataWithAI(transcript, aiKey);
+    void recordTelemetry({ userId: String(requestUser?.id || ""), userEmail: requestUser?.email, source: "uploaded_audio", operation: "audio_upload", captureMode: "unknown", provider: "whisper", fileSizeBytes: buffer.length, processingMs: Date.now() - requestStarted, success: true, transcriptCharacters: transcript.length });
     return NextResponse.json({ transcript, metadata });
   } catch (error: any) {
     console.error("Error processing source file:", error);
