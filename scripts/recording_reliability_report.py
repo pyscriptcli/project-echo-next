@@ -99,6 +99,7 @@ async def open_echo(context: BrowserContext, url: str) -> Page:
 
 async def run_long_session(browser: Browser, args: argparse.Namespace) -> ScenarioResult:
     result = ScenarioResult("continuous_recording", "not_run", args.duration_seconds)
+    print(f"\n[START] Continuous recording baseline | duration={args.duration_seconds:.0f}s | headed={args.headed}", flush=True)
     context = await browser.new_context(permissions=["microphone", "camera"])
     page = await open_echo(context, args.url)
     started = time.monotonic()
@@ -107,19 +108,24 @@ async def run_long_session(browser: Browser, args: argparse.Namespace) -> Scenar
         # for the deployed build, otherwise this remains a baseline observation.
         if args.start_selector:
             await page.locator(args.start_selector).click(timeout=10_000)
+            print(f"[ACTION] Clicked recording start selector: {args.start_selector}", flush=True)
         else:
             result.limitations.append("No --start-selector supplied; this run measures page stability but does not start recording.")
+            print("[INFO] No --start-selector supplied; recording will NOT start in this run.", flush=True)
 
         next_sample = 0.0
         while time.monotonic() - started < args.duration_seconds:
             elapsed = time.monotonic() - started
             if elapsed >= next_sample:
-                result.samples.append(await browser_sample(page, started))
+                sample = await browser_sample(page, started)
+                result.samples.append(sample)
+                print(f"[SAMPLE] continuous elapsed={elapsed:.0f}s state={sample.audio_state} heap={sample.heap_used_bytes or 'n/a'}", flush=True)
                 next_sample += args.sample_interval
             await page.wait_for_timeout(250)
 
         if args.stop_selector:
             await page.locator(args.stop_selector).click(timeout=10_000)
+            print(f"[ACTION] Clicked recording stop selector: {args.stop_selector}", flush=True)
         result.status = "passed" if not any(sample.errors for sample in result.samples) else "degraded"
     except Exception as exc:
         result.status = "failed"
@@ -127,11 +133,13 @@ async def run_long_session(browser: Browser, args: argparse.Namespace) -> Scenar
     finally:
         await context.close()
     result.observations.extend(analyze_samples(result.samples))
+    print(f"[{result.status.upper()}] Continuous recording baseline complete | samples={len(result.samples)}", flush=True)
     return result
 
 
 async def run_concurrency(browser: Browser, args: argparse.Namespace) -> ScenarioResult:
     result = ScenarioResult("concurrent_users", "not_run", args.concurrency_seconds, args.users)
+    print(f"\n[START] Concurrency test | users={args.users} | duration={args.concurrency_seconds:.0f}s", flush=True)
     contexts: list[BrowserContext] = []
     pages: list[Page] = []
     started = time.monotonic()
@@ -155,11 +163,13 @@ async def run_concurrency(browser: Browser, args: argparse.Namespace) -> Scenari
     finally:
         for context in contexts:
             await context.close()
+    print(f"[{result.status.upper()}] Concurrency test complete | contexts={len(pages)}", flush=True)
     return result
 
 
 async def run_network_recovery(browser: Browser, args: argparse.Namespace) -> ScenarioResult:
     result = ScenarioResult("network_recovery", "not_run", args.recovery_seconds)
+    print(f"\n[START] Network recovery test | outage={args.recovery_seconds:.0f}s", flush=True)
     context = await browser.new_context()
     page = await open_echo(context, args.url)
     try:
@@ -175,6 +185,7 @@ async def run_network_recovery(browser: Browser, args: argparse.Namespace) -> Sc
         result.errors.append(str(exc))
     finally:
         await context.close()
+    print(f"[{result.status.upper()}] Network recovery test complete", flush=True)
     return result
 
 
@@ -268,6 +279,11 @@ def markdown_report(payload: dict[str, Any]) -> str:
 
 
 async def main(args: argparse.Namespace) -> None:
+    print("=" * 72, flush=True)
+    print("ECHO RECORDING RELIABILITY HARNESS", flush=True)
+    print("Continuous recording baseline — segmentation is not being added.", flush=True)
+    print(f"Target: {args.url}", flush=True)
+    print("=" * 72, flush=True)
     async with async_playwright() as playwright:
         launch_args = []
         if args.fake_media:
@@ -302,10 +318,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-selector", help="Optional selector for the Echo start-recording button.")
     parser.add_argument("--stop-selector", help="Optional selector for the Echo stop-recording button.")
     parser.add_argument("--fake-media", help="Optional WAV path for Chromium fake microphone input.")
-    parser.add_argument("--headed", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--headed", action="store_true", help="Show the Chromium window.")
+    mode.add_argument("--headless", action="store_true", help="Run without a visible browser window.")
     parser.add_argument("--format", choices=["json", "md"], default="json")
     parser.add_argument("--output", default="artifacts/recording-reliability.json")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.headed and not args.headless:
+        answer = input("Run with a visible browser window? [Y/n]: ").strip().lower()
+        args.headed = answer in ("", "y", "yes")
+    return args
 
 
 if __name__ == "__main__":
