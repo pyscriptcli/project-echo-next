@@ -138,6 +138,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
+  const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({ Finance: true });
   const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry" | "navigation">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
@@ -1056,55 +1057,23 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <p className="text-xs text-gray-500 mb-4">
           Every department/form mapping requires its own ClickUp List ID.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-          <label className="text-xs font-bold text-gray-600">
-            Department
-            <select
-              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal"
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-            >
-              {config.departments.map((department) => (
-                <option key={department}>{department}</option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs font-bold text-gray-600">
-            Form
-            <select
-              className="mt-1 w-full border border-gray-300 px-3 py-2 bg-[#FFFCFB] font-normal"
-              value={selectedForm}
-              onChange={(e) => setSelectedForm(e.target.value)}
-            >
-              {Object.entries(FORM_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-              {selectedDepartment === "IT" && <option value="it-asset-request-form">IT Asset Request Form</option>}
-            </select>
-          </label>
-        </div>
-        <div className="border border-gray-200 p-3 mb-4 bg-[#FFFCFB]">
-          <label className="text-xs font-bold text-gray-600">
-            ClickUp List ID
-            <input
-              className="mt-1 w-full border border-gray-300 px-3 py-2 font-normal bg-[#FFFCFB]"
-              placeholder="Required destination List ID"
-              value={current.listId || ""}
-              onChange={(e) =>
-                updateMapping({
-                  ...current,
-                  listId: e.target.value,
-                  formLabel:
-                    current.formLabel ||
-                    (selectedForm === "it-asset-request-form"
-                      ? "IT Asset Request Form"
-                      : FORM_LABELS[selectedForm as FormType]),
-                })
-              }
-            />
-          </label>
+        <div className="space-y-2 mb-4">
+          {config.departments.map((department) => {
+            const expanded = openDepartments[department] ?? false;
+            const departmentMappings = config.mappings.filter((item) => item.department === department);
+            return <div key={department} className="border border-gray-200 bg-[#FFFCFB]">
+              <button type="button" className="w-full flex items-center justify-between px-4 py-3 text-left cursor-pointer" onClick={() => setOpenDepartments((state) => ({ ...state, [department]: !expanded }))}>
+                <span className="text-sm font-bold text-[#003366]">{department}</span>
+                {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {expanded && <div className="border-t border-gray-200 divide-y divide-gray-100">
+                {(departmentMappings.length ? departmentMappings : [{ id: `${department}-new`, department, formType: "rfp", formLabel: FORM_LABELS.rfp, listId: "", approvers: [] }]).map((mapping) => <div key={mapping.id} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3 items-center px-4 py-3">
+                  <button type="button" className="text-left text-xs font-semibold text-slate-700 cursor-pointer" onClick={() => { setSelectedDepartment(department); setSelectedForm(mapping.formType); }}>{mapping.formLabel || FORM_LABELS[mapping.formType] || mapping.formType}</button>
+                  <input className="border border-gray-300 px-3 py-2 text-xs bg-white" placeholder="ClickUp List ID" value={mapping.listId || ""} onChange={(e) => updateMapping({ ...mapping, listId: e.target.value })} />
+                </div>)}
+              </div>}
+            </div>;
+          })}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 border-t pt-4">
           <input
