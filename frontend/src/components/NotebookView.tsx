@@ -198,7 +198,10 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
   }, [selectedDayEntry?.id, selectedDate, member?.id]);
 
   const weekStart = startOfWeek(selectedDate);
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index)), [weekStart]);
+  const weekDays = useMemo(() => {
+    const mondayFirst = Array.from({ length: 7 }, (_, index) => shiftDate(weekStart, index));
+    return [mondayFirst[6], ...mondayFirst.slice(0, 6)];
+  }, [weekStart]);
   const workdays = useMemo(() => weekdaysInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   const completenessRows = useMemo(() => (payload?.members || []).map((person) => {
@@ -510,11 +513,11 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   type="button"
                   key={date}
                   onClick={() => { setSelectedDate(date); setActiveTab("today"); }}
-                  className={`self-start w-full text-left bg-[#FFFCFB] border p-4 transition-colors hover:border-[#C9AB4C] ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : "border-gray-200"}`}
+                  className={`self-start w-full text-left border p-4 transition-colors ${isWeekend ? "bg-[#1B1D1E] text-[#FFFCFB] border-[#1B1D1E] hover:border-[#C9AB4C]" : "bg-[#FFFCFB] hover:border-[#C9AB4C]"} ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : isWeekend ? "" : "border-gray-200"}`}
                 >
-                  <span className="block text-xs uppercase tracking-wider text-gray-500 font-bold">{formatDate(date, { weekday: "short" })}</span>
-                  <span className="block text-2xl font-serif font-bold text-[#003366] mt-1">{fromIso(date).getDate()}</span>
-                  {total ? (
+                  <span className={`block text-xs uppercase tracking-wider font-bold ${isWeekend ? "text-white/70" : "text-gray-500"}`}>{formatDate(date, { weekday: "short" })}</span>
+                  <span className={`block text-2xl font-serif font-bold mt-1 ${isWeekend ? "text-white" : "text-[#003366]"}`}>{fromIso(date).getDate()}</span>
+                  {!isWeekend && total ? (
                     <span className="block mt-4 space-y-3">
                       {CATEGORY_META.map((category) => {
                         const tasks = dayEntries.flatMap((entry) => itemsFromText(entry.categories[category.key]));
@@ -526,7 +529,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                         ) : null;
                       })}
                     </span>
-                  ) : <span className="block mt-5 text-xs text-gray-400 italic">{isWeekend ? "Weekend" : dayEntries.length ? "Empty log" : "Empty day"}</span>}
+                  ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Not counted in daily log" : dayEntries.length ? "Empty log" : "Empty day"}</span>}
                 </button>
               );
             })}
