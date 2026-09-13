@@ -527,7 +527,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                         ) : null;
                       })}
                     </span>
-                  ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Weekend" : dayEntries.length ? "Empty log" : "Empty day"}</span>}
+                  ) : <span className={`block mt-5 text-xs italic ${isWeekend ? "text-white/60" : "text-gray-400"}`}>{isWeekend ? "Weekend" : "Empty log"}</span>}
                 </button>
               );
             })}
@@ -545,7 +545,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
             <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Team completeness</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{averageCompleteness}%</div><div className="text-xs text-gray-400 mt-1">{submittedLogs} of {expectedLogs} expected logs</div></div>
             <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{filteredRows.length}</div><div className="text-xs text-gray-400 mt-1">within the selected view</div></div>
-            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty days</div><div className="text-3xl font-serif font-bold text-red-700 mt-2">{emptyDayLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
+            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty logs</div><div className="text-3xl font-serif font-bold text-orange-700 mt-2">{emptyDayLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
           </div>
 
           <section className="bg-[#FFFCFB] border border-gray-200">
@@ -556,7 +556,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             <div className="divide-y divide-gray-200">
               {filteredRows.map((row) => (
                 <div key={row.member.id} className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-[minmax(190px,1fr)_minmax(220px,2fr)_100px] gap-4 items-center">
-                  <div className="flex items-center gap-3 min-w-0"><MemberAvatar member={row.member} /><div className="min-w-0"><div className="text-sm font-semibold text-[#1b1d1e] truncate">{row.member.name}</div><div className="text-xs text-gray-400">{row.submittedDates.length} submitted · {row.emptyDays.length} empty days</div></div></div>
+                  <div className="flex items-center gap-3 min-w-0"><MemberAvatar member={row.member} /><div className="min-w-0"><div className="text-sm font-semibold text-[#1b1d1e] truncate">{row.member.name}</div><div className="text-xs text-gray-400">{row.submittedDates.length} submitted · {row.emptyDays.length} empty logs</div></div></div>
                   <div>
                     <div className="h-2.5 bg-[#FFFCFB] overflow-hidden flex" role="progressbar" aria-label={`${row.member.name} completeness`} aria-valuenow={row.percent} aria-valuemin={0} aria-valuemax={100}>
                       <span className="bg-[#003366] h-full" style={{ width: `${row.percent}%` }} />
@@ -572,7 +572,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs and days without any logs.</p></div>
-              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-yellow-300" /> Empty log</span></div>
+              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-orange-200 border border-orange-300" /> Empty log</span></div>
             </div>
             <div className="overflow-x-auto p-5">
               <div style={{ minWidth: `${Math.max(720, 210 + workdays.length * 35)}px` }}>
@@ -587,7 +587,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                       {workdays.map((date) => {
                         const dayEntries = row.byDate.get(date) || [];
                         const status = dayEntries.some((entry) => entry.hasContent) ? "submitted" : "empty";
-                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-yellow-100 text-yellow-800 border border-yellow-300"}`}>{status === "submitted" ? "✓" : "·"}</div>;
+                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-orange-100 text-orange-800 border border-orange-300"}`}>{status === "submitted" ? "✓" : "·"}</div>;
                       })}
                     </div>
                   ))}
