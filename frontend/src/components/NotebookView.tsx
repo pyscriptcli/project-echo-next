@@ -342,7 +342,6 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-serif font-bold text-[#003366] italic">Notebook</h1>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1">ClickUp Live</span>
           </div>
           <p className="text-sm text-gray-500 mt-1">Daily activity and team logging completeness from the KPI Monitoring list.</p>
         </div>
@@ -502,7 +501,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             </div>
             <span className="text-sm text-gray-500">{weekDays.filter((date) => entries.some((entry) => entry.member.id === member?.id && entry.date === date && entry.hasContent)).length} days logged</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-start">
             {weekDays.map((date) => {
               const dayEntries = entries.filter((entry) => entry.member.id === member?.id && entry.date === date);
               const total = CATEGORY_META.reduce((sum, category) => sum + dayEntries.reduce((count, entry) => count + itemsFromText(entry.categories[category.key]).length, 0), 0);
@@ -512,7 +511,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   type="button"
                   key={date}
                   onClick={() => { setSelectedDate(date); setActiveTab("today"); }}
-                  className={`self-start w-full text-left border p-4 transition-colors ${isWeekend ? "bg-[#1B1D1E] text-[#FFFCFB] border-[#1B1D1E] hover:border-[#C9AB4C]" : "bg-[#FFFCFB] hover:border-[#C9AB4C]"} ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : isWeekend ? "" : "border-gray-200"}`}
+                  className={`self-start w-full text-left border p-4 transition-colors ${isWeekend ? "xl:col-span-1 bg-[#1B1D1E] text-[#FFFCFB] border-[#1B1D1E] hover:border-[#C9AB4C]" : "xl:col-span-2 bg-[#FFFCFB] hover:border-[#C9AB4C]"} ${date === selectedDate ? "border-[#C9AB4C] shadow-[inset_0_2px_0_#C9AB4C]" : isWeekend ? "" : "border-gray-200"}`}
                 >
                   <span className={`block text-xs uppercase tracking-wider font-bold ${isWeekend ? "text-white/70" : "text-gray-500"}`}>{formatDate(date, { weekday: "short" })}</span>
                   <span className={`block text-2xl font-serif font-bold mt-1 ${isWeekend ? "text-white" : "text-[#003366]"}`}>{fromIso(date).getDate()}</span>
@@ -573,7 +572,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs and days without any logs.</p></div>
-              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-red-100 border border-red-200" /> Empty log</span></div>
+              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-[#C9A84C]" /> Empty log</span></div>
             </div>
             <div className="overflow-x-auto p-5">
               <div style={{ minWidth: `${Math.max(720, 210 + workdays.length * 35)}px` }}>
@@ -588,7 +587,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                       {workdays.map((date) => {
                         const dayEntries = row.byDate.get(date) || [];
                         const status = dayEntries.some((entry) => entry.hasContent) ? "submitted" : "empty";
-                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-red-50 text-red-300 border border-red-100"}`}>{status === "submitted" ? "✓" : "·"}</div>;
+                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-[#C9A84C]/25 text-[#8A6818] border border-[#C9A84C]/40"}`}>{status === "submitted" ? "✓" : "·"}</div>;
                       })}
                     </div>
                   ))}
