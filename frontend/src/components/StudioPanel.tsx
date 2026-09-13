@@ -13,6 +13,7 @@ import {
   Pause,
   Play,
   Plus,
+  RotateCcw,
   Send,
   Square,
   Sparkles,
@@ -121,6 +122,13 @@ export function StudioPanel({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const notesEndRef = useRef<HTMLDivElement>(null);
   const echoEndRef = useRef<HTMLDivElement>(null);
+
+  const resetEchoConversation = useCallback(() => {
+    setEchoMessages([ECHO_STARTER]);
+    setEchoInput("");
+    setOpenEchoSources({});
+    try { sessionStorage.removeItem(ECHO_STORAGE_KEY); } catch {}
+  }, []);
 
   const addNote = useCallback(() => {
     const text = noteInput.trim();
@@ -465,9 +473,10 @@ export function StudioPanel({
               )}
             </div>
 
+            {(isRecordingActive || isStopped) && <div className="space-y-3 border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white px-5 py-4 shadow-sm rounded-sm">
             {/* Timer */}
             {isRecordingActive && (
-              <div className="text-center bg-white border border-slate-200 border-t-2 border-t-[#C9A84C] px-8 py-4 shadow-sm rounded-sm">
+              <div className="text-center">
                 <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
                   {formatTime(recorder.elapsedSeconds)}
                 </span>
@@ -492,6 +501,7 @@ export function StudioPanel({
                 <VolumeMeter level={visualizer.volumeLevel} isClipping={visualizer.isClipping} />
               </div>
             )}
+            </div>}
 
             {/* Status text for idle */}
             {recorder.status === "idle" && (
@@ -539,7 +549,7 @@ export function StudioPanel({
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-[#003366]">{isFullscreen ? "Ask Echo" : "Meeting workspace"}</h3>
+                  <div className="flex items-center gap-3"><h3 className="text-sm font-semibold tracking-tight text-[#003366]">{isFullscreen ? "Ask Echo" : "Meeting workspace"}</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div>
                   <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
                 </div>
                 {!isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">

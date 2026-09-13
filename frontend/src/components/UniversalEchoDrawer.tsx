@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Clock, ExternalLink, Maximize2, Minimize2, Plus, Send, Sparkles, Square, User, X } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, Clock, ExternalLink, Maximize2, Minimize2, RotateCcw, Send, Sparkles, Square, User, X } from "lucide-react";
 import { askEcho } from "@/lib/api";
 import type { ArchivedMeeting } from "@/types/meeting";
 import type { AskEchoResponse } from "@/lib/ask-echo/schema";
@@ -104,7 +104,7 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
             <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">{userName ? `Here for you, ${userName}` : "Your work, made clearer"}</p></div>
           </div>
           <div className="flex items-center gap-1">
-            <button type="button" onClick={reset} aria-label="New conversation" className="p-2 hover:bg-[#174778]"><Plus size={17} /></button>
+            <button type="button" onClick={reset} aria-label="Reset conversation" title="Reset conversation" className="flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-[#174778]"><RotateCcw size={14} /> Reset</button>
             <button type="button" onClick={() => setExpanded(!expanded)} aria-label={expanded ? "Close full view" : "Open full view"} className="p-2 hover:bg-[#174778]">{expanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button>
             <button type="button" onClick={onClose} aria-label="Close" className="p-2 hover:bg-[#174778]"><X size={18} /></button>
           </div>
