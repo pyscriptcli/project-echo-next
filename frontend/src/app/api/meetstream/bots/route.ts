@@ -50,17 +50,9 @@ export async function POST(req: NextRequest) {
         recording_config: {
           transcript: {
             provider: {
-              deepgram_streaming: {
-                transcription_mode: "sentence",
-                model: "nova-2",
-                language: "en",
-                punctuate: true,
-                smart_format: true,
-                endpointing: 300,
-                vad_events: true,
-                utterance_end_ms: 1000,
-                encoding: "linear16",
-                channels: 1,
+              meetstream: {
+                language: "auto",
+                translate: false,
               },
             },
           },

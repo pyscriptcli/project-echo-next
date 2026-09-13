@@ -38,7 +38,7 @@ describe("POST /api/meetstream/bots", () => {
       bot_name: "Echo.ai",
       callback_url: "https://echo.example/api/meetstream/webhook",
       live_transcription_required: { webhook_url: "https://echo.example/api/meetstream/webhook" },
-      recording_config: { transcript: { provider: { deepgram_streaming: { transcription_mode: "sentence" } } } },
+      recording_config: { transcript: { provider: { meetstream: { language: "auto", translate: false } } } },
     });
   });
 
