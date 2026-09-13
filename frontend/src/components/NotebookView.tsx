@@ -223,10 +223,9 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
   const activeRows = completenessRows.filter((row) => row.byDate.size > 0 || row.member.months?.some((month) => month >= rangeStart.slice(0, 7) && month <= rangeEnd.slice(0, 7)));
   const displayedRows = activeRows.length ? activeRows : completenessRows;
-  const filteredRows = insightMemberId === "all" ? displayedRows : displayedRows.filter((row) => row.member.id === insightMemberId);
+  const filteredRows = (insightMemberId === "all" ? displayedRows : displayedRows.filter((row) => row.member.id === insightMemberId)).slice().sort((left, right) => right.percent - left.percent || left.member.name.localeCompare(right.member.name));
   const expectedLogs = workdays.length * filteredRows.length;
   const submittedLogs = filteredRows.reduce((sum, row) => sum + row.submittedDates.length, 0);
-  const blankLogs = filteredRows.reduce((sum, row) => sum + row.emptyDates.length, 0);
   const emptyDayLogs = filteredRows.reduce((sum, row) => sum + row.emptyDays.length, 0);
   const averageCompleteness = expectedLogs ? Math.round((submittedLogs / expectedLogs) * 100) : 0;
 
@@ -544,10 +543,9 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             <p className="text-sm text-gray-500 mt-1">{insightMemberId === "all" ? "All team members" : (payload?.members.find((person) => person.id === insightMemberId)?.name || "Selected member")} · weekends and future dates are excluded from completeness.</p>
           </div>
 
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
             <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Team completeness</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{averageCompleteness}%</div><div className="text-xs text-gray-400 mt-1">{submittedLogs} of {expectedLogs} expected logs</div></div>
             <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Members tracked</div><div className="text-3xl font-serif font-bold text-[#003366] mt-2">{filteredRows.length}</div><div className="text-xs text-gray-400 mt-1">within the selected view</div></div>
-            <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Blank records</div><div className="text-3xl font-serif font-bold text-amber-700 mt-2">{blankLogs}</div><div className="text-xs text-gray-400 mt-1">created but without content</div></div>
             <div className="bg-[#FFFCFB] border border-gray-200 p-5"><div className="text-xs uppercase tracking-wider font-bold text-gray-500">Empty days</div><div className="text-3xl font-serif font-bold text-red-700 mt-2">{emptyDayLogs}</div><div className="text-xs text-gray-400 mt-1">no daily record found</div></div>
           </div>
 
@@ -563,7 +561,6 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   <div>
                     <div className="h-2.5 bg-[#FFFCFB] overflow-hidden flex" role="progressbar" aria-label={`${row.member.name} completeness`} aria-valuenow={row.percent} aria-valuemin={0} aria-valuemax={100}>
                       <span className="bg-[#003366] h-full" style={{ width: `${row.percent}%` }} />
-                      {workdays.length > 0 && <span className="bg-amber-400 h-full" style={{ width: `${(row.emptyDates.length / workdays.length) * 100}%` }} />}
                     </div>
                   </div>
                   <div className="md:text-right"><span className={`text-2xl font-serif font-bold ${row.percent >= 90 ? "text-emerald-700" : row.percent >= 70 ? "text-amber-700" : "text-red-700"}`}>{row.percent}%</span></div>
@@ -575,8 +572,8 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
           <section className="bg-[#FFFCFB] border border-gray-200">
             <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs, blank records, and empty days.</p></div>
-              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-amber-400" /> Blank record</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-red-100 border border-red-200" /> Empty day</span></div>
+              <div><h3 className="text-lg flex items-center gap-2"><CalendarDays size={18} className="text-[#C9AB4C]" /> Coverage by workday</h3><p className="text-sm text-gray-500 mt-1">A daily audit of submitted logs and days without any logs.</p></div>
+              <div className="flex items-center gap-4 text-xs text-gray-500"><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-emerald-600" /> Submitted</span><span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 bg-red-100 border border-red-200" /> Empty log</span></div>
             </div>
             <div className="overflow-x-auto p-5">
               <div style={{ minWidth: `${Math.max(720, 210 + workdays.length * 35)}px` }}>
@@ -590,8 +587,8 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                       <div className="text-sm font-semibold text-gray-700 truncate pr-3">{row.member.name}</div>
                       {workdays.map((date) => {
                         const dayEntries = row.byDate.get(date) || [];
-                        const status = dayEntries.some((entry) => entry.hasContent) ? "submitted" : dayEntries.length ? "blank" : "empty";
-                        return <div key={date} title={`${formatDate(date)}: ${status}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : status === "blank" ? "bg-amber-400 text-amber-950" : "bg-red-50 text-red-300 border border-red-100"}`}>{status === "submitted" ? "✓" : status === "blank" ? "–" : "·"}</div>;
+                        const status = dayEntries.some((entry) => entry.hasContent) ? "submitted" : "empty";
+                        return <div key={date} title={`${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} aria-label={`${row.member.name}, ${formatDate(date)}: ${status === "submitted" ? "submitted" : "empty log"}`} className={`h-8 grid place-items-center text-xs font-bold ${status === "submitted" ? "bg-emerald-600 text-white" : "bg-red-50 text-red-300 border border-red-100"}`}>{status === "submitted" ? "✓" : "·"}</div>;
                       })}
                     </div>
                   ))}
@@ -617,7 +614,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             <section className="bg-[#1b1d1e] border border-[#C9AB4C]/50 p-5 text-white">
               <div className="text-xs uppercase tracking-widest text-[#C9AB4C] font-bold">Completeness rule</div>
               <h3 className="text-2xl text-white mt-3">Clear and non-destructive</h3>
-              <p className="text-sm text-gray-300 mt-3 leading-relaxed">A weekday is submitted when at least one of the four existing fields contains content. A pre-created but blank date is a blank record. A weekday with no date record is an empty day.</p>
+              <p className="text-sm text-gray-300 mt-3 leading-relaxed">A weekday is submitted when at least one of the four existing fields contains content. Empty logs are workdays without any submitted content.</p>
               <p className="text-sm text-gray-300 mt-3 leading-relaxed">Echo writes only the existing four Daily Log fields and creates the matching month parent and date subtask when needed.</p>
             </section>
           </div>
