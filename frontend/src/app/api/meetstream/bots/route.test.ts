@@ -21,7 +21,7 @@ describe("POST /api/meetstream/bots", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates Echo.ai with live transcription and the deployment callback", async () => {
+  it("creates Echo.ai as a capture-only bot with the deployment callback", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ bot_id: "bot-1", status: "Active" }), { status: 201 }));
     const { POST } = await import("./route");
     const response = await POST(new NextRequest("https://echo.example/api/meetstream/bots", {
@@ -37,9 +37,9 @@ describe("POST /api/meetstream/bots", () => {
     expect(payload).toMatchObject({
       bot_name: "Echo.ai",
       callback_url: "https://echo.example/api/meetstream/webhook",
-      live_transcription_required: { webhook_url: "https://echo.example/api/meetstream/webhook" },
-      recording_config: { transcript: { provider: { meetstream: { language: "auto", translate: false } } } },
     });
+    expect(payload.live_transcription_required).toBeUndefined();
+    expect(payload.recording_config).toBeUndefined();
   });
 
   it("reports missing server configuration without exposing a secret", async () => {

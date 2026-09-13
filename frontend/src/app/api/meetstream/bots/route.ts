@@ -46,17 +46,8 @@ export async function POST(req: NextRequest) {
         bot_name: "Echo.ai",
         video_required: true,
         callback_url: webhookUrl,
-        live_transcription_required: { webhook_url: webhookUrl },
-        recording_config: {
-          transcript: {
-            provider: {
-              meetstream: {
-                language: "auto",
-                translate: false,
-              },
-            },
-          },
-        },
+        // MeetStream is the capture layer only. Echo transcribes the completed
+        // audio through the same Groq -> OpenRouter pipeline used for botless recording.
         custom_attributes: { source: "echo", mode: "bot", user_id: String(user.id) },
       }),
     });
