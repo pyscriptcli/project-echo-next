@@ -8,12 +8,18 @@ import { loadClickUpContext } from "./clickup";
 
 const activeRequests = new Map<string, number>();
 
+function formatMeetingTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.floor(seconds % 60);
+  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
 export async function answerAskEcho(input: unknown, user: { id?: string | number; name?: string; email: string; clickUpToken: string; taskListId: string }): Promise<AskEchoResponse> {
   const started = Date.now();
   const configuration = await loadEchoConfiguration();
   const policy = configuration.aiPolicy;
   const userEmail = user.email;
-  const request = parseAskEchoRequest(input, policy);
+  const request = parseAskEchoRequest(input, { ...policy, maxCurrentMeetingCharacters: policy.maxEvidenceCharacters });
   const usageSnapshot = await getUsageSnapshot(userEmail);
   usageSnapshot.concurrentRequests = activeRequests.get(userEmail) || 0;
   const decision = checkUsagePolicy(policy, usageSnapshot);
@@ -31,13 +37,34 @@ export async function answerAskEcho(input: unknown, user: { id?: string | number
       loadClickUpContext({ token: user.clickUpToken, pages: enabledSources, taskListId: user.taskListId, formListIds }),
     ]);
     const meetingSources = retrieveMeetingEvidence(meetings, request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters });
-    const evidence = rankEvidenceSources([...meetingSources, ...clickUpSources], request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters, user });
+    const currentMeetingSources = request.currentMeeting ? [
+      ...(request.currentMeeting.notes.length ? [{
+        sourceId: "current-meeting:notes",
+        meetingId: "current-meeting",
+        meetingTitle: "Current meeting notes",
+        meetingDate: new Date().toISOString(),
+        topic: `Notes through ${formatMeetingTime(request.currentMeeting.elapsedSeconds)}`,
+        excerpt: request.currentMeeting.notes.map((note) => `${note.timestamp} ${note.text}`).join("\n"),
+      }] : []),
+      ...request.currentMeeting.segments.slice().reverse().map((segment) => ({
+        sourceId: `current-meeting:segment:${segment.index}`,
+        meetingId: "current-meeting",
+        meetingTitle: "Current meeting",
+        meetingDate: new Date().toISOString(),
+        topic: `Around ${formatMeetingTime(segment.startedAtSeconds)}`,
+        excerpt: segment.text,
+      })),
+    ] : [];
+    const evidence = rankEvidenceSources([...currentMeetingSources, ...meetingSources, ...clickUpSources], request.question, { maxSources: policy.maxSources, maxCharacters: policy.maxEvidenceCharacters, user });
     const result = await askModel({ ...policy, question: request.question, conversation: request.conversation, evidence, user });
     const sourceIds = new Set(Array.isArray(result.content.sourceIds) ? result.content.sourceIds.map(String) : []);
     const sources = evidence.filter((source) => sourceIds.has(source.sourceId));
     const confidence = result.content.confidence === "supported" && sources.length === 0 ? "insufficient" : (["supported", "partial", "insufficient"].includes(result.content.confidence) ? result.content.confidence : (sources.length ? "partial" : "insufficient"));
     const allowedSourceIds = new Set(sources.map((source) => source.sourceId));
-    const citations = Array.isArray(result.content.citations) ? result.content.citations.map((citation: any, index: number) => ({ marker: String(citation?.marker || `[${index + 1}]`), sourceId: String(citation?.sourceId || "") })).filter((citation: { marker: string; sourceId: string }) => allowedSourceIds.has(citation.sourceId)).slice(0, 8) : [];
+    const citations = Array.isArray(result.content.citations) ? result.content.citations.map((citation: unknown, index: number) => {
+      const item = citation && typeof citation === "object" ? citation as Record<string, unknown> : {};
+      return { marker: String(item.marker || `[${index + 1}]`), sourceId: String(item.sourceId || "") };
+    }).filter((citation: { marker: string; sourceId: string }) => allowedSourceIds.has(citation.sourceId)).slice(0, 8) : [];
     const response: AskEchoResponse = { answer: String(result.content.answer || "I couldn't find enough in the workspace to answer that."), sources, citations, confidence, followUps: Array.isArray(result.content.followUps) ? result.content.followUps.map(String).slice(0, 3) : [], usage: result.usage };
     await recordUsage({ userEmail, model: policy.model, status: "success", latencyMs: Date.now() - started, ...result.usage });
     return response;

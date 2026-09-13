@@ -62,39 +62,6 @@ function formatTimestamp(seconds: number): string {
   return `[${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}]`;
 }
 
-async function transcribeWithOpenAI(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
-  const formData = new FormData();
-  const fileBlob = new Blob([new Uint8Array(buffer)], { type: mimeType || "audio/wav" });
-  formData.append("file", fileBlob, fileName || "recording.wav");
-  formData.append("model", "whisper-1");
-  formData.append("response_format", "verbose_json");
-  formData.append("timestamp_granularities[]", "segment");
-
-  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData?.error?.message || `OpenAI Whisper transcription failed (${res.status})`);
-  }
-
-  const data = await res.json();
-  
-  // Produce timestamped transcript from segments when available
-  if (data.segments && Array.isArray(data.segments) && data.segments.length > 0) {
-    return data.segments
-      .map((seg: { start: number; text: string }) => `${formatTimestamp(seg.start)} ${seg.text.trim()}`)
-      .join("\n");
-  }
-  
-  return data.text || "";
-}
-
 function getAudioFormat(mimeType: string, fileName?: string): string {
   const m = (mimeType || "").toLowerCase();
   const f = (fileName || "").toLowerCase();
@@ -108,6 +75,43 @@ function getAudioFormat(mimeType: string, fileName?: string): string {
   return "wav";
 }
 
+let groqCooldownUntil = 0;
+
+async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
+  if (Date.now() < groqCooldownUntil) throw new Error("Groq free-tier limit is cooling down");
+
+  const formData = new FormData();
+  formData.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType || "audio/webm" }), fileName || "recording.webm");
+  formData.append("model", process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo");
+  formData.append("response_format", "verbose_json");
+  formData.append("timestamp_granularities[]", "segment");
+  formData.append("temperature", "0");
+  formData.append("prompt", process.env.GROQ_WHISPER_PROMPT || "PRIME Philippines meeting. Preserve English and Filipino code-switching, names, numbers, decisions, and action items.");
+
+  const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (response.status === 429) {
+    const retryAfterSeconds = Math.max(1, Number(response.headers.get("retry-after")) || 60);
+    groqCooldownUntil = Date.now() + retryAfterSeconds * 1000;
+    throw new Error(`Groq free-tier limit reached; retry after ${retryAfterSeconds}s`);
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail = body && typeof body === "object" && "error" in body ? String((body as { error?: { message?: string } }).error?.message || "") : "";
+    throw new Error(detail || `Groq Whisper transcription failed (${response.status})`);
+  }
+
+  const body = await response.json();
+  if (Array.isArray(body.segments) && body.segments.length) {
+    return body.segments.map((segment: { start?: number; text?: string }) => `${formatTimestamp(Number(segment.start) || 0)} ${String(segment.text || "").trim()}`).filter((line: string) => line.trim()).join("\n");
+  }
+  return String(body.text || "").trim();
+}
+
 async function transcribeWithOpenRouter(
   buffer: Buffer,
   fileName: string,
@@ -116,8 +120,9 @@ async function transcribeWithOpenRouter(
 ): Promise<string> {
   const base64Audio = buffer.toString("base64");
   const format = getAudioFormat(mimeType, fileName);
+  let lastError = "";
 
-  // Strategy 1: Dedicated OpenRouter Speech-to-Text endpoint with Whisper Large V3
+  // OpenRouter is the only paid fallback for audio transcription.
   try {
     const sttRes = await fetch("https://openrouter.ai/api/v1/audio/transcriptions", {
       method: "POST",
@@ -128,7 +133,7 @@ async function transcribeWithOpenRouter(
         "X-Title": "Project Echo Audio Transcriber",
       },
       body: JSON.stringify({
-        model: "openai/whisper-large-v3",
+        model: process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3",
         input_audio: {
           data: base64Audio,
           format: format,
@@ -143,142 +148,49 @@ async function transcribeWithOpenRouter(
       }
     } else {
       const errJson = await sttRes.json().catch(() => ({}));
-      console.warn("OpenRouter STT failed, trying chat completions:", errJson);
+      lastError = errJson?.error?.message || `Failed with status ${sttRes.status}`;
     }
   } catch (sttErr: any) {
-    console.warn("OpenRouter STT request error:", sttErr.message);
-  }
-
-  // Strategy 2: OpenRouter Multimodal Chat Completions with google/gemini-2.0-flash using input_audio
-  const candidateModels = ["google/gemini-2.0-flash", "google/gemini-flash-1.5"];
-  let lastError = "";
-
-  for (const model of candidateModels) {
-    try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://project-echo.app",
-          "X-Title": "Project Echo Audio Transcriber",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Please transcribe this corporate meeting audio completely and accurately. Return ONLY the full verbatim transcription text without any preamble, markdown wrapper, or commentary.",
-                },
-                {
-                  type: "input_audio",
-                  input_audio: {
-                    data: base64Audio,
-                    format: format,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content || "";
-        if (text.trim().length > 0) {
-          return text.trim();
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        lastError = errData?.error?.message || `Failed with status ${res.status}`;
-      }
-    } catch (chatErr: any) {
-      lastError = chatErr.message;
-    }
+    lastError = sttErr.message;
   }
 
   throw new Error(lastError || "OpenRouter audio transcription failed across all endpoints.");
-}
-
-async function transcribeWithGemini(
-  buffer: Buffer, 
-  fileName: string, 
-  mimeType: string, 
-  geminiKey: string
-): Promise<{ text: string; tempPath?: string }> {
-  const isSmallAudio = buffer.length < 15 * 1024 * 1024;
-  const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  const prompt = `Please transcribe this corporate meeting audio accurately, capturing all speaker discussions and decisions:`;
-
-  if (isSmallAudio) {
-    const result = await model.generateContent([
-      { inlineData: { mimeType: mimeType || "audio/wav", data: buffer.toString("base64") } },
-      { text: prompt }
-    ]);
-    return { text: result.response.text() };
-  } else {
-    const tempDir = os.tmpdir();
-    const ext = path.extname(fileName) || ".wav";
-    const tempPath = path.join(tempDir, `upload-${Date.now()}${ext}`);
-    await fs.writeFile(tempPath, buffer);
-    const fileManager = new GoogleAIFileManager(geminiKey);
-    const uploadResult = await fileManager.uploadFile(tempPath, { mimeType: mimeType || "audio/wav", displayName: fileName });
-    const result = await model.generateContent([
-      { fileData: { mimeType: uploadResult.file.mimeType, fileUri: uploadResult.file.uri } },
-      { text: prompt }
-    ]);
-    return { text: result.response.text(), tempPath };
-  }
 }
 
 async function transcribeAudioBuffer(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
-  keys: { openaiKey: string; openrouterKey: string; geminiKey: string }
-): Promise<{ text: string; tempPath?: string; errors: string[] }> {
+  keys: { groqKey: string; openrouterKey: string }
+): Promise<{ text: string; tempPath?: string; errors: string[]; provider?: string }> {
   let audioTranscript = "";
   let tempFilePath: string | undefined;
+  let provider: string | undefined;
   const errors: string[] = [];
 
-  // Provider 1: OpenAI Whisper (Standard industry meeting audio transcription)
-  if (keys.openaiKey) {
+  // Free-tier first. One key and one organization quota only; never rotate accounts.
+  if (keys.groqKey) {
     try {
-      audioTranscript = await transcribeWithOpenAI(buffer, fileName, mimeType, keys.openaiKey);
+      audioTranscript = await transcribeWithGroq(buffer, fileName, mimeType, keys.groqKey);
+      if (audioTranscript) provider = "groq";
     } catch (e: any) {
-      console.warn("OpenAI transcription failed, attempting fallbacks:", e.message);
-      errors.push(`OpenAI Whisper: ${e.message}`);
+      console.warn("Groq transcription unavailable, using OpenRouter fallback:", e.message);
+      errors.push(`Groq Whisper: ${e.message}`);
     }
   }
 
-  // Provider 2: OpenRouter Multimodal Audio
+  // Paid low-cost fallback.
   if (!audioTranscript && keys.openrouterKey) {
     try {
       audioTranscript = await transcribeWithOpenRouter(buffer, fileName, mimeType, keys.openrouterKey);
+      if (audioTranscript) provider = "openrouter";
     } catch (e: any) {
-      console.warn("OpenRouter transcription failed, attempting fallbacks:", e.message);
+      console.warn("OpenRouter transcription failed:", e.message);
       errors.push(`OpenRouter: ${e.message}`);
     }
   }
 
-  // Provider 3: Google Gemini Audio
-  if (!audioTranscript && keys.geminiKey) {
-    try {
-      const gemRes = await transcribeWithGemini(buffer, fileName, mimeType, keys.geminiKey);
-      if (gemRes.tempPath) tempFilePath = gemRes.tempPath;
-      audioTranscript = gemRes.text;
-    } catch (e: any) {
-      console.warn("Gemini transcription failed:", e.message);
-      errors.push(`Gemini: ${e.message}`);
-    }
-  }
-
-  return { text: audioTranscript, tempPath: tempFilePath, errors };
+  return { text: audioTranscript, tempPath: tempFilePath, errors, provider };
 }
 
 export async function POST(req: NextRequest) {
@@ -286,9 +198,9 @@ export async function POST(req: NextRequest) {
   try {
     const headerKey = req.headers.get("x-api-key") || req.headers.get("x-deepseek-api-key");
     const aiKey = headerKey || process.env.DEEPSEEK_API_KEY || "";
-    const openaiKey = req.headers.get("x-openai-api-key") || process.env.OPENAI_API_KEY || "";
     const openrouterKey = req.headers.get("x-openrouter-api-key") || process.env.OPENROUTER_API_KEY || "";
     const geminiKey = req.headers.get("x-gemini-api-key") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    const groqKey = process.env.GROQ_API_KEY || "";
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -302,10 +214,9 @@ export async function POST(req: NextRequest) {
       const fileName = file.name || "chunk.wav";
       const mimeType = file.type || "audio/wav";
 
-      const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
-        openaiKey,
+      const { text, tempPath, errors, provider } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
+        groqKey,
         openrouterKey,
-        geminiKey,
       });
       if (tempPath) tempFilePath = tempPath;
 
@@ -315,7 +226,7 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
-      return NextResponse.json({ transcript: text });
+      return NextResponse.json({ transcript: text, provider });
     }
 
     if (!file && (!directText || directText.trim().length === 0)) {
@@ -390,11 +301,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ transcript, metadata });
     }
 
-    // CASE 5: Audio / Video recording (OpenAI Whisper -> OpenRouter -> Gemini cascade)
+    // CASE 5: Audio / Video recording (Groq Whisper -> OpenRouter Whisper)
     const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, file.name, mimeType, {
-      openaiKey,
+      groqKey,
       openrouterKey,
-      geminiKey,
     });
     if (tempPath) tempFilePath = tempPath;
 
@@ -405,7 +315,7 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
       return NextResponse.json({ 
-        error: "Audio transcription requires an OpenAI API Key, OpenRouter Key, or Gemini Key. Please configure them in your Vercel Environment Variables (OPENAI_API_KEY / OPENROUTER_API_KEY)." 
+        error: "Audio transcription is not configured yet. Please contact an administrator."
       }, { status: 400 });
     }
 

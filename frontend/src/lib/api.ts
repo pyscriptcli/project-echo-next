@@ -258,12 +258,17 @@ export async function generateMinutes(transcript: string, user_topics: string, n
 export async function askEcho(
   question: string,
   conversation: Array<{ role: "user" | "assistant"; content: string }> = [],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  currentMeeting?: {
+    elapsedSeconds: number;
+    segments: Array<{ index: number; startedAtSeconds: number; text: string }>;
+    notes: Array<{ timestamp: string; text: string }>;
+  }
 ) {
   const res = await fetch("/api/ask-echo", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, conversation }),
+    body: JSON.stringify({ question, conversation, currentMeeting }),
     signal,
   });
 

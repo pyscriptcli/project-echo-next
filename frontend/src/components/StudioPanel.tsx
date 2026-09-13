@@ -215,7 +215,11 @@ export function StudioPanel({
     setEchoMessages(nextMessages);
     try {
       const conversation = nextMessages.slice(1, -1).map(({ role, content }) => ({ role, content }));
-      const response = await askEcho(question, conversation);
+      const response = await askEcho(question, conversation, undefined, {
+        elapsedSeconds: recorder.elapsedSeconds,
+        segments: liveTranscript.segments,
+        notes: notes.map(({ timestamp, text }) => ({ timestamp, text })),
+      });
       setEchoMessages((current) => [...current, { role: "assistant", content: response.answer, response, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
     } catch (error) {
       setEchoMessages((current) => [...current, { role: "assistant", content: error instanceof Error ? error.message : "Echo couldn’t answer right now.", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
@@ -240,21 +244,21 @@ export function StudioPanel({
     echoEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [echoMessages, isEchoThinking]);
 
-  const renderEchoInline = (message: EchoMessage, text: string, lineKey: string) => text.split(/(\[\d+\])/g).map((part, index) => {
+  const renderEchoInline = (message: EchoMessage, text: string, lineKey: string, messageIndex: number) => text.split(/(\[\d+\])/g).map((part, index) => {
     const match = part.match(/^\[(\d+)\]$/);
     if (!match) return <React.Fragment key={index}>{part}</React.Fragment>;
     const number = Number(match[1]);
     const citation = message.response?.citations?.find((item) => item.marker === `[${number}]`) || message.response?.citations?.[number - 1];
     const source = citation ? message.response?.sources.find((item) => item.sourceId === citation.sourceId) : message.response?.sources[number - 1];
-    return <button key={`${lineKey}-${index}`} type="button" disabled={!source} onClick={() => source && onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="align-super mx-0.5 text-[10px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-2 disabled:cursor-default">[{number}]</button>;
+    return <button key={`${lineKey}-${index}`} type="button" disabled={!source} onClick={() => { if (source?.sourceId.startsWith("current-meeting:")) setOpenEchoSources((current) => ({ ...current, [messageIndex]: true })); else if (source) onOpenSource?.(source.page || "meetings", source.meetingId, source.url); }} className="align-super mx-0.5 text-[10px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-2 disabled:cursor-default">[{number}]</button>;
   });
 
-  const renderEchoAnswer = (message: EchoMessage) => message.content.split("\n").map((line, index) => {
+  const renderEchoAnswer = (message: EchoMessage, messageIndex: number) => message.content.split("\n").map((line, index) => {
     const cleaned = line.replace(/\*\*/g, "").trim();
     if (!cleaned) return <div key={index} className="h-2" />;
     const bullet = /^[-•]\s/.test(cleaned);
     const content = bullet ? cleaned.replace(/^[-•]\s*/, "") : cleaned;
-    return <div key={index} className={bullet ? "flex gap-2 pl-1" : ""}>{bullet && <span className="text-[#C9A84C]">•</span>}<span>{renderEchoInline(message, content, String(index))}</span></div>;
+    return <div key={index} className={bullet ? "flex gap-2 pl-1" : ""}>{bullet && <span className="text-[#C9A84C]">•</span>}<span>{renderEchoInline(message, content, String(index), messageIndex)}</span></div>;
   });
 
   const isRecordingActive = recorder.status === "recording" || recorder.status === "paused";
@@ -477,7 +481,7 @@ export function StudioPanel({
 
             {(isRecordingActive || isStopped) && (
               <div className="text-center text-xs text-[#003366]/70">
-                {liveTranscript.status === "waiting" ? "Some audio will be finished when you send it." : liveTranscript.status === "processing" ? "Keeping your notes ready…" : liveTranscript.status === "ready" ? "Ready for Notetaker" : "Recording and keeping your notes ready"}
+                {liveTranscript.status === "waiting" ? "Some audio will be finished when you send it." : liveTranscript.status === "processing" ? "Understanding the latest part…" : liveTranscript.status === "ready" ? "Ready for Notetaker" : liveTranscript.completedBatches > 0 ? `Meeting context ready through ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Recording and building meeting context"}
               </div>
             )}
 
@@ -579,10 +583,10 @@ export function StudioPanel({
                 {echoMessages.map((message, messageIndex) => <div key={`${messageIndex}-${message.timestamp}`} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
                   <div className={`h-7 w-7 shrink-0 flex items-center justify-center ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
                   <div className={`max-w-[86%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-white"}`}>
-                    <div className="space-y-1">{message.role === "assistant" ? renderEchoAnswer(message) : message.content}</div>
+                    <div className="space-y-1">{message.role === "assistant" ? renderEchoAnswer(message, messageIndex) : message.content}</div>
                     {!!message.response?.sources?.length && <div className="mt-4 border-t border-[#C9A84C]/40 pt-3">
                       <button type="button" onClick={() => setOpenEchoSources((current) => ({ ...current, [messageIndex]: !current[messageIndex] }))} className="flex w-full items-center justify-between text-left text-[10px] font-medium uppercase tracking-[0.18em] text-[#003366]" aria-expanded={!!openEchoSources[messageIndex]}><span>Sources · {message.response.sources.length}</span><span className="normal-case tracking-normal">{openEchoSources[messageIndex] ? "Hide" : "Show"}</span></button>
-                      {openEchoSources[messageIndex] && <div className="mt-3 space-y-2">{message.response.sources.map((source, sourceIndex) => <button key={source.sourceId} type="button" onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="block w-full border-l-2 border-[#C9A84C] py-2 pl-3 text-left hover:bg-[#003366]/5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]"><span><span className="mr-2 text-[10px] text-[#C9A84C]">[{sourceIndex + 1}]</span>{source.meetingTitle}</span><ExternalLink size={11} /></span><span className="mt-1 block text-xs text-[#181D1E]/75">{source.excerpt}</span></button>)}</div>}
+                      {openEchoSources[messageIndex] && <div className="mt-3 space-y-2">{message.response.sources.map((source, sourceIndex) => { const currentMeeting = source.sourceId.startsWith("current-meeting:"); return <button key={source.sourceId} type="button" disabled={currentMeeting} onClick={() => onOpenSource?.(source.page || "meetings", source.meetingId, source.url)} className="block w-full border-l-2 border-[#C9A84C] py-2 pl-3 text-left enabled:hover:bg-[#003366]/5 disabled:cursor-default"><span className="flex items-center justify-between gap-2 text-xs font-medium text-[#003366]"><span><span className="mr-2 text-[10px] text-[#C9A84C]">[{sourceIndex + 1}]</span>{source.meetingTitle}</span>{!currentMeeting && <ExternalLink size={11} />}</span><span className="mt-1 block text-[10px] uppercase tracking-wide text-[#003366]/55">{source.topic || (currentMeeting ? "Processed audio" : "Workspace")}</span><span className="mt-1 block text-xs text-[#181D1E]/75">{source.excerpt}</span></button>; })}</div>}
                     </div>}
                     {!!message.response?.followUps?.length && <div className="mt-3 flex flex-wrap gap-2">{message.response.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => void askFromStudio(followUp)} className="border border-[#003366]/25 px-2 py-1 text-[11px] text-[#003366] hover:border-[#C9A84C]">{followUp}</button>)}</div>}
                     <div className={`mt-2 flex items-center gap-1 text-[9px] ${message.role === "user" ? "justify-end text-white/60" : "text-[#181D1E]/45"}`}><Clock size={10} />{message.timestamp}</div>

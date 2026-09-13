@@ -5,11 +5,18 @@ import { transcribeRecordingBatch } from "@/lib/api";
 
 type LiveTranscriptStatus = "idle" | "recording" | "processing" | "ready" | "waiting";
 
+export interface MeetingTranscriptSegment {
+  index: number;
+  startedAtSeconds: number;
+  text: string;
+}
+
 const BATCH_MS = 45_000;
 
 export function useLiveTranscription(audioStream: MediaStream | null) {
   const [status, setStatus] = useState<LiveTranscriptStatus>("idle");
   const [completedBatches, setCompletedBatches] = useState(0);
+  const [segments, setSegments] = useState<MeetingTranscriptSegment[]>([]);
   const segmentsRef = useRef(new Map<number, string>());
   const recorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -28,6 +35,7 @@ export function useLiveTranscription(audioStream: MediaStream | null) {
           const transcript = await transcribeRecordingBatch(blob, index);
           segmentsRef.current.set(index, transcript);
           setCompletedBatches(segmentsRef.current.size);
+          setSegments(Array.from(segmentsRef.current.entries()).sort(([left], [right]) => left - right).map(([segmentIndex, text]) => ({ index: segmentIndex, startedAtSeconds: segmentIndex * (BATCH_MS / 1000), text })));
           setStatus("recording");
           return;
         } catch {
@@ -112,8 +120,9 @@ export function useLiveTranscription(audioStream: MediaStream | null) {
     batchIndexRef.current = 0;
     queueRef.current = Promise.resolve();
     setCompletedBatches(0);
+    setSegments([]);
     setStatus("idle");
   }, []);
 
-  return { status, completedBatches, finalize, reset };
+  return { status, completedBatches, segments, processedSeconds: completedBatches * (BATCH_MS / 1000), finalize, reset };
 }

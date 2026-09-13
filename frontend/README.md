@@ -41,6 +41,13 @@ Add `MEETSTREAM_API_KEY` as a Vercel environment variable for Production, Previe
 
 Echo automatically sends MeetStream callbacks to `/api/meetstream/webhook` on the deployed app. If callbacks must use a different public deployment, optionally set `MEETSTREAM_WEBHOOK_BASE_URL` to its HTTPS origin, for example `https://project-echo-next.vercel.app`.
 
+### Botless transcription
+
+Set `GROQ_API_KEY` for free-tier-first Whisper transcription and `OPENROUTER_API_KEY` for paid fallback. Echo uses `whisper-large-v3-turbo` on Groq and `openai/whisper-large-v3` on OpenRouter by default. Optional overrides are `GROQ_WHISPER_MODEL`, `GROQ_WHISPER_PROMPT`, and `OPENROUTER_STT_MODEL`.
+
+The router respects Groq `429` responses and `Retry-After`, temporarily skips Groq during cooldown, and falls back to OpenRouter. Use one legitimate Groq project/API key; account or organization rotation is unsupported.
+Audio transcription uses only these two Whisper paths; Gemini is not an audio fallback. Document/PDF handling may still use its separately configured provider.
+
 ## Forms Portal configuration
 
 The Forms Portal is available from Echo's sidebar after signing in with ClickUp. Run `supabase/forms_rbac.sql` in the project Supabase database, then provide `SUPABASE_SERVICE_ROLE_KEY` to persist the protected Owner/Admin configuration. Dave's ClickUp email (`dave.policarpio@primephilippines.com`) is the protected Owner. Without the Supabase table, Admin configuration remains available in local browser storage for local review.

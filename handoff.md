@@ -12,8 +12,8 @@ Echo should feel casual, conversational, and useful. Avoid provider language, �
 
 - Repository: `https://github.com/pyscriptcli/project-echo-next.git`
 - Active branch: `main`
-- Current deployed source commit: `fb39895` (`fix: refine Echo answer presentation`)
-- `main` and `origin/main` were clean and aligned when this handoff was written.
+- Current `main` commit: `d211b49` (`Secure MeetStream bot creation and configure transcription callbacks`).
+- `main` and `origin/main` are aligned at `d211b49`; this handoff update is the only local change.
 - The Next.js app lives in `frontend/`; the repository root does not contain a `package.json`.
 - Use `frontend/` as the working directory for npm commands.
 
@@ -33,6 +33,17 @@ This preserves today's handoff through tomorrow. It is replaced only after two n
 
 ## Recent handoffs
 
+### 2026-09-13 — Studio capture and MeetStream setup
+
+- Focus: unified Studio workspace; safer browser capture; Echo.ai meeting-bot launch.
+- State: Studio Ask Echo shares session conversation and response UI with main drawer; citations clickable; sources collapsed. Minimize control removed. Browser capture opens native picker directly, blocks silent mic-only fallback when shared audio is missing, and offers retry or explicit microphone-only capture. MeetStream create route now uses authenticated Echo users, `Echo.ai` bot name, idempotency key, Vercel callback origin, and Deepgram live transcription config.
+- Files: `frontend/src/components/StudioPanel.tsx`; `frontend/src/components/UniversalEchoDrawer.tsx`; `frontend/src/hooks/useStudioRecorder.ts`; `frontend/src/app/api/meetstream/bots/route.ts`; `frontend/src/app/api/meetstream/bots/route.test.ts`; `frontend/README.md`.
+- Verification: 19 tests passed across 8 files; focused lint passed; production build passed; `git diff --check` passed. Studio visual QA blocked by local ClickUp sign-in.
+- Commit: `d211b49` on `main`; pushed to `origin/main`. This `handoff.md` update is uncommitted. User reports `MEETSTREAM_API_KEY` configured in Vercel; deployment completion not independently verified.
+- Risk: browser owns screen/audio selection; Echo cannot auto-select monitor or audio toggle. MeetStream webhook currently acknowledges and logs events only; no durable transcript/media persistence or final Notetaker handoff. No real meeting join test completed.
+- Next: verify Vercel deployment; join one controlled Google Meet; admit Echo.ai; confirm live webhook events; then persist transcript turns and complete post-call Notetaker handoff.
+- Suggested skills: `caveman`; `tdd` for webhook lifecycle; `ponytail unavailable`.
+
 ### 2026-09-12 — Rolling handoff workflow
 
 - Focus: make `handoff.md` reusable, rolling, and agent-readable.
@@ -43,17 +54,6 @@ This preserves today's handoff through tomorrow. It is replaced only after two n
 - Risk: `ponytail` skill unavailable; Caveman remains available.
 - Next: preserve two-entry rotation on every explicit handoff; update changelog when behavior changes.
 - Suggested skills: `caveman`; `ponytail unavailable`.
-
-### 2026-09-12 — Project Echo baseline
-
-- Focus: hand off Echo product, auth, retrieval, UI, admin AI, and recent commits.
-- State: per-user OAuth; page-gated retrieval; identity matching; clickable citations; collapsed sources; read-only Echo.
-- Files: `handoff.md`; `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md`; `frontend/src/lib/ask-echo/`; `frontend/src/components/UniversalEchoDrawer.tsx`.
-- Verification: 17 tests passed; production build passed before documentation update.
-- Commit: `8454715` created repository handoff guide.
-- Risk: mapped workspace sources only; no persistent chat; no write actions.
-- Next: test two users with different ClickUp permissions; apply Supabase schema; preserve Echo-first copy.
-- Suggested skills: `caveman`; `prime-philippines-brand`; `tdd` for behavior changes; `ponytail unavailable`.
 
 ## What is implemented
 
@@ -73,6 +73,7 @@ CLICKUP_CLIENT_ID
 CLICKUP_CLIENT_SECRET
 CLICKUP_REDIRECT_URI   # optional; otherwise /api/auth/callback on the current origin
 DEEPSEEK_API_KEY       # server-side model credential used by Ask Echo
+MEETSTREAM_API_KEY     # server-side Echo.ai meeting-bot credential
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY (or the configured Supabase service key)
 ```
@@ -131,6 +132,27 @@ The model is asked to put inline markers such as `[1]` and return a citation map
 
 The parent page wires source navigation in `frontend/src/app/page.tsx`: meeting/task pages are opened in Echo's existing views and external URLs may open in a new tab.
 
+### Studio and meeting capture
+
+`frontend/src/components/StudioPanel.tsx` presents one capture workspace with two paths: paste a supported meeting link for Echo.ai, or record on the current device.
+
+- Fullscreen layout keeps recording and timestamped notes on the left and Ask Echo on the right.
+- Studio Ask Echo uses the same session conversation, message styling, clickable inline citations, collapsed sources, and follow-up actions as the main drawer.
+- Active recording state reaches the top bar through `echo-recording-state`; Studio no longer exposes a minimize-to-topbar control.
+- Closing during an active recording requires an explicit stop-and-close confirmation.
+- Browser capture opens the native share picker immediately. Echo requests system/tab audio and checks the returned stream before recording starts.
+- Missing shared audio stops startup and offers `Choose again` or explicit `Use microphone only`. Browsers retain control of monitor/tab selection and audio toggles.
+- Local audio is flushed to IndexedDB every 10 seconds. `useLiveTranscription` processes completed audio batches during recording; finalization uses prepared chunks when complete and the full-file path as fallback.
+
+### Echo.ai meeting bot
+
+`frontend/src/app/api/meetstream/bots/route.ts` creates a MeetStream bot for Zoom, Google Meet, or Teams links.
+
+- Requires an authenticated Echo session and server-only `MEETSTREAM_API_KEY`.
+- Sends bot name `Echo.ai`, audio/video recording, an idempotency key, callback URL, and Deepgram streaming transcription settings.
+- Resolves callback origin from `MEETSTREAM_WEBHOOK_BASE_URL`, `NEXT_PUBLIC_APP_URL`, Vercel deployment variables, or the current request origin.
+- `frontend/src/app/api/meetstream/webhook/route.ts` currently acknowledges and logs events. Durable event storage, final transcript retrieval, media retrieval, and automatic Notetaker handoff remain pending.
+
 ## Admin AI configuration
 
 `frontend/src/components/forms/FormsPortal.tsx` includes the `AI` tab. It exposes the approved model catalog, fallback model, output/source limits, RPM, concurrency, daily user tokens, and monthly organization tokens. The server validates policy through `frontend/src/lib/ask-echo/limits.ts` and `frontend/src/app/api/forms/config/route.ts`.
@@ -156,6 +178,12 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 
 - `frontend/src/components/UniversalEchoDrawer.tsx` — drawer, expanded view, messages, citations, sources, composer.
 - `frontend/src/components/UniversalEchoDrawer.test.tsx` — UI send/source behavior.
+- `frontend/src/components/StudioPanel.tsx` — capture selection, recorder controls, live notes, and embedded Ask Echo.
+- `frontend/src/hooks/useStudioRecorder.ts` — browser audio capture, audio validation, mixing, and crash recovery.
+- `frontend/src/hooks/useLiveTranscription.ts` — background audio-batch transcription and finalization.
+- `frontend/src/app/api/meetstream/bots/route.ts` — authenticated MeetStream bot creation.
+- `frontend/src/app/api/meetstream/webhook/route.ts` — MeetStream callback receiver; persistence pending.
+- `frontend/src/app/api/meetstream/bots/route.test.ts` — bot payload and missing-configuration coverage.
 - `frontend/src/lib/api.ts` — client request helper (`askEcho`).
 - `frontend/src/app/api/ask-echo/route.ts` — transport/auth/error handling.
 - `frontend/src/lib/ask-echo/schema.ts` — request/response types and validation.
@@ -174,6 +202,27 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md` — original implementation plan and product boundaries.
 
 ## Changelog
+
+### `d211b49` — secure MeetStream creation and configure transcription callbacks
+
+- Added authenticated bot creation, server-only API key handling, idempotency, deployment-aware callback URLs, and Deepgram live transcription configuration.
+- Added route tests and Vercel environment documentation.
+
+### `e7c40e7` — open audio sharing directly
+
+- Removed Echo's extra pre-share wrapper so the record control opens the required browser picker immediately.
+- Retained post-picker shared-audio validation and explicit microphone-only fallback.
+
+### `3dbc987` — align Studio chat and audio sharing
+
+- Aligned Studio Ask Echo with the main conversation UI and shared session state.
+- Added clickable citations, collapsed sources, follow-ups, and conversation-aware prompts.
+- Removed recording minimization, protected active close, and stopped silent fallback when shared audio is missing.
+
+### `8f710fb` — reshape full-screen meeting workspace
+
+- Placed recording and live notes on the left and Ask Echo on the right in fullscreen Studio.
+- Added dynamic recording state and audio visualizer behavior.
 
 ### `fb39895` — refine Echo answer presentation
 
@@ -233,7 +282,7 @@ npm run build
 npm run lint
 ```
 
-The latest verified test result was 17 passing tests across 7 files. The latest production build completed successfully. If Vitest reports an access-denied error while loading `vitest.config.mjs`, rerun with the required filesystem permission; that has been a local sandbox issue, not an application failure.
+The latest verified test result was 19 passing tests across 8 files. Focused lint and the latest production build completed successfully. If Vitest reports an access-denied error while loading `vitest.config.mjs`, rerun with the required filesystem permission; that has been a local sandbox issue, not an application failure.
 
 Before committing:
 
@@ -264,6 +313,8 @@ The user preference for this repository is to commit and push directly to `main`
 - Echo is read-only; task creation, record edits, and autonomous actions are deferred.
 - Inline citation rendering is intentionally lightweight. If richer markdown is added, preserve clickable citations and sanitize untrusted content.
 - Daily brief is currently a suggested prompt, not a proactive notification or scheduled job.
+- MeetStream bot creation is wired, but the webhook does not yet persist live turns or complete final transcript/media retrieval.
+- Real Zoom, Google Meet, and Teams joins have not yet been validated end to end from the deployed Vercel app.
 - Deterministic keyword ranking is used. Semantic/vector retrieval should only be added if a fixed evaluation set demonstrates a real accuracy gap.
 - The original implementation plan still contains some proposal language; this handoff and the current source code are the source of truth for shipped behavior.
 
@@ -274,7 +325,9 @@ The user preference for this repository is to commit and push directly to `main`
 3. Add fixture-based tests for citation mapping, restricted pages, and “my tasks” matching across multiple assignees.
 4. Improve structured answer cards only after agreeing on stable response data (tasks, deadlines, decisions, changes).
 5. Add workspace-wide sources only with an explicit permission model that preserves ClickUp visibility per user.
-6. If direct official ClickUp MCP support is desired, treat it as a separate adapter: each Echo user still needs OAuth, and MCP must not bypass the current page-access checks.
+6. Run one controlled deployed MeetStream join and verify bot admission, live transcription callbacks, call completion, and provider usage.
+7. Persist idempotent MeetStream transcript turns and connect final transcript/media retrieval to the existing Notetaker flow.
+8. If direct official ClickUp MCP support is desired, treat it as a separate adapter: each Echo user still needs OAuth, and MCP must not bypass the current page-access checks.
 
 ## Handoff checklist
 
