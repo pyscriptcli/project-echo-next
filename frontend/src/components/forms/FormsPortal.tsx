@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Users,
   Mail
+  ,BarChart3, Download
 } from "lucide-react";
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
@@ -134,11 +135,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [newMemberDepartment, setNewMemberDepartment] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
-  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai">("rbac");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
   const [newSignInDomain, setNewSignInDomain] = useState("");
   const [aiUsage, setAiUsage] = useState<{ today: { requests: number; tokens: number }; month: { requests: number; tokens: number }; recentLimitHits: number; credentialConfigured: boolean } | null>(null);
+  const [telemetryRange, setTelemetryRange] = useState(() => ({ start: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), end: new Date().toISOString().slice(0, 10) }));
+  const [telemetry, setTelemetry] = useState<any>(null);
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -183,6 +186,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
     if (settingsTab !== "ai") return;
     fetch("/api/admin/ai").then((response) => response.ok ? response.json() : null).then((data) => data && setAiUsage(data)).catch(() => {});
   }, [settingsTab]);
+
+  useEffect(() => {
+    if (settingsTab !== "telemetry") return;
+    const start = new Date(`${telemetryRange.start}T00:00:00`).toISOString();
+    const end = new Date(`${telemetryRange.end}T23:59:59.999`).toISOString();
+    fetch(`/api/admin/telemetry?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`).then((response) => response.ok ? response.json() : null).then(setTelemetry).catch(() => setTelemetry(null));
+  }, [settingsTab, telemetryRange]);
 
   const save = async (next: FormsConfig = config) => {
     setConfig(next);
@@ -454,12 +464,31 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       )}
 
       <div className="flex gap-1 border-b border-gray-200 pb-2">
-        {(["rbac", "configurations", "email", "ai"] as const).map((item) => (
+        {(["rbac", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
           <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
-            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : "AI"}
+            {item === "rbac" ? "RBAC" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : item === "ai" ? "AI" : "Telemetry"}
           </button>
         ))}
       </div>
+
+      <section className={`space-y-4 ${settingsTab !== "telemetry" ? "hidden" : ""}`}>
+        <div className="panel">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div><h2 className="flex items-center gap-2 text-lg font-serif italic text-[#003366]"><BarChart3 size={18} /> API telemetry</h2><p className="mt-1 text-xs text-[#181D1E]/65">Monitor processing speed, providers, fallbacks, and failures.</p></div>
+            <button type="button" onClick={() => { const start = new Date(`${telemetryRange.start}T00:00:00`).toISOString(); const end = new Date(`${telemetryRange.end}T23:59:59.999`).toISOString(); window.location.href = `/api/admin/telemetry?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&format=jsonl`; }} className="btn-primary flex items-center gap-2 text-xs"><Download size={14} /> Export full report</button>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="text-xs text-[#181D1E]">From<input type="date" value={telemetryRange.start} onChange={(event) => setTelemetryRange((current) => ({ ...current, start: event.target.value }))} className="mt-1 block w-full border border-[#003366]/30 bg-[#FFFCFB] px-3 py-2" /></label>
+            <label className="text-xs text-[#181D1E]">To<input type="date" value={telemetryRange.end} onChange={(event) => setTelemetryRange((current) => ({ ...current, end: event.target.value }))} className="mt-1 block w-full border border-[#003366]/30 bg-[#FFFCFB] px-3 py-2" /></label>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {[["Events", telemetry?.summary?.totalEvents || 0], ["Success", telemetry?.summary?.successfulEvents || 0], ["Failures", telemetry?.summary?.failedEvents || 0], ["Avg processing", `${telemetry?.summary?.averageProcessingMs || 0} ms`], ["Fallback rate", `${telemetry?.summary?.fallbackRate || 0}%`]].map(([label, value]) => <div key={String(label)} className="panel"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">{label}</div><div className="mt-1 text-xl text-[#003366]">{value}</div></div>)}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {[['Provider', telemetry?.summary?.byProvider], ['Source', telemetry?.summary?.bySource], ['Operation', telemetry?.summary?.byOperation]].map(([title, values]) => <div key={String(title)} className="panel"><h3 className="text-sm font-medium text-[#003366]">{title}</h3><div className="mt-3 space-y-2">{Object.entries((values || {}) as Record<string, number>).map(([key, value]) => <div key={key} className="flex justify-between border-b border-gray-100 pb-1 text-xs"><span>{key}</span><span className="font-semibold text-[#003366]">{value}</span></div>)}{!Object.keys((values || {}) as object).length && <p className="text-xs text-gray-400">No telemetry in this range.</p>}</div></div>)}
+        </div>
+      </section>
 
       <section className={`space-y-4 ${settingsTab !== "ai" ? "hidden" : ""}`}>
         <div className="panel">
