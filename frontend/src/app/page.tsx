@@ -336,7 +336,6 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [pastedText, setPastedText] = useState("");
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [additionalMeetingNotes, setAdditionalMeetingNotes] = useState("");
 
   // Navigation Shell & View State
@@ -1303,32 +1302,6 @@ export default function Home() {
                   />
                 )}
 
-                {/* Collapsible: Additional Meeting Notes */}
-                <div className="mt-3.5 border border-gray-200 bg-[#FFFCFB]">
-                  <div 
-                    onClick={() => setIsNotesOpen(!isNotesOpen)}
-                    className="p-3 flex justify-between items-center cursor-pointer hover:bg-[#FFFCFB] select-none transition-colors"
-                  >
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-[#003366] flex items-center gap-1.5">
-                      {isNotesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      Additional Meeting Notes (Optional)
-                    </span>
-                    <span className="text-[10px] text-gray-400">{isNotesOpen ? "Hide" : "Expand"}</span>
-                  </div>
-                  
-                  {isNotesOpen && (
-                    <div className="p-3 border-t border-gray-100 bg-[#FFFCFB]">
-                      <textarea 
-                        rows={3}
-                        value={additionalMeetingNotes}
-                        onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
-                        placeholder="Add background notes, key announcements, agenda items, or specific instructions..."
-                        className="w-full border border-gray-300 p-2 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] leading-relaxed rounded-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
                 {/* Transcript Preview if available */}
                 {transcript && (
                   <div className="mt-3.5 p-3 bg-[#FFFCFB] border border-gray-200">
@@ -1343,9 +1316,7 @@ export default function Home() {
                 )}
 
               </div>
-            </div>
-
-            {/* Right Panel: Meeting Information (Uniform bg-[#FFFCFB] rounded-none card) */}
+            {/* Meeting Information follows recording status in the same left workspace column. */}
             <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">
@@ -1555,6 +1526,8 @@ export default function Home() {
                 </div>
 
               </div>
+            </div>
+
             </div>
 
           </div>
