@@ -985,7 +985,7 @@ export default function Home() {
         <StudioRecoveryBanner />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5">
+        <main className={`flex-1 overflow-y-auto ${currentView === "minutes" ? "p-0" : "px-4 py-5 md:px-8"}`}>
           {!isPageAllowed(currentView) ? (
             <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
               <div className="max-w-md w-full bg-[#FFFCFB] border border-slate-200 p-8 text-center shadow-sm">
@@ -1012,7 +1012,7 @@ export default function Home() {
             </div>
           ) : (
             <>
-          <div className="w-full pb-12">
+          <div className={currentView === "minutes" ? "min-h-full w-full" : "w-full pb-12"}>
             
             {/* VIEW 1: DASHBOARD */}
             {currentView === "dashboard" && (
@@ -1092,9 +1092,9 @@ export default function Home() {
 
             {/* VIEW 3: MINUTES GENERATOR */}
             {currentView === "minutes" && (
-              <div className="flex flex-col h-full relative font-sans text-gray-800">
+              <div className="relative flex min-h-full flex-col bg-[#F7F9FC] font-sans text-gray-800">
                 {/* Header bar (Uniform text-2xl font-serif) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-200/80 gap-4">
+                <div className="flex flex-col justify-between gap-4 border-b border-slate-200 bg-[#FFFCFB] px-5 py-4 sm:flex-row sm:items-center md:px-7">
                   <div>
                     <h1 className="text-2xl font-serif font-bold text-[#003366] italic">Notetaker Workspace</h1>
                     <p className="text-xs font-bold tracking-wider text-gray-400 uppercase mt-0.5">
@@ -1102,7 +1102,14 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    {stage === "Input" && <span className="text-[11px] text-gray-400">Start a live meeting or open Upload or paste existing material below.</span>}
+                    {stage === "Input" && (
+                      <div className="flex items-center gap-2">
+                        {selectedFile && <button type="button" onClick={() => handleUnifiedSourceSubmission()} disabled={isLoading} className="btn-outline !px-3 !py-2 !text-[10px]"><RotateCcw size={12} /> Re-process</button>}
+                        <button type="button" onClick={() => setSourceTab(sourceTab === "record" ? "source" : "record")} className="btn-outline !px-3 !py-2 !text-[10px]">
+                          {sourceTab === "record" ? <><Upload size={12} /> Upload or paste</> : <><Mic size={12} /> Return to recording</>}
+                        </button>
+                      </div>
+                    )}
                     {stage === "Review" && (
                       <button onClick={() => setShowExportModal(true)} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
                         <Download size={14} />
@@ -1112,53 +1119,21 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Stepper Navigation (Placed directly after workspace header) */}
-                <div className="mb-4">
-                  <Stepper 
-                    currentStage={stage} 
-                    onStageChange={setStage} 
-                    isReviewAllowed={isReviewAllowed}
-                  />
-                </div>
+                <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} />
 
       {/* STAGE 1: INPUT */}
-      <div className="flex-1">
+      <div className="flex-1 p-4 md:p-5">
         {stage === "Input" && (
           <div className={`grid grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-4 items-start`}>
             
             {/* Left Panel: Meeting Source (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className={`bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col ${sourceTab === "record" ? "lg:min-h-[620px]" : ""}`}>
-              <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
-                <span className="font-serif font-bold text-base text-[#003366] italic">{sourceTab === "record" ? "Live meeting workspace" : "Upload or paste existing material"}</span>
-                {selectedFile && (
-                  <button 
-                    type="button"
-                    onClick={() => handleUnifiedSourceSubmission()}
-                    disabled={isLoading}
-                    className="btn-primary !py-1 !px-2.5 !text-xs flex items-center gap-1.5 shadow-2xs shrink-0 rounded-none cursor-pointer"
-                  >
-                    <RotateCcw size={12} />
-                    <span>Re-process File</span>
-                  </button>
-                )}
-              </div>
+            <div className={`flex flex-col ${sourceTab === "record" ? "min-h-[calc(100vh-12rem)]" : "bg-[#FFFCFB] border border-gray-200/90 p-4 shadow-2xs"}`}>
+              {sourceTab === "source" && <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
+                <span className="font-serif font-bold text-base text-[#003366] italic">Upload or paste existing material</span>
+              </div>}
               
               <div className="flex flex-col flex-1">
                 
-                {/* Recording is the primary path. Upload remains a secondary action. */}
-                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#003366]">
-                    {sourceTab === "record" ? "Record live" : "Upload or paste"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSourceTab(sourceTab === "record" ? "source" : "record")}
-                    className="text-[11px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-4 hover:text-[#C9A84C]"
-                  >
-                    {sourceTab === "record" ? "Upload recording or transcript" : "Back to live recording"}
-                  </button>
-                </div>
-
                 {/* TAB 1: MERGED DRAG-AND-DROP UPLOAD & PASTE SOURCE */}
                 {sourceTab === "source" && (
                   <div className="flex flex-col gap-3.5">

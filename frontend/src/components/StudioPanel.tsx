@@ -297,7 +297,7 @@ export function StudioPanel({
   // ── Layout classes based on mode ───────────────────────────────────────
   const isFullscreen = embedded || mode === "fullscreen";
   const panelClasses = isFullscreen
-    ? `${embedded ? "w-full" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
+    ? `${embedded ? "w-full flex-1 min-h-[calc(100vh-13rem)]" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
     : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
 
   return (
