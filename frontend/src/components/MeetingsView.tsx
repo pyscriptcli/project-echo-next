@@ -162,8 +162,15 @@ export function MeetingsView({
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External">("All");
   const [meetingSpaces, setMeetingSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
-  const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("");
-  useEffect(() => { discoverClickUpLists().then((data) => setMeetingSpaces(data.spaces || [])).catch(() => setMeetingSpaces([])); }, []);
+  const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("__all__");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  useEffect(() => {
+    discoverClickUpLists().then((data) => {
+      setMeetingSpaces(data.spaces || []);
+      onSelectMeetingSpace?.("__all__");
+    }).catch(() => setMeetingSpaces([]));
+  }, []);
 
   // Selected meeting working draft (for in-place editing)
   const currentMeeting = meetings.find((m) => m.id === selectedMeetingId) || meetings[0];
@@ -224,7 +231,10 @@ export function MeetingsView({
       m.location.toLowerCase().includes(searchFilter.toLowerCase()) ||
       m.summary.toLowerCase().includes(searchFilter.toLowerCase());
     const matchesType = typeFilter === "All" || m.meeting_type === typeFilter;
-    return matchesSearch && matchesType;
+    const matchesFrom = !fromDate || m.date >= fromDate;
+    const matchesTo = !toDate || m.date <= toDate;
+    const matchesSpace = selectedMeetingSpace === "__all__" || !selectedMeetingSpace || m.clickup_space_id === selectedMeetingSpace;
+    return matchesSearch && matchesType && matchesFrom && matchesTo && matchesSpace;
   });
 
   // Handle Discussion Items Reorder / Remove / Add
@@ -367,7 +377,16 @@ export function MeetingsView({
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
-        <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">Echo Meetings Space<select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId) onSelectMeetingSpace?.(spaceId); }} className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal text-[#003366]"><option value="">Select a ClickUp Space</option>{meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}</select></label>
+        <div className="flex flex-wrap items-center justify-end gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+          <label className="flex items-center gap-2">Echo Meetings Space
+            <select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId !== "__all__") onSelectMeetingSpace?.(spaceId); else onSelectMeetingSpace?.("__all__"); }} className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]">
+              <option value="__all__">All spaces</option>
+              {meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px]">From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]" /></label>
+          <label className="flex items-center gap-1.5 text-[10px]">To<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]" /></label>
+        </div>
       </div>
 
       {/* Master-Detail Split Layout */}

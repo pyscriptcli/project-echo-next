@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { INITIAL_ARCHIVED_MEETINGS } from "@/lib/meetingsData";
 import { getTokenFromRequest } from "@/lib/auth";
+import { parseDiscussionItems } from "@/lib/meetingArchive";
 
 function meetingDescription(meeting: any) {
   const details = [
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
         const match = String(task.name || "").match(/^(\d{4}-\d{2}-\d{2})\s+—\s+(.*)$/);
         const description = task.description || "";
         const section = (name: string, next?: string) => { const pattern = new RegExp(`# ${name}\\n([\\s\\S]*?)${next ? `(?=\\n# ${next})` : "$"}`); return description.match(pattern)?.[1]?.trim() || ""; };
-        return { id: String(task.id), meeting_id: String(task.id), title: match?.[2] || task.name || "Echo Meeting", date: match?.[1] || new Date().toISOString().slice(0, 10), meeting_type: "Internal", location: description.match(/\*\*Location:\*\*\s*(.*)/)?.[1]?.trim() || "", attendees_prime: [], attendees_external: [], summary: section("Executive Summary", "Discussion Points"), items: [], transcript: section("Full Transcript"), created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(), clickup_space_id: String(spaceId), clickup_space_name: spaceName, clickup_list_id: String(echoList.id), clickup_list_name: echoList.name, archive_status: task.status?.status || "closed" };
+        return { id: String(task.id), meeting_id: String(task.id), title: match?.[2] || task.name || "Echo Meeting", date: match?.[1] || new Date().toISOString().slice(0, 10), meeting_type: "Internal", location: description.match(/\*\*Location:\*\*\s*(.*)/)?.[1]?.trim() || "", attendees_prime: [], attendees_external: [], summary: section("Executive Summary", "Discussion Points"), items: parseDiscussionItems(section("Discussion Points", "Full Transcript")), transcript: section("Full Transcript"), created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(), clickup_space_id: String(spaceId), clickup_space_name: spaceName, clickup_list_id: String(echoList.id), clickup_list_name: echoList.name, archive_status: task.status?.status || "closed" };
       });
       return NextResponse.json({ status: "success", meetings, list: { id: echoList.id, name: echoList.name } });
     }

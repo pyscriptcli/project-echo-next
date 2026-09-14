@@ -1094,6 +1094,22 @@ export default function Home() {
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
                 onSelectMeetingSpace={async (spaceId) => {
+                  if (spaceId === "__all__") {
+                    try {
+                      const discovered = await discoverClickUpLists();
+                      const responses = await Promise.all((discovered.spaces || []).map(async (space: any) => {
+                        const response = await fetch(`/api/meetings?spaceId=${encodeURIComponent(space.id)}`);
+                        if (!response.ok) return { meetings: [] };
+                        return response.json().catch(() => ({ meetings: [] }));
+                      }));
+                      const merged = responses.flatMap((data: any) => data.meetings || []);
+                      const unique = Array.from(new Map(merged.map((meeting: ArchivedMeeting) => [meeting.id, meeting])).values());
+                      setArchivedMeetings(unique);
+                    } catch (error) {
+                      console.warn("Unable to load all ClickUp meeting spaces:", error);
+                    }
+                    return;
+                  }
                   const response = await fetch(`/api/meetings?spaceId=${encodeURIComponent(spaceId)}`);
                   const data = await response.json().catch(() => ({}));
                   if (!response.ok) { alert(data.error || "Unable to load meetings from the selected ClickUp Space."); return; }
