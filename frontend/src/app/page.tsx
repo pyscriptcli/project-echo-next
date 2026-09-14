@@ -453,8 +453,8 @@ export default function Home() {
   const [transcript, setTranscript] = useState("");
   const [metadata, setMetadata] = useState<any>({
     date: new Date().toISOString().split("T")[0],
-    start_time: "09:00",
-    end_time: "10:00",
+    start_time: new Date().toTimeString().slice(0, 5),
+    end_time: "",
     meeting_type: "Internal",
     location: "GreatWork Mega Tower 32F - Secret Room",
     custom_location: "",
@@ -480,6 +480,12 @@ export default function Home() {
   const [momItems, setMomItems] = useState<any[]>([]);
   const [otherDiscussions, setOtherDiscussions] = useState("");
   const [showReviewAssist, setShowReviewAssist] = useState(true);
+
+  const generateMeetingTitle = (content: string) => {
+    const firstLine = content.split(/\n|[.!?]/).map((line) => line.trim()).find((line) => line.length >= 12);
+    if (!firstLine) return `Meeting — ${new Date().toLocaleDateString()}`;
+    return firstLine.replace(/^(speaker\s*\d+\s*[:\-]\s*)/i, "").slice(0, 80).trim();
+  };
 
   // Handle Drag and Drop events
   const handleDragOver = (e: React.DragEvent) => {
@@ -624,6 +630,12 @@ export default function Home() {
         additionalMeetingNotes
       );
 
+      if (!metadata.client_name?.trim()) {
+        const generatedTitle = (momRes as any).title || (momRes as any).meeting_title || generateMeetingTitle(preparedTranscript || res.transcript || pastedText);
+        setMetadata((current: any) => ({ ...current, client_name: generatedTitle }));
+      }
+      if (!metadata.end_time) setMetadata((current: any) => ({ ...current, end_time: new Date().toTimeString().slice(0, 5) }));
+
       setMomItems(
         (momRes.matched_items || []).map((item: any, idx: number) => ({
           id: item.id || `dp_${Date.now()}_${idx}`,
@@ -668,6 +680,11 @@ export default function Home() {
     try {
       const topics = "1. Project Updates\n2. Next Steps";
       const res = await generateMinutes(content, topics, additionalMeetingNotes);
+      if (!metadata.client_name?.trim()) {
+        const generatedTitle = (res as any).title || (res as any).meeting_title || generateMeetingTitle(content);
+        setMetadata((current: any) => ({ ...current, client_name: generatedTitle }));
+      }
+      if (!metadata.end_time) setMetadata((current: any) => ({ ...current, end_time: new Date().toTimeString().slice(0, 5) }));
       setMomItems(
         (res.matched_items || []).map((item: any, idx: number) => ({
           id: item.id || `dp_${Date.now()}_${idx}`,
