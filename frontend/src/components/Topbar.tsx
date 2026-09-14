@@ -22,7 +22,6 @@ import {
 import { ArchivedMeeting } from "@/types/meeting";
 import { ClickUpTask } from "./TasksView";
 import { formatEchoDate } from "@/lib/dateUtils";
-import { StudioPill } from "./StudioPill";
 
 interface TopbarProps {
   meetings: ArchivedMeeting[];
@@ -37,6 +36,7 @@ interface TopbarProps {
   allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms">;
   isAdmin?: boolean;
   studioRecording?: {
+    active?: boolean;
     isMinimized: boolean;
     elapsedSeconds: number;
     isPaused?: boolean;
@@ -58,6 +58,12 @@ export function Topbar({
   isAdmin,
   studioRecording,
 }: TopbarProps) {
+  const formatMeetingClock = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remaining = seconds % 60;
+    return [hours, minutes, remaining].map((value) => String(value).padStart(2, "0")).join(":");
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -364,27 +370,19 @@ export function Topbar({
       {/* Right Controls: "New Meeting" (transparent fill + gold border + mic + upload) and "Ask Echo" */}
       <div className="flex items-center gap-2.5 shrink-0">
         
-        {/* Minimized Studio Recording Pill */}
-        {studioRecording?.isMinimized && (
-          <StudioPill
-            elapsedSeconds={studioRecording.elapsedSeconds}
-            isPaused={studioRecording.isPaused}
-            onRestore={studioRecording.onRestore}
-          />
-        )}
-
         {/* New Meeting Integrated Control Group */}
         {(isAdmin || !allowedPages || allowedPages.includes("meetings") || allowedPages.includes("minutes")) && (
         <div className="inline-flex items-center rounded-none border border-[#C9AB4C] bg-transparent shadow-2xs overflow-hidden">
           {/* Main "New Meeting" Transparent Button with Gold Border */}
           <button
             type="button"
-            onClick={onNewMeeting}
-            className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#003366] hover:bg-[#C9AB4C]/15 transition-colors flex items-center gap-1.5"
-            title="Start New Meeting"
+            onClick={studioRecording?.active ? studioRecording.onRestore : onNewMeeting}
+            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${studioRecording?.active ? "bg-[#003366] text-white" : "text-[#003366] hover:bg-[#C9AB4C]/15"}`}
+            title={studioRecording?.active ? "Open current meeting" : "Start New Meeting"}
+            aria-label={studioRecording?.active ? `${studioRecording.isPaused ? "Paused" : "Recording"} ${formatMeetingClock(studioRecording.elapsedSeconds)}` : "New Meeting"}
           >
-            <Plus size={13} className="text-[#C9AB4C]" />
-            <span>New Meeting</span>
+            {studioRecording?.active ? <span className={`h-2 w-2 rounded-full ${studioRecording.isPaused ? "bg-amber-400" : "bg-red-500 animate-pulse"}`} /> : <Plus size={13} className="text-[#C9AB4C]" />}
+            <span>{studioRecording?.active ? `${studioRecording.isPaused ? "Paused" : "Recording"} ${formatMeetingClock(studioRecording.elapsedSeconds)}` : "New Meeting"}</span>
           </button>
 
         </div>

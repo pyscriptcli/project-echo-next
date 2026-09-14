@@ -970,12 +970,14 @@ export default function Home() {
           allowedPages={allowedPages as any}
           isAdmin={isAdminUser}
           studioRecording={{
+            active: studioRecordingState.active,
             isMinimized: isStudioOpen && studioMode === "minimized" && studioRecordingState.active,
             elapsedSeconds: studioRecordingState.elapsedSeconds,
             isPaused: studioRecordingState.paused,
             onRestore: () => {
+              setCurrentView("minutes");
               setIsStudioOpen(true);
-              setStudioMode("panel");
+              setStudioMode("fullscreen");
             },
           }}
         />
