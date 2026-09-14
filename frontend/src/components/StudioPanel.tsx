@@ -7,9 +7,7 @@ import {
   Download,
   ExternalLink,
   MessageCircle,
-  Maximize2,
   Mic,
-  Minimize2,
   Pause,
   Play,
   Plus,
@@ -128,8 +126,6 @@ export function StudioPanel({
   const [openEchoSources, setOpenEchoSources] = useState<Record<number, boolean>>({});
   const [isEchoThinking, setIsEchoThinking] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
   const notesEndRef = useRef<HTMLDivElement>(null);
   const echoEndRef = useRef<HTMLDivElement>(null);
 
@@ -293,18 +289,6 @@ export function StudioPanel({
     window.dispatchEvent(new CustomEvent("echo-recording-state", { detail: { active: isRecordingActive, paused: recorder.status === "paused", elapsedSeconds: recorder.elapsedSeconds } }));
   }, [isRecordingActive, recorder.status, recorder.elapsedSeconds]);
 
-  React.useEffect(() => {
-    const handleFullscreenChange = () => setIsBrowserFullscreen(document.fullscreenElement === sectionRef.current);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
-
-  const toggleBrowserFullscreen = async () => {
-    if (!sectionRef.current) return;
-    if (document.fullscreenElement === sectionRef.current) await document.exitFullscreen();
-    else await sectionRef.current.requestFullscreen();
-  };
-
   // ── Don't render if not open or minimized ──────────────────────────────
   if (!isOpen || mode === "minimized") return null;
 
@@ -325,42 +309,7 @@ export function StudioPanel({
         />
       )}
 
-      <section ref={sectionRef} aria-label="Recording Studio" className={panelClasses}>
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <header className="min-h-16 px-6 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <span className={`relative flex h-8 w-8 items-center justify-center rounded-full ${isRecordingActive ? "bg-red-500/15" : "bg-white/10"}`}>
-              <Mic size={17} className={isRecordingActive ? "text-red-300" : "text-[#C9A84C]"} />
-              {isRecordingActive && <span className="absolute inset-0 rounded-full border border-red-300/60 animate-ping" />}
-            </span>
-            <div>
-              <h2 className="text-base font-semibold leading-tight tracking-tight">{meetingTitle || "New meeting"}</h2>
-              <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
-                {recorder.status === "paused" ? "Meeting paused" : isRecordingActive ? "Live meeting" : isStopped ? "Meeting complete" : "Ready to start"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => embedded ? void toggleBrowserFullscreen() : onChangeMode(isFullscreen ? "panel" : "fullscreen")}
-              title={embedded ? (isBrowserFullscreen ? "Exit fullscreen" : "Fullscreen") : (isFullscreen ? "Exit fullscreen" : "Fullscreen")}
-              aria-label={embedded ? (isBrowserFullscreen ? "Exit fullscreen" : "Fullscreen") : (isFullscreen ? "Exit fullscreen" : "Fullscreen")}
-              className="p-2 hover:bg-[#174778] transition-colors"
-            >
-              {embedded ? (isBrowserFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />) : (isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />)}
-            </button>
-            {!embedded && <button
-              type="button"
-              onClick={handleClose}
-              title="Close"
-              className="p-2 hover:bg-[#174778] transition-colors"
-            >
-              <X size={16} />
-            </button>}
-          </div>
-        </header>
-
+      <section aria-label="Recording Studio" className={panelClasses}>
         {/* ── Content ─────────────────────────────────────────────────── */}
         <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
