@@ -37,6 +37,8 @@ interface StudioPanelProps {
   isOpen: boolean;
   /** Render inside the notetaker workspace instead of as a fixed overlay. */
   embedded?: boolean;
+  /** Meeting metadata owned by the Notetaker, rendered below recording status. */
+  meetingDetails?: React.ReactNode;
   mode: StudioDisplayMode;
   onChangeMode: (mode: StudioDisplayMode) => void;
   onClose: () => void;
@@ -92,6 +94,7 @@ function VolumeMeter({ level, isClipping }: { level: number; isClipping: boolean
 export function StudioPanel({
   isOpen,
   embedded = false,
+  meetingDetails,
   mode,
   onChangeMode,
   onClose,
@@ -344,10 +347,10 @@ export function StudioPanel({
         </header>
 
         {/* ── Content ─────────────────────────────────────────────────── */}
-        <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-row" : "flex-col"} bg-[#F3F6FA]`}>
+        <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-[30%] border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[32%] xl:border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA] xl:max-h-[calc(100vh-13rem)] xl:overflow-y-auto`}>
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
                 <strong className="text-[#003366]">Set up your meeting</strong>
@@ -513,6 +516,8 @@ export function StudioPanel({
             )}
             </div>}
 
+            {meetingDetails}
+
             {/* Status text for idle */}
             {recorder.status === "idle" && (
               <p className="text-xs text-gray-500 text-center">
@@ -554,7 +559,7 @@ export function StudioPanel({
             )}
           </div>
 
-          {isFullscreen && <div className="w-[34%] min-h-0 border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
+          {isFullscreen && <div className="w-full xl:w-[34%] min-h-[420px] xl:min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
             <div className="px-5 py-4 border-b border-slate-200 bg-white"><h3 className="text-sm font-semibold text-[#003366]">User notes</h3><p className="text-[11px] text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p></div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center"><MessageCircle size={20} className="mx-auto text-[#003366]"/><p className="mt-3 text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time.</p></div>}
@@ -565,7 +570,7 @@ export function StudioPanel({
           </div>}
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-[36%]" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[34%] min-h-[520px] xl:min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>

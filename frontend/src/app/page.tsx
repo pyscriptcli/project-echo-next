@@ -1290,6 +1290,44 @@ export default function Home() {
                     isOpen
                     embedded
                     mode="fullscreen"
+                    meetingDetails={(
+                      <section className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white shadow-sm" aria-labelledby="meeting-information-heading">
+                        <div className="border-b border-slate-200 px-4 py-3">
+                          <h3 id="meeting-information-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-[#003366]">Meeting information</h3>
+                          <p className="mt-1 text-[10px] text-slate-500">Date and time are captured automatically. Add context only when it helps the final minutes.</p>
+                        </div>
+                        <div className="space-y-3 p-4">
+                          <div className="grid grid-cols-2 gap-2">
+                            <label className="col-span-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Meeting title
+                              <input value={metadata.client_name || ""} onChange={(event) => setMetadata({ ...metadata, client_name: event.target.value })} placeholder="Generated from the transcript if blank" className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal outline-none focus:border-[#C9A84C]" />
+                            </label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Meeting type
+                              <select value={metadata.meeting_type || "Internal"} onChange={(event) => setMetadata({ ...metadata, meeting_type: event.target.value })} className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal text-[#003366] outline-none focus:border-[#C9A84C]"><option value="Internal">Internal</option><option value="External">External</option><option value="Team">Team meeting</option><option value="Client Pitch">Client pitch</option><option value="Board Meeting">Board meeting</option></select>
+                            </label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Department
+                              <input value={metadata.department || ""} onChange={(event) => setMetadata({ ...metadata, department: event.target.value })} placeholder="e.g. CRD or IT" className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal outline-none focus:border-[#C9A84C]" />
+                            </label>
+                          </div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Venue / location
+                            <select value={metadata.location || VENUE_OPTIONS[0]} onChange={(event) => setMetadata({ ...metadata, location: event.target.value })} className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal text-[#003366] outline-none focus:border-[#C9A84C]">{VENUE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+                          </label>
+                          {metadata.location === "Other / Custom..." && <input aria-label="Custom venue" value={metadata.custom_location || ""} onChange={(event) => setMetadata({ ...metadata, custom_location: event.target.value })} placeholder="Enter venue or meeting link" className="w-full border border-[#C9A84C] bg-white px-2.5 py-2 text-xs outline-none" />}
+                          <div className="grid grid-cols-3 gap-2 border-y border-slate-100 py-3 text-center">
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.date || "Automatic"}</span></div>
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Started</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.start_time || "On start"}</span></div>
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Ends</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.end_time || "On stop"}</span></div>
+                          </div>
+                          <details className="group border border-slate-200">
+                            <summary className="cursor-pointer list-none px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#003366]">Routing and ownership <span className="float-right text-[#C9A84C] group-open:rotate-45">+</span></summary>
+                            <div className="space-y-2 border-t border-slate-200 p-3">
+                              <input aria-label="ClickUp workspace" value={metadata.workspace || ""} onChange={(event) => setMetadata({ ...metadata, workspace: event.target.value })} placeholder="ClickUp workspace" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                              <input aria-label="ClickUp space ID" value={metadata.space_id || ""} onChange={(event) => setMetadata({ ...metadata, space_id: event.target.value })} placeholder="ClickUp Space ID" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                              <div className="grid grid-cols-2 gap-2"><input aria-label="Prepared by" value={metadata.prepared_by || "Dave Policarpio"} onChange={(event) => setMetadata({ ...metadata, prepared_by: event.target.value })} placeholder="Prepared by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" /><input aria-label="Confirmed by" value={metadata.confirmed_by || "Client Rep or Lead"} onChange={(event) => setMetadata({ ...metadata, confirmed_by: event.target.value })} placeholder="Confirmed by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" /></div>
+                            </div>
+                          </details>
+                        </div>
+                      </section>
+                    )}
                     onChangeMode={setStudioMode}
                     onClose={() => setIsStudioOpen(false)}
                     onSendToNotetaker={handleSendToNotetaker}
@@ -1316,7 +1354,8 @@ export default function Home() {
                 )}
 
               </div>
-            {/* Meeting Information follows recording status in the same left workspace column. */}
+            {sourceTab === "source" && (<>
+            {/* Meeting Information for uploaded material. Live meeting information sits inside the recording status column. */}
             <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">
@@ -1527,6 +1566,7 @@ export default function Home() {
 
               </div>
             </div>
+            </>)}
 
             </div>
 
