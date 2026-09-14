@@ -104,6 +104,8 @@ export function StudioPanel({
   const [noteInput, setNoteInput] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
+  const [meetingTitle, setMeetingTitle] = useState("");
+  const [meetingType, setMeetingType] = useState("Internal");
   const [botStatus, setBotStatus] = useState("");
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
@@ -305,9 +307,9 @@ export function StudioPanel({
               {isRecordingActive && <span className="absolute inset-0 rounded-full border border-red-300/60 animate-ping" />}
             </span>
             <div>
-              <h2 className="text-base font-semibold leading-tight tracking-tight">Meeting studio</h2>
+              <h2 className="text-base font-semibold leading-tight tracking-tight">{meetingTitle || "New meeting"}</h2>
               <p className="text-[11px] text-[#FFFCFB]/70 tracking-wide">
-                {recorder.status === "paused" ? "Paused" : isRecordingActive ? "Recording" : isStopped ? "Recording complete" : "Ready when you are"}
+                {recorder.status === "paused" ? "Meeting paused" : isRecordingActive ? "Live meeting" : isStopped ? "Meeting complete" : "Ready to start"}
               </p>
             </div>
           </div>
@@ -338,8 +340,12 @@ export function StudioPanel({
           <div className={`${isFullscreen ? "w-[46%] border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
-                <strong className="text-[#003366]">Choose how to capture</strong>
-                <p className="text-xs mt-1">Use Echo.ai for a meeting link, or record locally for an in-person meeting.</p>
+                <strong className="text-[#003366]">Set up your meeting</strong>
+                <p className="text-xs mt-1">Add a title, then choose how Echo should capture the conversation.</p>
+                <div className="grid grid-cols-[1fr_150px] gap-2 mt-3">
+                  <input value={meetingTitle} onChange={(event) => setMeetingTitle(event.target.value)} placeholder="Meeting title" className="border border-slate-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-[#C9AB4C]" />
+                  <select value={meetingType} onChange={(event) => setMeetingType(event.target.value)} className="border border-slate-200 rounded-md px-3 py-2 text-xs text-[#003366] focus:outline-none focus:border-[#C9AB4C]"><option>Internal</option><option>Client</option><option>Project</option><option>One-on-one</option><option>Other</option></select>
+                </div>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <button type="button" onClick={() => setCaptureMode("meeting_link")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "meeting_link" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Meeting link</button>
                   <button type="button" onClick={() => setCaptureMode("device")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "device" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Record on this device</button>
@@ -353,7 +359,7 @@ export function StudioPanel({
                 <p className="text-xs text-gray-500 mt-1">Paste a Zoom, Google Meet, or Teams link and Echo.ai will join for you.</p>
                 <div className="flex gap-2 mt-2">
                   <input value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="Paste a meeting link" className="min-w-0 flex-1 border border-slate-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-[#C9A84C]" />
-                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-4 !text-xs rounded-md">{isSendingBot ? "Joining…" : "Join"}</button>
+                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-4 !text-xs rounded-md">{isSendingBot ? "Starting…" : "Start meeting"}</button>
                 </div>
                 {botStatus && <p className="text-[11px] text-[#003366] mt-2" role="status">{botStatus}</p>}
               </div>
@@ -386,13 +392,7 @@ export function StudioPanel({
             {/* Recording Control Button */}
             <div className="flex flex-col items-center gap-3">
               {recorder.status === "idle" && captureMode === "device" && (
-                <button
-                  type="button"
-                  onClick={() => void recorder.start()}
-                  className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"
-                >
-                  <Mic size={40} />
-                </button>
+                <div className="flex flex-col items-center gap-2"><button type="button" onClick={() => void recorder.start()} className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"><Mic size={40} /></button><span className="text-xs font-semibold text-[#003366]">Start meeting</span></div>
               )}
 
               {recorder.status === "recording" && (
