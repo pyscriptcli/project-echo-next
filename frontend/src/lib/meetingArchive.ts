@@ -3,21 +3,35 @@ import type { DiscussionItem } from "@/types/meeting";
 /** Convert the JSON discussion matrix stored in a ClickUp meeting task back into UI records. */
 export function parseDiscussionItems(section: string): DiscussionItem[] {
   if (!section.trim()) return [];
+  const normalize = (item: any, index: number): DiscussionItem => ({
+    id: item.id || `discussion-${index + 1}`,
+    topic: item.topic || item.topic_title || `Discussion topic ${index + 1}`,
+    evidence: item.evidence || item.evidence_quote || "",
+    discussion_point: item.discussion_point || "",
+    action_plan: item.action_plan || "",
+    target_date: item.target_date || item.indicative_delivery_date || "",
+    person_in_charge: item.person_in_charge || "Unassigned",
+    clickUpTaskId: item.clickUpTaskId,
+    clickUpUrl: item.clickUpUrl,
+  });
+
   try {
-    const parsed = JSON.parse(section);
+    const parsed = JSON.parse(section.replace(/^```(?:json)?\s*|\s*```$/gi, "").trim());
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((item: any, index): DiscussionItem => ({
-      id: item.id || `discussion-${index + 1}`,
-      topic: item.topic || item.topic_title || `Discussion topic ${index + 1}`,
-      evidence: item.evidence || item.evidence_quote || "",
-      discussion_point: item.discussion_point || "",
-      action_plan: item.action_plan || "",
-      target_date: item.target_date || item.indicative_delivery_date || "",
-      person_in_charge: item.person_in_charge || "Unassigned",
-      clickUpTaskId: item.clickUpTaskId,
-      clickUpUrl: item.clickUpUrl,
-    }));
+    return parsed.map(normalize);
   } catch {
-    return [];
+    const blocks = section.split(/(?=^##\s+\d+\.\s+)/m).filter((block) => /^##\s+\d+\.\s+/.test(block.trim()));
+    return blocks.map((block, index) => {
+      const heading = block.match(/^##\s+\d+\.\s+(.+?)(?:\r?\n|$)/);
+      const field = (label: string) => block.match(new RegExp(`^\\*\\*${label}:\\*\\*\\s*(.*)$`, "mi"))?.[1]?.trim() || "";
+      return normalize({
+        id: `discussion-${index + 1}`,
+        topic: heading?.[1]?.trim(),
+        discussion_point: field("Discussion"),
+        action_plan: field("Action"),
+        person_in_charge: field("Owner") || "Unassigned",
+        target_date: field("Target date"),
+      }, index);
+    });
   }
 }
