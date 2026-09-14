@@ -295,7 +295,7 @@ export function StudioPanel({
   // ── Layout classes based on mode ───────────────────────────────────────
   const isFullscreen = embedded || mode === "fullscreen";
   const panelClasses = isFullscreen
-    ? `${embedded ? "w-full flex-1 min-h-[calc(100vh-13rem)]" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
+    ? `${embedded ? "w-full flex-1 min-h-0" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
     : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
 
   return (
@@ -314,7 +314,7 @@ export function StudioPanel({
         <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[32%] xl:border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA] xl:max-h-[calc(100vh-13rem)] xl:overflow-y-auto`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[32%] xl:border-r border-[#D9E1EA]" : ""} min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             <div className="border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
               <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
@@ -527,7 +527,7 @@ export function StudioPanel({
             )}
           </div>
 
-          {isFullscreen && <div className="w-full xl:w-[34%] min-h-[420px] xl:min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
+          {isFullscreen && <div className="w-full xl:w-[34%] min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
             <div className="px-5 py-4 border-b border-slate-200 bg-white"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3><p className="text-xs text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p></div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center"><MessageCircle size={20} className="mx-auto text-[#003366]"/><p className="mt-3 text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time.</p></div>}
@@ -538,7 +538,7 @@ export function StudioPanel({
           </div>}
 
           {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[34%] min-h-[520px] xl:min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[34%] min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>

@@ -22,9 +22,9 @@ export function Stepper({
   onToggleFullscreen,
   isFullscreen = false,
 }: StepperProps) {
-  const stages: { name: Stage; label: string; description: string; allowed: boolean }[] = [
-    { name: "Input", label: "Meeting Workspace", description: "Record, annotate, and ask Echo", allowed: true },
-    { name: "Review", label: "Discussion Review", description: "Refine minutes and action items", allowed: isReviewAllowed },
+  const stages: { name: Stage; label: string; allowed: boolean }[] = [
+    { name: "Input", label: "Meeting Workspace", allowed: true },
+    { name: "Review", label: "Discussion Review", allowed: isReviewAllowed },
   ];
   
   return (
@@ -52,7 +52,6 @@ export function Stepper({
             </div>
             <span className="min-w-0">
               <span className="flex items-center gap-2 whitespace-nowrap text-sm font-bold uppercase tracking-[0.1em]">{stageItem.label}{!isClickable && <Lock size={11} />}</span>
-              <span className="mt-0.5 block whitespace-nowrap text-[11px] font-normal tracking-normal text-slate-400">{stageItem.description}</span>
             </span>
             {isActive && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#C9A84C]" />}
           </button>

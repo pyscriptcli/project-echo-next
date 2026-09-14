@@ -1014,7 +1014,7 @@ export default function Home() {
         <StudioRecoveryBanner />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
-        <main className={`flex-1 overflow-y-auto ${currentView === "minutes" ? "p-0" : "px-4 py-5 md:px-8"}`}>
+        <main className={`flex-1 ${currentView === "minutes" ? "min-h-0 overflow-hidden p-0" : "overflow-y-auto px-4 py-5 md:px-8"}`}>
           {!isPageAllowed(currentView) ? (
             <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
               <div className="max-w-md w-full bg-[#FFFCFB] border border-slate-200 p-8 text-center shadow-sm">
@@ -1121,7 +1121,7 @@ export default function Home() {
 
             {/* VIEW 3: MINUTES GENERATOR */}
             {currentView === "minutes" && (
-              <div ref={notetakerRef} className="relative flex min-h-full flex-col bg-[#F7F9FC] font-sans text-gray-800">
+              <div ref={notetakerRef} className="relative flex h-full min-h-0 flex-col bg-[#F7F9FC] font-sans text-gray-800">
                 {/* Header bar (Uniform text-2xl font-serif) */}
                 <div className="flex flex-col justify-between gap-4 border-b border-slate-200 bg-[#FFFCFB] px-5 py-4 sm:flex-row sm:items-center md:px-7">
                   <div>
@@ -1148,12 +1148,12 @@ export default function Home() {
                 <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} onToggleFullscreen={() => void toggleNotetakerFullscreen()} isFullscreen={isNotetakerFullscreen} />
 
       {/* STAGE 1: INPUT */}
-      <div className="flex-1 p-4 md:p-5">
+      <div className={`flex min-h-0 flex-1 p-4 md:p-5 ${stage === "Input" ? "overflow-hidden" : "overflow-y-auto"}`}>
         {stage === "Input" && (
-          <div className={`grid grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-4 items-start`}>
+          <div className={`grid min-h-0 grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-4 items-start h-full`}>
             
             {/* Left Panel: Meeting Source (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className={`flex flex-col ${sourceTab === "record" ? "min-h-[calc(100vh-12rem)]" : "bg-[#FFFCFB] border border-gray-200/90 p-4 shadow-2xs"}`}>
+            <div className={`flex min-h-0 flex-col ${sourceTab === "record" ? "h-full" : "bg-[#FFFCFB] border border-gray-200/90 p-4 shadow-2xs"}`}>
               {sourceTab === "source" && <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">Upload or paste existing material</span>
               </div>}
