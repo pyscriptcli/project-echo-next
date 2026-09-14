@@ -474,12 +474,11 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <aside className="w-full md:w-56 shrink-0 bg-[#003366] text-[#FFFCFB] p-2 shadow-[4px_0_18px_rgba(0,51,102,0.12)]">
           <div className="px-3 py-3 border-b border-[#31577D] text-[10px] uppercase tracking-[0.18em] text-[#B8CDE0]">Admin workspace</div>
           <nav className="mt-2 space-y-1">
-            {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => {
-              const labels = { rbac: "Users & Access", navigation: "Workspace Sidebar", configurations: "Forms & Routing", email: "Email & Notifications", ai: "Ask Echo", telemetry: "System Health" };
-              return <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === item ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
-                <span className="truncate">{labels[item]}</span>
-              </button>;
-            })}
+            {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
+              <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === item ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
+                <span className="truncate">{item === "rbac" ? "Users & Access" : item === "navigation" ? "Workspace Sidebar" : item === "configurations" ? "Forms & Routing" : item === "email" ? "Email & Notifications" : item === "ai" ? "Ask Echo" : "System Health"}</span>
+              </button>
+            ))}
           </nav>
         </aside>
         <div className="min-w-0 flex-1 w-full space-y-4">
@@ -1172,6 +1171,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={sendTestEmail} className="border border-[#003366] bg-[#FFFCFB] px-4 py-2 text-xs font-bold text-[#003366] hover:bg-[#FFFCFB]">Send test email to my login</button>{emailTestStatus && <span className="text-xs text-slate-600">{emailTestStatus}</span>}</div>
       </section>
         </div>
+    </div>
     </div>
   );
 }
