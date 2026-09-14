@@ -32,4 +32,9 @@ export interface ArchivedMeeting {
   items: DiscussionItem[];
   transcript?: string;
   created_at?: string;
+  clickup_space_id?: string;
+  clickup_space_name?: string;
+  clickup_list_id?: string;
+  clickup_list_name?: string;
+  archive_status?: string;
 }

@@ -21,7 +21,8 @@ import {
   CheckCircle,
   FileSpreadsheet,
   AlertCircle,
-  CheckSquare
+  CheckSquare,
+  Info
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
@@ -191,6 +192,7 @@ export function MeetingsView({
 
   const [isExporting, setIsExporting] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+  const [showArchiveDetails, setShowArchiveDetails] = useState(false);
 
   // Quick Add ClickUp Task state
   const [quickAddTaskData, setQuickAddTaskData] = useState<{
@@ -467,6 +469,9 @@ export function MeetingsView({
                     <span className="text-[10px] text-gray-400 font-mono">
                       #{activeMeeting.meeting_id || activeMeeting.id}
                     </span>
+                    <button type="button" onClick={() => setShowArchiveDetails(true)} className="inline-flex h-6 w-6 items-center justify-center text-[#003366] hover:bg-[#003366]/5" title="Show archive details" aria-label="Show archive details">
+                      <Info size={14} />
+                    </button>
                   </div>
 
                   {/* Re-Export & Save Controls */}
@@ -876,6 +881,22 @@ export function MeetingsView({
         </div>
 
       </div>
+
+      {showArchiveDetails && activeMeeting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001E3C]/45 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-details-title">
+          <div className="w-full max-w-sm border border-slate-200 bg-[#FFFCFB] p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3">
+              <div><h2 id="archive-details-title" className="text-sm font-bold uppercase tracking-[0.14em] text-[#003366]">Meeting Archive Details</h2><p className="mt-1 text-[11px] text-slate-500">Reference information only.</p></div>
+              <button type="button" onClick={() => setShowArchiveDetails(false)} aria-label="Close archive details" className="text-slate-400 hover:text-[#003366]"><X size={16} /></button>
+            </div>
+            <dl className="mt-4 space-y-3 text-xs">
+              <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Space</dt><dd className="mt-1 text-[#003366]">{activeMeeting.clickup_space_name || "Not recorded"}</dd></div>
+              <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">List</dt><dd className="mt-1 text-[#003366]">{activeMeeting.clickup_list_name || "Not recorded"}</dd></div>
+              <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</dt><dd className="mt-1 text-[#003366]">{activeMeeting.archive_status || "Completed On Time"}</dd></div>
+            </dl>
+          </div>
+        </div>
+      )}
 
       {/* Quick Add Task to ClickUp Modal */}
       <QuickAddTaskModal

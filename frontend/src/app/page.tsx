@@ -842,7 +842,12 @@ export default function Home() {
           person_in_charge: item.person_in_charge || "Unassigned"
         })),
         transcript: transcript,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        clickup_space_id: res.clickup?.spaceId,
+        clickup_space_name: res.clickup?.spaceName,
+        clickup_list_id: res.clickup?.listId,
+        clickup_list_name: res.clickup?.listName,
+        archive_status: res.clickup?.archiveStatus
       };
       const updatedList = saveLocalMeeting(newRecord);
       setArchivedMeetings(updatedList);

@@ -40,6 +40,9 @@ export async function GET(req: NextRequest) {
       const listsRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { headers, cache: "no-store" });
       if (!listsRes.ok) return NextResponse.json({ error: "Unable to read lists in the selected ClickUp Space." }, { status: listsRes.status });
       const lists = await listsRes.json();
+      const spaceRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}`, { headers, cache: "no-store" }).catch(() => null);
+      const spaceData = spaceRes?.ok ? await spaceRes.json().catch(() => ({})) : {};
+      const spaceName = spaceData.name || `Space ${spaceId}`;
       const echoList = (lists.lists || []).find((list: any) => String(list.name).toLowerCase() === "echo meetings");
       if (!echoList) return NextResponse.json({ status: "success", meetings: [], message: "No Echo Meetings list exists in this Space yet." });
       const tasksRes = await fetch(`https://api.clickup.com/api/v2/list/${echoList.id}/task?include_closed=true&subtasks=true`, { headers, cache: "no-store" });
@@ -49,7 +52,7 @@ export async function GET(req: NextRequest) {
         const match = String(task.name || "").match(/^(\d{4}-\d{2}-\d{2})\s+—\s+(.*)$/);
         const description = task.description || "";
         const section = (name: string, next?: string) => { const pattern = new RegExp(`# ${name}\\n([\\s\\S]*?)${next ? `(?=\\n# ${next})` : "$"}`); return description.match(pattern)?.[1]?.trim() || ""; };
-        return { id: String(task.id), meeting_id: String(task.id), title: match?.[2] || task.name || "Echo Meeting", date: match?.[1] || new Date().toISOString().slice(0, 10), meeting_type: "Internal", location: description.match(/\*\*Location:\*\*\s*(.*)/)?.[1]?.trim() || "", attendees_prime: [], attendees_external: [], summary: section("Executive Summary", "Discussion Points"), items: [], transcript: section("Full Transcript"), created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString() };
+        return { id: String(task.id), meeting_id: String(task.id), title: match?.[2] || task.name || "Echo Meeting", date: match?.[1] || new Date().toISOString().slice(0, 10), meeting_type: "Internal", location: description.match(/\*\*Location:\*\*\s*(.*)/)?.[1]?.trim() || "", attendees_prime: [], attendees_external: [], summary: section("Executive Summary", "Discussion Points"), items: [], transcript: section("Full Transcript"), created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(), clickup_space_id: String(spaceId), clickup_space_name: spaceName, clickup_list_id: String(echoList.id), clickup_list_name: echoList.name, archive_status: task.status?.status || "closed" };
       });
       return NextResponse.json({ status: "success", meetings, list: { id: echoList.id, name: echoList.name } });
     }

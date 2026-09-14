@@ -13,6 +13,9 @@ export async function POST(req: NextRequest) {
     const listsRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { headers });
     if (!listsRes.ok) throw new Error("Unable to read ClickUp lists for this Space.");
     const lists = await listsRes.json();
+    const spaceRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}`, { headers }).catch(() => null);
+    const spaceData = spaceRes?.ok ? await spaceRes.json().catch(() => ({})) : {};
+    const spaceName = spaceData.name || meeting_details.space_name || `Space ${spaceId}`;
     const configuredListId = meeting_details.meeting_list_id || meeting_details.meetingArchiveListId;
     let list = configuredListId ? { id: String(configuredListId), name: "Configured meeting archive" } : (lists.lists || []).find((item: any) => item.name.toLowerCase() === "echo meetings");
     if (!list) {
@@ -26,10 +29,17 @@ export async function POST(req: NextRequest) {
     const description = [`# Meeting Details`, `**Date:** ${meeting_details.date || ""}`, `**Start:** ${meeting_details.start_time || ""}`, `**End:** ${meeting_details.end_time || ""}`, `**Owner:** ${meeting_details.prepared_by || meeting_details.owner || "Unassigned"}`, `**Department:** ${meeting_details.department || meeting_details.workspace || "Unassigned"}`, `**Location:** ${meeting_details.location || ""}`, `\n# Executive Summary\n${other_discussions || ""}`, `\n# Discussion Points\n${JSON.stringify(items || [], null, 2)}`, `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`].join("\n");
     const meetingDate = meeting_details.date || new Date().toISOString().slice(0, 10);
     const meetingName = meeting_details.client_name || "Echo Meeting";
-    const taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify({ name: `${meetingDate} — ${meetingName}`, description, status: "closed", assignees: [], tags: ["echo", "meeting-archive"] }) });
+    const taskPayload = { name: `${meetingDate} — ${meetingName}`, description, status: "completed ontime", assignees: [], tags: ["echo", "meeting-archive"] };
+    let taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify(taskPayload) });
+    let appliedStatus = "completed ontime";
+    if (!taskRes.ok) {
+      // Older ClickUp status schemes may not expose the custom status; preserve the closed archive fallback.
+      taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify({ ...taskPayload, status: "closed" }) });
+      appliedStatus = "closed";
+    }
     if (!taskRes.ok) throw new Error("Unable to archive meeting in ClickUp.");
     const task = await taskRes.json();
-    return NextResponse.json({ status: "success", message: "Meeting archived in ClickUp.", meeting_id: task.id, clickup: { workspace: meeting_details.workspace || "Current workspace", department: meeting_details.department || "Unassigned", listName: list.name, listId: list.id, taskId: task.id, taskUrl: task.url } });
+    return NextResponse.json({ status: "success", message: "Meeting archived in ClickUp.", meeting_id: task.id, clickup: { workspace: meeting_details.workspace || "Current workspace", department: meeting_details.department || "Unassigned", spaceId: String(spaceId), spaceName, listName: list.name, listId: list.id, taskId: task.id, taskUrl: task.url, archiveStatus: appliedStatus } });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
