@@ -24,7 +24,7 @@ import FormsTrackView from "./FormsTrackView";
 import FormsApprovalsView from "./FormsApprovalsView";
 import { isFormsOwner } from "@/lib/forms/owner";
 import { APPROVED_MODELS, DEFAULT_AI_POLICY, type AiPolicy } from "@/lib/ask-echo/limits";
-import { REPOSITORY_FORM_MAPPINGS } from "./forms.config";
+import { REPOSITORY_FORMS, REPOSITORY_FORM_MAPPINGS } from "./forms.config";
 
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
@@ -1076,7 +1076,9 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <div className="space-y-2 mb-4">
           {config.departments.map((department) => {
             const expanded = openDepartments[department] ?? false;
-            const departmentMappings = config.mappings.filter((item) => item.department === department);
+            const savedMappings = config.mappings.filter((item) => item.department === department);
+            const catalogMappings = REPOSITORY_FORMS.filter((form) => form.department === department).map((form) => ({ id: `${department.toLowerCase()}-${form.id}`, department, formType: form.id, formLabel: form.label, listId: form.clickUpListId, approvers: [] }));
+            const departmentMappings = [...catalogMappings, ...savedMappings.filter((saved) => !catalogMappings.some((catalog) => catalog.formType === saved.formType))];
             return <div key={department} className="border border-gray-200 bg-[#FFFCFB]">
               <button type="button" className="w-full flex items-center justify-between px-4 py-3 text-left cursor-pointer" onClick={() => setOpenDepartments((state) => ({ ...state, [department]: !expanded }))}>
                 <span className="text-sm font-bold text-[#003366]">{department}</span>
