@@ -139,6 +139,8 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
   const searchParams = useSearchParams();
   const taskIdParam = searchParams.get("taskId");
   const prefillParam = searchParams.get("prefill");
+  const [rfpAutofillEnabled, setRfpAutofillEnabled] = useState(true);
+  useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setRfpAutofillEnabled(data?.config?.formFeatures?.rfpAutofill !== false)).catch(() => {}); }, []);
   const tourParam = searchParams.get("tour");
 
   const [formData, setFormData] = useState<RfpFormData>(getInitialFormData);
@@ -253,11 +255,11 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
 
   // Handle prefill query parameter (when triggered from other pages)
   useEffect(() => {
-    if (prefillParam === "true") {
+    if (prefillParam === "true" && rfpAutofillEnabled) {
       handlePreFillDemo();
       window.history.replaceState(null, "", "/?view=forms&tab=create");
     }
-  }, [prefillParam]);
+  }, [prefillParam, rfpAutofillEnabled]);
 
   // Handle tour query parameter
   useEffect(() => {
@@ -271,10 +273,10 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
 
   // Listen for prefill-demo event from drawer when already on "/"
   useEffect(() => {
-    const onPrefill = () => handlePreFillDemo();
+    const onPrefill = () => { if (rfpAutofillEnabled) handlePreFillDemo(); };
     window.addEventListener("prefill-demo", onPrefill);
     return () => window.removeEventListener("prefill-demo", onPrefill);
-  }, []);
+  }, [rfpAutofillEnabled]);
 
   const getValidationResult = () => {
     let result: ValidationResult;
@@ -332,6 +334,7 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
   };
 
   const handlePreFillDemo = () => {
+    if (!rfpAutofillEnabled) return;
     setSelectedForm("rfp");
     const today = new Date().toISOString().split("T")[0];
 

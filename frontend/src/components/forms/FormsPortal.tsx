@@ -105,6 +105,7 @@ export interface FormsConfig {
   emailTemplates?: FormEmailTemplate[];
   allowedSignInDomains: string[];
   aiPolicy?: AiPolicy;
+  formFeatures?: { rfpAutofill: boolean; pdfPreview: boolean; emailNotifications: boolean };
 }
 
 const DEFAULT_CONFIG: FormsConfig = {
@@ -118,6 +119,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
   aiPolicy: DEFAULT_AI_POLICY,
+  formFeatures: { rfpAutofill: true, pdfPreview: true, emailNotifications: true },
 };
 
 function normalizeEmail(email?: string) {
@@ -140,6 +142,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
   const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({ Finance: true });
+  const [formsSubtab, setFormsSubtab] = useState<"routing" | "features">("routing");
   const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry" | "navigation">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
@@ -1059,6 +1062,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
 
       {/* Department forms & ClickUp destinations */}
       <section className={`panel ${settingsTab !== "configurations" ? "hidden" : ""}`}>
+        <div className="flex gap-2 border-b border-gray-200 mb-4">
+          {([['routing', 'Form Routing'], ['features', 'Features']] as const).map(([id, label]) => <button key={id} type="button" onClick={() => setFormsSubtab(id)} className={`px-3 py-2 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer ${formsSubtab === id ? "border-[#C9AB4C] text-[#003366]" : "border-transparent text-gray-500"}`}>{label}</button>)}
+        </div>
+        {formsSubtab === "features" ? <div className="space-y-3">
+          <div><h2 className="text-lg font-bold text-slate-800">Form Features</h2><p className="text-xs text-gray-500 mt-1">Turn form capabilities on or off for all users.</p></div>
+          {([["rfpAutofill", "RFP Autofill", "Allow requestors to prefill RFP fields from uploaded documents or demo data."], ["pdfPreview", "PDF Preview", "Allow users to generate a PDF preview before submitting."], ["emailNotifications", "Email Notifications", "Send automated request status emails to requestors."]] as const).map(([key, label, description]) => { const enabled = config.formFeatures?.[key] ?? true; return <label key={key} className="flex items-center justify-between gap-4 border border-gray-200 bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">{label}</span><span className="block text-xs text-gray-500 mt-1">{description}</span></span><input type="checkbox" checked={enabled} onChange={(e) => { const next = { ...config, formFeatures: { ...(config.formFeatures || DEFAULT_CONFIG.formFeatures!), [key]: e.target.checked } }; setConfig(next); localStorage.setItem("echo_forms_config", JSON.stringify(next)); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>; })}
+        </div> : <>
         <h2 className="text-lg font-bold text-slate-800 mb-1">Department Forms &amp; ClickUp Destinations</h2>
         <p className="text-xs text-gray-500 mb-4">
           Every department/form mapping requires its own ClickUp List ID.
@@ -1154,6 +1164,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             );
           })}
         </div>
+        </>}
       </section>
 
       <section className={`panel ${settingsTab !== "email" ? "hidden" : ""}`}>
