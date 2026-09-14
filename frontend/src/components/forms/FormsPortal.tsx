@@ -470,13 +470,19 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-gray-200 pb-2">
-        {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
-          <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border ${settingsTab === item ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-gray-200 hover:border-[#C9AB4C]"}`}>
-            {item === "rbac" ? "RBAC" : item === "navigation" ? "Navigation" : item === "configurations" ? "Configurations" : item === "email" ? "Email" : item === "ai" ? "AI" : "Telemetry"}
-          </button>
-        ))}
-      </div>
+      <div className="flex flex-col md:flex-row gap-5 items-start">
+        <aside className="w-full md:w-56 shrink-0 bg-[#003366] text-[#FFFCFB] p-2 shadow-[4px_0_18px_rgba(0,51,102,0.12)]">
+          <div className="px-3 py-3 border-b border-[#31577D] text-[10px] uppercase tracking-[0.18em] text-[#B8CDE0]">Admin workspace</div>
+          <nav className="mt-2 space-y-1">
+            {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => {
+              const labels = { rbac: "Users & Access", navigation: "Workspace Sidebar", configurations: "Forms & Routing", email: "Email & Notifications", ai: "Ask Echo", telemetry: "System Health" };
+              return <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === item ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
+                <span className="truncate">{labels[item]}</span>
+              </button>;
+            })}
+          </nav>
+        </aside>
+        <div className="min-w-0 flex-1 w-full space-y-4">
 
       <section className={`space-y-4 ${settingsTab !== "navigation" ? "hidden" : ""}`}>
         <div className="panel">
@@ -1165,6 +1171,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <div className="mt-3 border border-slate-200 bg-[#FFFCFB] p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Dynamic fields</div><div className="flex flex-wrap gap-1.5">{["requestor_first_name", "form_name", "form_id", "department", "status_label", "request_title", "amount", "purpose", "submitted_at", "status_updated_at", "completed_stage", "approver_name", "completed_at", "current_stage", "current_stage_started_at", "status_message", "next_step_message", "track_status_url"].map((field) => <button type="button" key={field} onClick={() => updateEmailTemplate({ body: `${emailTemplate.body}{{${field}}}` })} className="border border-slate-300 bg-[#FFFCFB] px-2 py-1 text-[10px] text-[#003366]">{`{{${field}}}`}</button>)}</div></div>
         <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={sendTestEmail} className="border border-[#003366] bg-[#FFFCFB] px-4 py-2 text-xs font-bold text-[#003366] hover:bg-[#FFFCFB]">Send test email to my login</button>{emailTestStatus && <span className="text-xs text-slate-600">{emailTestStatus}</span>}</div>
       </section>
+        </div>
     </div>
   );
 }
