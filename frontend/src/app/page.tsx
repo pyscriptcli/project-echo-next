@@ -948,6 +948,9 @@ export default function Home() {
             if (isPageAllowed("minutes")) {
               setCurrentView("minutes");
               setStage("Input");
+              setIsStudioOpen(true);
+              setStudioMode("fullscreen");
+              window.setTimeout(() => window.dispatchEvent(new CustomEvent("echo-start-meeting")), 0);
             }
           }}
           onOpenStudio={() => {

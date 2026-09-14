@@ -387,20 +387,6 @@ export function Topbar({
             <span>New Meeting</span>
           </button>
 
-          {/* Small Divider */}
-          <div className="w-[1px] h-4 bg-[#C9AB4C]/40" />
-
-          {/* Small Mic Button -> Redirects to Studio Mode */}
-          <button
-            type="button"
-            onClick={onOpenStudio}
-            className="p-1.5 text-[#003366] hover:bg-[#C9AB4C]/20 hover:text-[#C9AB4C] transition-colors"
-            title="Record in Studio Mode"
-            aria-label="Record in Studio Mode"
-          >
-            <Mic size={14} className="text-[#003366]" />
-          </button>
-
         </div>
         )}
 

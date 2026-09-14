@@ -125,6 +125,13 @@ export function StudioPanel({
   const notesEndRef = useRef<HTMLDivElement>(null);
   const echoEndRef = useRef<HTMLDivElement>(null);
 
+  // The top-bar New Meeting action starts the same botless recorder session.
+  React.useEffect(() => {
+    const startMeeting = () => { if (recorder.status === "idle") void recorder.start(); };
+    window.addEventListener("echo-start-meeting", startMeeting);
+    return () => window.removeEventListener("echo-start-meeting", startMeeting);
+  }, [recorder.status]);
+
   const resetEchoConversation = useCallback(() => {
     setEchoMessages([ECHO_STARTER]);
     setEchoInput("");
