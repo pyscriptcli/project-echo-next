@@ -30,14 +30,12 @@ export async function POST(req: NextRequest) {
     const meetingDate = meeting_details.date || new Date().toISOString().slice(0, 10);
     const meetingName = meeting_details.client_name || "Echo Meeting";
     const taskPayload = { name: `${meetingDate} — ${meetingName}`, description, status: "completed ontime", assignees: [], tags: ["echo", "meeting-archive"] };
-    let taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify(taskPayload) });
-    let appliedStatus = "completed ontime";
+    const taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify(taskPayload) });
+    const appliedStatus = "completed ontime";
     if (!taskRes.ok) {
-      // Older ClickUp status schemes may not expose the custom status; preserve the closed archive fallback.
-      taskRes = await fetch(`https://api.clickup.com/api/v2/list/${list.id}/task`, { method: "POST", headers, body: JSON.stringify({ ...taskPayload, status: "closed" }) });
-      appliedStatus = "closed";
+      const detail = await taskRes.text();
+      throw new Error(`Unable to archive meeting in ClickUp with status “completed ontime” (${taskRes.status}): ${detail || taskRes.statusText}`);
     }
-    if (!taskRes.ok) throw new Error("Unable to archive meeting in ClickUp.");
     const task = await taskRes.json();
     return NextResponse.json({ status: "success", message: "Meeting archived in ClickUp.", meeting_id: task.id, clickup: { workspace: meeting_details.workspace || "Current workspace", department: meeting_details.department || "Unassigned", spaceId: String(spaceId), spaceName, listName: list.name, listId: list.id, taskId: task.id, taskUrl: task.url, archiveStatus: appliedStatus } });
   } catch (error: any) {

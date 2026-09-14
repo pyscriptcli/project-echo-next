@@ -22,7 +22,8 @@ import {
   FileSpreadsheet,
   AlertCircle,
   CheckSquare,
-  Info
+  Info,
+  ExternalLink
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
@@ -461,7 +462,20 @@ export function MeetingsView({
 
                     <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
                       <span>{m.items.length} Topics</span>
-                      <span className="text-[#C9AB4C] font-semibold">{isSelected ? "Editing" : "View"}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#C9AB4C] font-semibold">{isSelected ? "Editing" : "View"}</span>
+                        <a
+                          href={m.clickup_task_url || `https://app.clickup.com/t/${m.meeting_id || m.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1 border border-[#003366]/25 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#003366] hover:border-[#C9AB4C] hover:text-[#8c7329]"
+                          title="Open this meeting archive in ClickUp"
+                        >
+                          <ExternalLink size={10} />
+                          ClickUp
+                        </a>
+                      </div>
                     </div>
                   </div>
                 );

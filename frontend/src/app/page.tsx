@@ -847,6 +847,7 @@ export default function Home() {
         clickup_space_name: res.clickup?.spaceName,
         clickup_list_id: res.clickup?.listId,
         clickup_list_name: res.clickup?.listName,
+        clickup_task_url: res.clickup?.taskUrl || (res.clickup?.taskId ? `https://app.clickup.com/t/${res.clickup.taskId}` : undefined),
         archive_status: res.clickup?.archiveStatus
       };
       const updatedList = saveLocalMeeting(newRecord);

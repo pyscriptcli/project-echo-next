@@ -36,5 +36,6 @@ export interface ArchivedMeeting {
   clickup_space_name?: string;
   clickup_list_id?: string;
   clickup_list_name?: string;
+  clickup_task_url?: string;
   archive_status?: string;
 }
