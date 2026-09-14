@@ -1120,12 +1120,12 @@ export default function Home() {
       {/* STAGE 1: INPUT */}
       <div className="flex-1">
         {stage === "Input" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <div className={`grid grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-4 items-start`}>
             
             {/* Left Panel: Meeting Source (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+            <div className={`bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col ${sourceTab === "record" ? "lg:min-h-[620px]" : ""}`}>
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
-                <span className="font-serif font-bold text-base text-[#003366] italic">1. Meeting Source</span>
+                <span className="font-serif font-bold text-base text-[#003366] italic">{sourceTab === "record" ? "Live meeting workspace" : "Upload or paste existing material"}</span>
                 {selectedFile && (
                   <button 
                     type="button"
@@ -1363,7 +1363,7 @@ export default function Home() {
             </div>
 
             {/* Right Panel: Meeting Information (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
+            <div className={`bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col ${sourceTab === "record" ? "hidden" : ""}`}>
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">
                   2. Meeting Information
