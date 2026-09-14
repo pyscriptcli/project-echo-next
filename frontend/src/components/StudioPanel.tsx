@@ -35,6 +35,8 @@ import type { AskEchoResponse } from "@/lib/ask-echo/schema";
 
 interface StudioPanelProps {
   isOpen: boolean;
+  /** Render inside the notetaker workspace instead of as a fixed overlay. */
+  embedded?: boolean;
   mode: StudioDisplayMode;
   onChangeMode: (mode: StudioDisplayMode) => void;
   onClose: () => void;
@@ -89,6 +91,7 @@ function VolumeMeter({ level, isClipping }: { level: number; isClipping: boolean
  */
 export function StudioPanel({
   isOpen,
+  embedded = false,
   mode,
   onChangeMode,
   onClose,
@@ -289,15 +292,15 @@ export function StudioPanel({
   if (!isOpen || mode === "minimized") return null;
 
   // ── Layout classes based on mode ───────────────────────────────────────
-  const isFullscreen = mode === "fullscreen";
+  const isFullscreen = embedded || mode === "fullscreen";
   const panelClasses = isFullscreen
-    ? "fixed inset-0 z-50 bg-[#F7F9FC] flex flex-col"
+    ? `${embedded ? "w-full" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
     : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
 
   return (
     <>
       {/* Backdrop (panel mode only) */}
-      {!isFullscreen && (
+      {!isFullscreen && !embedded && (
         <button
           aria-label="Close Recording Studio"
           onClick={handleClose}
@@ -321,22 +324,22 @@ export function StudioPanel({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button
+            {!embedded && <button
               type="button"
               onClick={() => onChangeMode(isFullscreen ? "panel" : "fullscreen")}
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               className="p-2 hover:bg-[#174778] transition-colors"
             >
               {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-            </button>
-            <button
+            </button>}
+            {!embedded && <button
               type="button"
               onClick={handleClose}
               title="Close"
               className="p-2 hover:bg-[#174778] transition-colors"
             >
               <X size={16} />
-            </button>
+            </button>}
           </div>
         </header>
 

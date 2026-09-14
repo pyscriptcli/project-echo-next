@@ -1146,30 +1146,17 @@ export default function Home() {
               
               <div className="flex flex-col flex-1">
                 
-                {/* Source Navigation Tabs */}
-                <div className="flex border-b border-gray-200 mb-4 gap-6">
-                  <button 
+                {/* Recording is the primary path. Upload remains a secondary action. */}
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-3">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#003366]">
+                    {sourceTab === "record" ? "Record live" : "Upload or paste"}
+                  </span>
+                  <button
                     type="button"
-                    onClick={() => setSourceTab("source")}
-                    className={`pb-2 font-bold text-[11px] tracking-widest uppercase transition-all ${
-                      sourceTab === "source" 
-                        ? "border-b-2 border-[#003366] text-[#003366]" 
-                        : "text-gray-400 hover:text-[#003366]"
-                    }`}
+                    onClick={() => setSourceTab(sourceTab === "record" ? "source" : "record")}
+                    className="text-[11px] font-semibold text-[#003366] underline decoration-[#C9A84C] underline-offset-4 hover:text-[#C9A84C]"
                   >
-                    Upload or paste existing material
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={() => setSourceTab("record")}
-                    className={`pb-2 font-bold text-[11px] tracking-widest uppercase transition-all ${
-                      sourceTab === "record" 
-                        ? "border-b-2 border-[#003366] text-[#003366]" 
-                        : "text-gray-400 hover:text-[#003366]"
-                    }`}
-                  >
-                    Record live (primary)
+                    {sourceTab === "record" ? "Upload recording or transcript" : "Back to live recording"}
                   </button>
                 </div>
 
@@ -1300,29 +1287,20 @@ export default function Home() {
 
                 {/* TAB 2: RECORD LIVE (Studio Mode Launcher) */}
                 {sourceTab === "record" && (
-                  <div className="border border-gray-200 bg-[#FFFCFB] p-8 flex flex-col items-center justify-center gap-4 text-center">
-                    <div className="w-14 h-14 bg-[#003366]/5 border border-[#003366]/20 flex items-center justify-center text-[#003366]">
-                      <Mic size={28} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-[#003366]">Record In-Person or Online Meetings</h3>
-                      <p className="text-xs text-gray-500 mt-1 max-w-sm">
-                        Use the crash-resilient Recording Studio with timestamped notes, live volume feedback, and tab/screen audio capture for online calls without Fireflies bots.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsStudioOpen(true);
-                        setStudioMode("panel");
-                        setIsUniversalEchoOpen(false);
-                      }}
-                      className="btn-primary !text-xs !py-2.5 !px-5 flex items-center gap-2 cursor-pointer"
-                    >
-                      <Mic size={14} className="text-[#C9A84C]" />
-                      <span>Open Recording Studio</span>
-                    </button>
-                  </div>
+                  <StudioPanel
+                    isOpen
+                    embedded
+                    mode="fullscreen"
+                    onChangeMode={setStudioMode}
+                    onClose={() => setIsStudioOpen(false)}
+                    onSendToNotetaker={handleSendToNotetaker}
+                    onOpenSource={(page, recordId, url) => {
+                      if (page === "meetings") setSelectedMeetingId(recordId);
+                      if (page === "tasks") setFocusedTaskId(recordId);
+                      if (["meetings", "tasks", "notebook", "forms", "demands", "market-insights"].includes(page)) setCurrentView(page as NavView);
+                      else if (url) window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                  />
                 )}
 
                 {/* Collapsible: Additional Meeting Notes */}
@@ -1368,7 +1346,7 @@ export default function Home() {
             </div>
 
             {/* Right Panel: Meeting Information (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className={`bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col ${sourceTab === "record" ? "hidden" : ""}`}>
+            <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs flex flex-col">
               <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">
                   2. Meeting Information
@@ -1962,24 +1940,6 @@ export default function Home() {
         }}
       />
 
-      {/* Recording Studio Panel */}
-      <StudioPanel
-        isOpen={isStudioOpen}
-        mode={studioMode}
-        onChangeMode={setStudioMode}
-        onClose={() => {
-          setIsStudioOpen(false);
-          setStudioMode("panel");
-        }}
-        onSendToNotetaker={handleSendToNotetaker}
-        onOpenSource={(page, recordId, url) => {
-          if (page === "meetings") setSelectedMeetingId(recordId);
-          if (page === "tasks") setFocusedTaskId(recordId);
-          if (["meetings", "tasks", "notebook", "forms", "demands", "market-insights"].includes(page)) setCurrentView(page as NavView);
-          else if (url) window.open(url, "_blank", "noopener,noreferrer");
-          setIsStudioOpen(false);
-        }}
-      />
     </div>
   );
 }
