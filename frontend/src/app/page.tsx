@@ -86,6 +86,21 @@ const VENUE_OPTIONS = [
   "Other / Custom..."
 ];
 
+function formatMeetingDate(value?: string) {
+  if (!value) return "Automatic";
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatMeetingTime(value?: string) {
+  if (!value) return "On start";
+  const [hour, minute] = value.split(":").map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
 function AutoResizeTextarea({
   value,
   onChange,
@@ -1106,7 +1121,7 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         {selectedFile && <button type="button" onClick={() => handleUnifiedSourceSubmission()} disabled={isLoading} className="btn-outline !px-3 !py-2 !text-[10px]"><RotateCcw size={12} /> Re-process</button>}
                         <button type="button" onClick={() => setSourceTab(sourceTab === "record" ? "source" : "record")} className="btn-outline !px-3 !py-2 !text-[10px]">
-                          {sourceTab === "record" ? <><Upload size={12} /> Upload or paste</> : <><Mic size={12} /> Return to recording</>}
+                          {sourceTab === "record" ? <><Upload size={12} /> Upload</> : <><Mic size={12} /> Return to recording</>}
                         </button>
                       </div>
                     )}
@@ -1288,9 +1303,9 @@ export default function Home() {
                           </label>
                           {metadata.location === "Other / Custom..." && <input aria-label="Custom venue" value={metadata.custom_location || ""} onChange={(event) => setMetadata({ ...metadata, custom_location: event.target.value })} placeholder="Enter venue or meeting link" className="w-full border border-[#C9A84C] bg-white px-2.5 py-2 text-xs outline-none" />}
                           <div className="grid grid-cols-3 gap-2 border-y border-slate-100 py-3 text-center">
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.date || "Automatic"}</span></div>
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Started</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.start_time || "On start"}</span></div>
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Ends</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.end_time || "On stop"}</span></div>
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{formatMeetingDate(metadata.date)}</span></div>
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Started</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{formatMeetingTime(metadata.start_time)}</span></div>
+                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Ends</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.end_time ? formatMeetingTime(metadata.end_time) : "On stop"}</span></div>
                           </div>
                           <details className="group border border-slate-200">
                             <summary className="cursor-pointer list-none px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#003366]">Routing and ownership <span className="float-right text-[#C9A84C] group-open:rotate-45">+</span></summary>
@@ -1313,19 +1328,6 @@ export default function Home() {
                       else if (url) window.open(url, "_blank", "noopener,noreferrer");
                     }}
                   />
-                )}
-
-                {/* Transcript Preview if available */}
-                {transcript && (
-                  <div className="mt-3.5 p-3 bg-[#FFFCFB] border border-gray-200">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Secured Source Content</span>
-                      <span className="text-[9px] text-green-600 font-bold bg-green-100 px-1.5 py-0.5">Ready for Review</span>
-                    </div>
-                    <div className="max-h-32 overflow-y-auto text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                      {transcript}
-                    </div>
-                  </div>
                 )}
 
               </div>

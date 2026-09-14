@@ -128,6 +128,8 @@ export function StudioPanel({
   const [openEchoSources, setOpenEchoSources] = useState<Record<number, boolean>>({});
   const [isEchoThinking, setIsEchoThinking] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const notesEndRef = useRef<HTMLDivElement>(null);
   const echoEndRef = useRef<HTMLDivElement>(null);
 
@@ -291,6 +293,18 @@ export function StudioPanel({
     window.dispatchEvent(new CustomEvent("echo-recording-state", { detail: { active: isRecordingActive, paused: recorder.status === "paused", elapsedSeconds: recorder.elapsedSeconds } }));
   }, [isRecordingActive, recorder.status, recorder.elapsedSeconds]);
 
+  React.useEffect(() => {
+    const handleFullscreenChange = () => setIsBrowserFullscreen(document.fullscreenElement === sectionRef.current);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleBrowserFullscreen = async () => {
+    if (!sectionRef.current) return;
+    if (document.fullscreenElement === sectionRef.current) await document.exitFullscreen();
+    else await sectionRef.current.requestFullscreen();
+  };
+
   // ── Don't render if not open or minimized ──────────────────────────────
   if (!isOpen || mode === "minimized") return null;
 
@@ -311,7 +325,7 @@ export function StudioPanel({
         />
       )}
 
-      <section aria-label="Recording Studio" className={panelClasses}>
+      <section ref={sectionRef} aria-label="Recording Studio" className={panelClasses}>
         {/* ── Header ──────────────────────────────────────────────────── */}
         <header className="min-h-16 px-6 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C] shrink-0">
           <div className="flex items-center gap-2.5">
@@ -327,14 +341,15 @@ export function StudioPanel({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {!embedded && <button
+            <button
               type="button"
-              onClick={() => onChangeMode(isFullscreen ? "panel" : "fullscreen")}
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              onClick={() => embedded ? void toggleBrowserFullscreen() : onChangeMode(isFullscreen ? "panel" : "fullscreen")}
+              title={embedded ? (isBrowserFullscreen ? "Exit fullscreen" : "Fullscreen") : (isFullscreen ? "Exit fullscreen" : "Fullscreen")}
+              aria-label={embedded ? (isBrowserFullscreen ? "Exit fullscreen" : "Fullscreen") : (isFullscreen ? "Exit fullscreen" : "Fullscreen")}
               className="p-2 hover:bg-[#174778] transition-colors"
             >
-              {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-            </button>}
+              {embedded ? (isBrowserFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />) : (isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />)}
+            </button>
             {!embedded && <button
               type="button"
               onClick={handleClose}
@@ -516,7 +531,7 @@ export function StudioPanel({
             )}
             </div>}
 
-            {meetingDetails}
+            {(isRecordingActive || isStopped) && meetingDetails}
 
             {/* Status text for idle */}
             {recorder.status === "idle" && (
