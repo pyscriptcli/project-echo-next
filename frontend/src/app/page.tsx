@@ -259,6 +259,8 @@ export default function Home() {
   };
 
   const [stage, setStage] = useState<Stage>("Input");
+  const notetakerRef = useRef<HTMLDivElement>(null);
+  const [isNotetakerFullscreen, setIsNotetakerFullscreen] = useState(false);
   const [missedTopics, setMissedTopics] = useState<Array<{ topic: string; quote: string; confidence?: string }>>([]);
   const [topicQuery, setTopicQuery] = useState("");
   const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
@@ -355,6 +357,18 @@ export default function Home() {
 
   // Navigation Shell & View State
   const [currentView, setCurrentView] = useState<NavView>("dashboard");
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsNotetakerFullscreen(document.fullscreenElement === notetakerRef.current);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleNotetakerFullscreen = async () => {
+    if (!notetakerRef.current) return;
+    if (document.fullscreenElement === notetakerRef.current) await document.exitFullscreen();
+    else await notetakerRef.current.requestFullscreen();
+  };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isUniversalEchoOpen, setIsUniversalEchoOpen] = useState(false);
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
@@ -1107,7 +1121,7 @@ export default function Home() {
 
             {/* VIEW 3: MINUTES GENERATOR */}
             {currentView === "minutes" && (
-              <div className="relative flex min-h-full flex-col bg-[#F7F9FC] font-sans text-gray-800">
+              <div ref={notetakerRef} className="relative flex min-h-full flex-col bg-[#F7F9FC] font-sans text-gray-800">
                 {/* Header bar (Uniform text-2xl font-serif) */}
                 <div className="flex flex-col justify-between gap-4 border-b border-slate-200 bg-[#FFFCFB] px-5 py-4 sm:flex-row sm:items-center md:px-7">
                   <div>
@@ -1120,9 +1134,6 @@ export default function Home() {
                     {stage === "Input" && (
                       <div className="flex items-center gap-2">
                         {selectedFile && <button type="button" onClick={() => handleUnifiedSourceSubmission()} disabled={isLoading} className="btn-outline !px-3 !py-2 !text-[10px]"><RotateCcw size={12} /> Re-process</button>}
-                        <button type="button" onClick={() => setSourceTab(sourceTab === "record" ? "source" : "record")} className="btn-outline !px-3 !py-2 !text-[10px]">
-                          {sourceTab === "record" ? <><Upload size={12} /> Upload</> : <><Mic size={12} /> Return to recording</>}
-                        </button>
                       </div>
                     )}
                     {stage === "Review" && (
@@ -1134,7 +1145,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} />
+                <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} onToggleFullscreen={() => void toggleNotetakerFullscreen()} isFullscreen={isNotetakerFullscreen} />
 
       {/* STAGE 1: INPUT */}
       <div className="flex-1 p-4 md:p-5">

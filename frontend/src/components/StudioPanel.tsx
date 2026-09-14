@@ -315,6 +315,10 @@ export function StudioPanel({
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
           <div className={`${isFullscreen ? "w-full xl:w-[32%] xl:border-r border-[#D9E1EA]" : ""} p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA] xl:max-h-[calc(100vh-13rem)] xl:overflow-y-auto`}>
+            <div className="border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
+            </div>
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
                 <strong className="text-[#003366]">Set up your meeting</strong>
@@ -524,7 +528,7 @@ export function StudioPanel({
           </div>
 
           {isFullscreen && <div className="w-full xl:w-[34%] min-h-[420px] xl:min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-200 bg-white"><h3 className="text-sm font-semibold text-[#003366]">User notes</h3><p className="text-[11px] text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p></div>
+            <div className="px-5 py-4 border-b border-slate-200 bg-white"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3><p className="text-xs text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p></div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center"><MessageCircle size={20} className="mx-auto text-[#003366]"/><p className="mt-3 text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time.</p></div>}
               {notes.map((note) => <div key={note.id} className="group flex items-start gap-3 border border-slate-200 bg-white px-3.5 py-3 shadow-sm"><span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1">{note.timestamp}</span><span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5">{note.text}</span><button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500" aria-label="Remove note"><X size={13}/></button></div>)}
@@ -538,7 +542,7 @@ export function StudioPanel({
             <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-3"><h3 className="text-sm font-semibold tracking-tight text-[#003366]">{isFullscreen ? "Ask Echo" : "Meeting workspace"}</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div>
+                  <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div>
                   <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
                 </div>
                 {!isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
