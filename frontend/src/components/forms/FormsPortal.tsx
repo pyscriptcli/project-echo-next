@@ -124,17 +124,6 @@ function normalizeEmail(email?: string) {
   return (email || "").trim().toLowerCase();
 }
 
-type AdminSection = "rbac" | "configurations" | "email" | "ai" | "telemetry" | "navigation";
-const ADMIN_WORKSPACE_SECTIONS = [
-  ["overview", "Overview", "rbac"], ["users", "Users & Access", "rbac"],
-  ["dashboard", "Dashboard", "navigation"], ["tasks", "Tasks", "navigation"],
-  ["notebook", "Notebook", "navigation"], ["market-insights", "Market Insights", "navigation"],
-  ["demands", "Demands", "navigation"], ["meetings", "Meetings", "navigation"],
-  ["minutes", "Notetaker", "configurations"], ["forms", "Forms", "configurations"],
-  ["ask-echo", "Ask Echo", "ai"], ["email", "Email & Notifications", "email"],
-  ["integrations", "Integrations", "configurations"], ["audit", "Audit & System Health", "telemetry"],
-] as const;
-
 export function AdminConfiguration({ userEmail, username }: { userEmail: string; username?: string }) {
   const [config, setConfig] = useState<FormsConfig>(DEFAULT_CONFIG);
   const [selectedDepartment, setSelectedDepartment] = useState(DEFAULT_CONFIG.departments[0]);
@@ -151,7 +140,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState("requestor");
   const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({ Finance: true });
-  const [settingsTab, setSettingsTab] = useState<AdminSection>("rbac");
+  const [settingsTab, setSettingsTab] = useState<"rbac" | "configurations" | "email" | "ai" | "telemetry" | "navigation">("rbac");
   const [emailEvent, setEmailEvent] = useState<EmailEvent>("submitted");
   const [emailTestStatus, setEmailTestStatus] = useState("");
   const [newSignInDomain, setNewSignInDomain] = useState("");
@@ -485,9 +474,9 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         <aside className="w-full md:w-56 shrink-0 bg-[#003366] text-[#FFFCFB] p-2 shadow-[4px_0_18px_rgba(0,51,102,0.12)]">
           <div className="px-3 py-3 border-b border-[#31577D] text-[10px] uppercase tracking-[0.18em] text-[#B8CDE0]">Admin workspace</div>
           <nav className="mt-2 space-y-1">
-            {ADMIN_WORKSPACE_SECTIONS.map(([id, label, target]) => (
-              <button key={id} type="button" onClick={() => setSettingsTab(target)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === target ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
-                <span className="truncate">{label}</span>
+            {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
+              <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === item ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
+                <span className="truncate">{item === "rbac" ? "Users & Access" : item === "navigation" ? "Workspace Sidebar" : item === "configurations" ? "Forms & Routing" : item === "email" ? "Email & Notifications" : item === "ai" ? "Ask Echo" : "System Health"}</span>
               </button>
             ))}
           </nav>
