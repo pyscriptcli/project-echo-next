@@ -1098,16 +1098,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    {stage === "Input" && (
-                      <button 
-                        onClick={handleGenerateMinutes} 
-                        disabled={!transcript && !pastedText.trim()}
-                        className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs"
-                      >
-                        <Sparkles size={14} />
-                        <span>Generate Minutes</span>
-                      </button>
-                    )}
+                    {stage === "Input" && <span className="text-[11px] text-gray-400">Start a live meeting or open Upload or paste existing material below.</span>}
                     {stage === "Review" && (
                       <button onClick={() => setShowExportModal(true)} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
                         <Download size={14} />

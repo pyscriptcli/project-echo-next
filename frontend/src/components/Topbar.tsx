@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   Plus, 
   Mic, 
-  Upload,
   CheckSquare,
   LayoutDashboard,
   FolderKanban,
@@ -402,19 +401,6 @@ export function Topbar({
             <Mic size={14} className="text-[#003366]" />
           </button>
 
-          {/* Small Divider */}
-          <div className="w-[1px] h-4 bg-[#C9AB4C]/40" />
-
-          {/* Small Upload Button -> Redirects to Notetaker Workspace */}
-          <button
-            type="button"
-            onClick={onGoToNotetaker}
-            className="p-1.5 text-[#003366] hover:bg-[#C9AB4C]/20 hover:text-[#C9AB4C] transition-colors"
-            title="Upload File or Paste Transcript in Notetaker"
-            aria-label="Upload File or Paste Transcript in Notetaker"
-          >
-            <Upload size={14} className="text-[#003366]" />
-          </button>
         </div>
         )}
 
