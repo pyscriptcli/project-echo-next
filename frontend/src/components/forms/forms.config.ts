@@ -32,6 +32,27 @@ export const REPOSITORY_FORMS: RepositoryFormDefinition[] = [
     template: "./PcvSheet",
     clickUpListId: "901420772915",
   },
+  {
+    id: "it-asset-request-form",
+    label: "IT Asset Request Form",
+    department: "IT",
+    template: "./IT/templates/ITAssetRequestForm",
+    clickUpListId: "",
+  },
+  {
+    id: "it-helpdesk-support-form",
+    label: "Helpdesk Support Form",
+    department: "IT",
+    template: "./IT/templates/ITHelpdeskSupportForm",
+    clickUpListId: "",
+  },
+  {
+    id: "it-bug-error-report-form",
+    label: "Bug/Error Report Form",
+    department: "IT",
+    template: "./IT/templates/ITBugErrorReportForm",
+    clickUpListId: "",
+  },
 ];
 
 export const REPOSITORY_FORM_MAPPINGS = REPOSITORY_FORMS.map((form) => ({

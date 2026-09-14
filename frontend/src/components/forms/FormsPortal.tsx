@@ -49,6 +49,7 @@ const FORM_LABELS: Record<string, string> = {
   pcv: "Petty Cash Voucher",
   "it-helpdesk-support-form": "Helpdesk Support Form",
   "it-bug-error-report-form": "Bug/Error Report Form",
+  "it-asset-request-form": "IT Asset Request Form",
 };
 const STAGES = [
   "Team Leader Endorsement",
