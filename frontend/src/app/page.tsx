@@ -331,7 +331,8 @@ export default function Home() {
   };
 
   // Unified Meeting Source state
-  const [sourceTab, setSourceTab] = useState<"source" | "record">("source");
+  // Live recording is the primary meeting path. Upload remains available as a secondary path.
+  const [sourceTab, setSourceTab] = useState<"source" | "record">("record");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [pastedText, setPastedText] = useState("");
@@ -1143,7 +1144,7 @@ export default function Home() {
                         : "text-gray-400 hover:text-[#003366]"
                     }`}
                   >
-                    Upload File & Paste Text
+                    Upload or paste existing material
                   </button>
 
                   <button 
@@ -1155,7 +1156,7 @@ export default function Home() {
                         : "text-gray-400 hover:text-[#003366]"
                     }`}
                   >
-                    Record Live
+                    Record live (primary)
                   </button>
                 </div>
 
