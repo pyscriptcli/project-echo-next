@@ -42,6 +42,8 @@ interface StudioPanelProps {
   onClose: () => void;
   onSendToNotetaker: (file: File, notes: StudioNote[], preparedTranscript?: string) => void;
   onOpenSource?: (page: string, recordId: string, url?: string) => void;
+  onRecordingStart?: (startTime: string) => void;
+  onRecordingStop?: (endTime: string) => void;
 }
 
 interface EchoMessage {
@@ -98,6 +100,8 @@ export function StudioPanel({
   onClose,
   onSendToNotetaker,
   onOpenSource,
+  onRecordingStart,
+  onRecordingStop,
 }: StudioPanelProps) {
   const recorder = useStudioRecorder();
   const liveTranscript = useLiveTranscription(recorder.audioStream);
@@ -135,6 +139,20 @@ export function StudioPanel({
     window.addEventListener("echo-start-meeting", startMeeting);
     return () => window.removeEventListener("echo-start-meeting", startMeeting);
   }, [recorder.status]);
+
+  const prevRecorderStatusRef = useRef(recorder.status);
+  React.useEffect(() => {
+    const prev = prevRecorderStatusRef.current;
+    if (prev === "idle" && recorder.status === "recording") {
+      const now = new Date().toTimeString().slice(0, 5);
+      onRecordingStart?.(now);
+    }
+    if ((prev === "recording" || prev === "paused") && recorder.status === "stopped") {
+      const now = new Date().toTimeString().slice(0, 5);
+      onRecordingStop?.(now);
+    }
+    prevRecorderStatusRef.current = recorder.status;
+  }, [recorder.status, onRecordingStart, onRecordingStop]);
 
   const resetEchoConversation = useCallback(() => {
     setEchoMessages([ECHO_STARTER]);
@@ -321,15 +339,11 @@ export function StudioPanel({
             </div>
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
-                <strong className="text-[#003366]">Set up your meeting</strong>
-                <p className="text-xs mt-1">Add a title, then choose how Echo should capture the conversation.</p>
-                <div className="grid grid-cols-[1fr_150px] gap-2 mt-3">
-                  <input value={meetingTitle} onChange={(event) => setMeetingTitle(event.target.value)} placeholder="Meeting title" className="border border-slate-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-[#C9AB4C]" />
-                  <select value={meetingType} onChange={(event) => setMeetingType(event.target.value)} className="border border-slate-200 rounded-md px-3 py-2 text-xs text-[#003366] focus:outline-none focus:border-[#C9AB4C]"><option>Internal</option><option>Client</option><option>Project</option><option>One-on-one</option><option>Other</option></select>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <button type="button" onClick={() => setCaptureMode("meeting_link")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "meeting_link" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Meeting link</button>
-                  <button type="button" onClick={() => setCaptureMode("device")} className={`px-3 py-2.5 rounded-md text-xs font-semibold border transition-colors ${captureMode === "device" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Record on this device</button>
+                <strong className="text-[#003366]">Recording mode</strong>
+                <p className="text-xs mt-1">Choose how Echo should capture the conversation.</p>
+                <div className="grid grid-cols-2 gap-2 mt-2.5">
+                  <button type="button" onClick={() => setCaptureMode("meeting_link")} className={`px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${captureMode === "meeting_link" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Meeting link</button>
+                  <button type="button" onClick={() => setCaptureMode("device")} className={`px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${captureMode === "device" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Record on this device</button>
                 </div>
               </div>
             )}
@@ -484,7 +498,7 @@ export function StudioPanel({
             )}
             </div>}
 
-            {(isRecordingActive || isStopped) && meetingDetails}
+            {meetingDetails}
 
             {/* Status text for idle */}
             {recorder.status === "idle" && (

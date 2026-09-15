@@ -577,6 +577,14 @@ export default function Home() {
     };
   };
 
+  const handleRecordingStart = (startTime: string) => {
+    setMetadata((prev: any) => ({ ...prev, start_time: startTime, end_time: "" }));
+  };
+
+  const handleRecordingStop = (endTime: string) => {
+    setMetadata((prev: any) => ({ ...prev, end_time: endTime }));
+  };
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleCancelProcessing = () => {
@@ -1313,39 +1321,227 @@ export default function Home() {
                     isOpen
                     embedded
                     mode="fullscreen"
+                    onRecordingStart={handleRecordingStart}
+                    onRecordingStop={handleRecordingStop}
                     meetingDetails={(
                       <section className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white shadow-sm" aria-labelledby="meeting-information-heading">
                         <div className="border-b border-slate-200 px-4 py-3">
-                          <h3 id="meeting-information-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-[#003366]">Meeting information</h3>
+                          <h3 id="meeting-information-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-[#003366]">Meeting Information</h3>
                           <p className="mt-1 text-[10px] text-slate-500">Date and time are captured automatically. Add context only when it helps the final minutes.</p>
                         </div>
-                        <div className="space-y-3 p-4">
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="col-span-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Meeting title
-                              <input value={metadata.client_name || ""} onChange={(event) => setMetadata({ ...metadata, client_name: event.target.value })} placeholder="Generated from the transcript if blank" className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal outline-none focus:border-[#C9A84C]" />
-                            </label>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Meeting type
-                              <select value={metadata.meeting_type || "Internal"} onChange={(event) => setMetadata({ ...metadata, meeting_type: event.target.value })} className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal text-[#003366] outline-none focus:border-[#C9A84C]"><option value="Internal">Internal</option><option value="External">External</option><option value="Team">Team meeting</option><option value="Client Pitch">Client pitch</option><option value="Board Meeting">Board meeting</option></select>
-                            </label>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Department
-                              <input value={metadata.department || ""} onChange={(event) => setMetadata({ ...metadata, department: event.target.value })} placeholder="e.g. CRD or IT" className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal outline-none focus:border-[#C9A84C]" />
-                            </label>
+                        <div className="space-y-3.5 p-4">
+                          {/* Row 1: Meeting Title / Client & Meeting Date */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                                Meeting Title / Client
+                              </label>
+                              <input
+                                type="text"
+                                value={metadata.client_name || ""}
+                                onChange={(event) => setMetadata({ ...metadata, client_name: event.target.value })}
+                                placeholder="Internal"
+                                className="w-full border border-slate-200 bg-white px-3 py-2 text-xs italic text-slate-800 placeholder:italic outline-none focus:border-[#C9A84C] transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                                Meeting Date
+                              </label>
+                              <input
+                                type="date"
+                                value={metadata.date || ""}
+                                onChange={(event) => setMetadata({ ...metadata, date: event.target.value })}
+                                className="w-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#C9A84C] transition-colors"
+                              />
+                            </div>
                           </div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Venue / location
-                            <select value={metadata.location || VENUE_OPTIONS[0]} onChange={(event) => setMetadata({ ...metadata, location: event.target.value })} className="mt-1 w-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-normal normal-case tracking-normal text-[#003366] outline-none focus:border-[#C9A84C]">{VENUE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select>
-                          </label>
-                          {metadata.location === "Other / Custom..." && <input aria-label="Custom venue" value={metadata.custom_location || ""} onChange={(event) => setMetadata({ ...metadata, custom_location: event.target.value })} placeholder="Enter venue or meeting link" className="w-full border border-[#C9A84C] bg-white px-2.5 py-2 text-xs outline-none" />}
-                          <div className="grid grid-cols-3 gap-2 border-y border-slate-100 py-3 text-center">
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Date</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{formatMeetingDate(metadata.date)}</span></div>
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Started</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{formatMeetingTime(metadata.start_time)}</span></div>
-                            <div><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Ends</span><span className="mt-1 block text-[11px] font-semibold text-[#003366]">{metadata.end_time ? formatMeetingTime(metadata.end_time) : "On stop"}</span></div>
+
+                          {/* Row 2: Meeting Type & Location / Venue */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                                Meeting Type
+                              </label>
+                              <div className="flex items-center gap-1.5">
+                                {(["Internal", "External", "Team"] as const).map((type) => {
+                                  const isSelected = (metadata.meeting_type || "Internal").toLowerCase() === type.toLowerCase();
+                                  return (
+                                    <button
+                                      key={type}
+                                      type="button"
+                                      onClick={() => setMetadata({ ...metadata, meeting_type: type })}
+                                      className={`px-4 py-1.5 text-xs font-semibold transition-all ${
+                                        isSelected
+                                          ? "bg-[#003366] text-white shadow-xs"
+                                          : "bg-white border border-slate-200 text-slate-600 hover:text-[#003366] hover:border-slate-300"
+                                      }`}
+                                    >
+                                      {type}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                                Location / Venue
+                              </label>
+                              <select
+                                value={metadata.location || VENUE_OPTIONS[1]}
+                                onChange={(event) => setMetadata({ ...metadata, location: event.target.value })}
+                                className="w-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#C9A84C] transition-colors cursor-pointer"
+                              >
+                                {VENUE_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                              {metadata.location === "Other / Custom..." && (
+                                <input
+                                  aria-label="Custom venue"
+                                  value={metadata.custom_location || ""}
+                                  onChange={(event) => setMetadata({ ...metadata, custom_location: event.target.value })}
+                                  placeholder="Enter venue or meeting link"
+                                  className="mt-1.5 w-full border border-[#C9A84C] bg-white px-3 py-1.5 text-xs outline-none"
+                                />
+                              )}
+                            </div>
                           </div>
+
+                          {/* Time Start & Time End */}
+                          <div className="grid grid-cols-2 gap-3 bg-slate-50/80 border border-slate-200 p-2.5">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Time Start</label>
+                                <span className="text-[9px] text-slate-400 font-medium">Auto on record</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="time"
+                                  value={metadata.start_time || ""}
+                                  onChange={(e) => setMetadata({ ...metadata, start_time: e.target.value })}
+                                  className="w-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-mono font-bold text-[#003366] outline-none focus:border-[#C9A84C]"
+                                />
+                                {metadata.start_time && (
+                                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Start time captured" />
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Time End</label>
+                                <span className="text-[9px] text-slate-400 font-medium">Auto on stop</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="time"
+                                  value={metadata.end_time || ""}
+                                  onChange={(e) => setMetadata({ ...metadata, end_time: e.target.value })}
+                                  className="w-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-mono font-bold text-[#003366] outline-none focus:border-[#C9A84C]"
+                                />
+                                {metadata.end_time ? (
+                                  <span className="inline-block w-2 h-2 rounded-full bg-blue-500 shrink-0" title="End time captured" />
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic shrink-0 whitespace-nowrap">On stop</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Row 3: Attendees */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Team Attendees */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#003366] mb-1.5">
+                                Team Attendees
+                              </label>
+                              {primeAttendees.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-2">
+                                  {primeAttendees.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 bg-[#003366] text-[#c9ab4c] font-bold text-[11px] px-2 py-0.5 shadow-2xs">
+                                      {name}
+                                      <X size={11} onClick={() => removePrimeAttendee(name)} className="cursor-pointer text-white hover:text-red-300" />
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Add team attendee..."
+                                  value={newPrimeAttendee}
+                                  onChange={(e) => setNewPrimeAttendee(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addPrimeAttendee();
+                                    }
+                                  }}
+                                  className="flex-1 border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-[#003366]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={addPrimeAttendee}
+                                  className="border border-[#003366] px-3.5 py-1.5 text-xs font-bold text-[#003366] hover:bg-[#003366] hover:text-white transition-colors"
+                                >
+                                  ADD
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* External Attendees */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">
+                                External Attendees
+                              </label>
+                              {externalAttendees.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-2">
+                                  {externalAttendees.map((name) => (
+                                    <span key={name} className="inline-flex items-center gap-1 bg-[#003366] text-white font-bold text-[11px] px-2 py-0.5 shadow-2xs">
+                                      {name}
+                                      <X size={11} onClick={() => removeExternalAttendee(name)} className="cursor-pointer text-white hover:text-red-300" />
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Add external attendee..."
+                                  value={newExternalAttendee}
+                                  onChange={(e) => setNewExternalAttendee(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addExternalAttendee();
+                                    }
+                                  }}
+                                  className="flex-1 border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-[#C9A84C]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={addExternalAttendee}
+                                  className="border border-[#003366] px-3.5 py-1.5 text-xs font-bold text-[#003366] hover:bg-[#003366] hover:text-white transition-colors"
+                                >
+                                  ADD
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Collapsible Routing & Ownership */}
                           <details className="group border border-slate-200">
-                            <summary className="cursor-pointer list-none px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#003366]">Routing and ownership <span className="float-right text-[#C9A84C] group-open:rotate-45">+</span></summary>
+                            <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#003366]">Routing and ownership <span className="float-right text-[#C9A84C] group-open:rotate-45">+</span></summary>
                             <div className="space-y-2 border-t border-slate-200 p-3">
-                              <input aria-label="ClickUp workspace" value={metadata.workspace || ""} onChange={(event) => setMetadata({ ...metadata, workspace: event.target.value })} placeholder="ClickUp workspace" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                              <div className="grid grid-cols-2 gap-2">
+                                <input aria-label="Department" value={metadata.department || ""} onChange={(event) => setMetadata({ ...metadata, department: event.target.value })} placeholder="Department (e.g. CRD or IT)" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                                <input aria-label="ClickUp workspace" value={metadata.workspace || ""} onChange={(event) => setMetadata({ ...metadata, workspace: event.target.value })} placeholder="ClickUp workspace" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                              </div>
                               <input aria-label="ClickUp space ID" value={metadata.space_id || ""} onChange={(event) => setMetadata({ ...metadata, space_id: event.target.value })} placeholder="ClickUp Space ID" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
-                              <div className="grid grid-cols-2 gap-2"><input aria-label="Prepared by" value={metadata.prepared_by || "Dave Policarpio"} onChange={(event) => setMetadata({ ...metadata, prepared_by: event.target.value })} placeholder="Prepared by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" /><input aria-label="Confirmed by" value={metadata.confirmed_by || "Client Rep or Lead"} onChange={(event) => setMetadata({ ...metadata, confirmed_by: event.target.value })} placeholder="Confirmed by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" /></div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input aria-label="Prepared by" value={metadata.prepared_by || "Dave Policarpio"} onChange={(event) => setMetadata({ ...metadata, prepared_by: event.target.value })} placeholder="Prepared by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                                <input aria-label="Confirmed by" value={metadata.confirmed_by || "Client Rep or Lead"} onChange={(event) => setMetadata({ ...metadata, confirmed_by: event.target.value })} placeholder="Confirmed by" className="w-full border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-[#C9A84C]" />
+                              </div>
                             </div>
                           </details>
                         </div>

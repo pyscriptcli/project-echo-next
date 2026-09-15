@@ -26,7 +26,22 @@ export async function POST(req: NextRequest) {
       }
       list = await createList.json();
     }
-    const description = [`# Meeting Details`, `**Date:** ${meeting_details.date || ""}`, `**Start:** ${meeting_details.start_time || ""}`, `**End:** ${meeting_details.end_time || ""}`, `**Owner:** ${meeting_details.prepared_by || meeting_details.owner || "Unassigned"}`, `**Department:** ${meeting_details.department || meeting_details.workspace || "Unassigned"}`, `**Location:** ${meeting_details.location || ""}`, `\n# Executive Summary\n${other_discussions || ""}`, `\n# Discussion Points\n${JSON.stringify(items || [], null, 2)}`, `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`].join("\n");
+    const teamAtt = meeting_details.prime_attendees || meeting_details.team_attendees || (Array.isArray(meeting_details.attendees_prime) ? meeting_details.attendees_prime.join(", ") : "");
+    const extAtt = meeting_details.external_attendees || (Array.isArray(meeting_details.attendees_external) ? meeting_details.attendees_external.join(", ") : "");
+    const description = [
+      `# Meeting Details`,
+      `**Date:** ${meeting_details.date || ""}`,
+      `**Start:** ${meeting_details.start_time || ""}`,
+      `**End:** ${meeting_details.end_time || ""}`,
+      `**Owner:** ${meeting_details.prepared_by || meeting_details.owner || "Unassigned"}`,
+      `**Department:** ${meeting_details.department || meeting_details.workspace || "Unassigned"}`,
+      `**Location:** ${meeting_details.location || ""}`,
+      ...(teamAtt ? [`**Team Attendees:** ${teamAtt}`] : []),
+      ...(extAtt ? [`**External Attendees:** ${extAtt}`] : []),
+      `\n# Executive Summary\n${other_discussions || ""}`,
+      `\n# Discussion Points\n${JSON.stringify(items || [], null, 2)}`,
+      `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`
+    ].join("\n");
     const meetingDate = meeting_details.date || new Date().toISOString().slice(0, 10);
     const meetingName = meeting_details.client_name || "Echo Meeting";
     // Detect available statuses for this list to match the workspace workflow
