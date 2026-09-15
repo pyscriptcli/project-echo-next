@@ -51,3 +51,13 @@ Audio transcription uses only these two Whisper paths; Gemini is not an audio fa
 ## Forms Portal configuration
 
 The Forms Portal is available from Echo's sidebar after signing in with ClickUp. Run `supabase/forms_rbac.sql` in the project Supabase database, then provide `SUPABASE_SERVICE_ROLE_KEY` to persist the protected Owner/Admin configuration. Dave's ClickUp email (`dave.policarpio@primephilippines.com`) is the protected Owner. Without the Supabase table, Admin configuration remains available in local browser storage for local review.
+
+## Strategic Alliance Partnership form
+
+The public referral form is available at `/strategic-alliance-partnership`. It creates
+tasks in the hard-coded ClickUp list `901421067114`; it does not use a database.
+
+Set `CLICKUP_API_TOKEN` in Vercel for Production, Preview, and Development. Keep the
+token server-only and do not use a `NEXT_PUBLIC_` prefix. The browser submits to the
+app's `/api/strategic-alliance-partnership` route so the credential is never exposed
+to form visitors.

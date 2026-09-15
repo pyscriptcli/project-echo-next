@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Eye,
   Check,
+  CheckCheck,
   Send,
 } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -39,6 +40,7 @@ function ApprovalsContent() {
   const [approverName, setApproverName] = useState("Team Leader");
   const [approvalNotes, setApprovalNotes] = useState("");
   const [isApproving, setIsApproving] = useState(false);
+  const [isAutoApprovingAll, setIsAutoApprovingAll] = useState(false);
 
   // Revision modal states
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
@@ -168,6 +170,48 @@ function ApprovalsContent() {
     }
   };
 
+  const handleAutoApproveAll = async () => {
+    if (pendingRequests.length === 0) return;
+    const count = pendingRequests.length;
+    const confirmMessage = `Auto-approve all ${count} pending request(s)?\n\nAll requests will be endorsed and advanced to Finance Verification.`;
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsAutoApprovingAll(true);
+    try {
+      const items = pendingRequests.map((r) => ({
+        taskId: r.taskId,
+        stageIndex: r.stageIndex ?? 0,
+      }));
+
+      const res = await fetch("/api/rfp/approve-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items,
+          approverName,
+          notes: approvalNotes || "Auto-approved via Approver Review Portal",
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to auto-approve requests");
+      }
+
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+      setActionSuccessMessage(`✅ ${json.message || `Auto-approved all ${count} requests!`}`);
+
+      setTimeout(() => {
+        fetchPendingRequests();
+        setActiveRequest(null);
+      }, 1500);
+    } catch (err: any) {
+      alert(`Auto-approval error: ${err.message}`);
+    } finally {
+      setIsAutoApprovingAll(false);
+    }
+  };
+
   // Find form preview image and quotation attachment from active request
   const formPreviewAtt = activeRequest?.attachments.find(
     (a) => a.name.toLowerCase().includes("preview") || a.name.toLowerCase().endsWith(".png")
@@ -197,7 +241,7 @@ function ApprovalsContent() {
               </h1>
             </div>
             <p className="text-xs text-slate-500">
-              Zero-friction review & 1-click approvals for Team Leaders. No ClickUp accounts required.
+              Zero-friction review & 1-click approvals for Team Leaders.
             </p>
           </div>
 
@@ -233,9 +277,32 @@ function ApprovalsContent() {
           </div>
         )}
 
-        <div className="mt-4 flex gap-1 border-t border-slate-200 pt-3">
-          <button type="button" onClick={() => { setApprovalTab("pending"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "pending" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Pending ({pendingRequests.length})</button>
-          <button type="button" onClick={() => { setApprovalTab("approved"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "approved" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Approved ({approvedRequests.length})</button>
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200 pt-3">
+          <div className="flex gap-1">
+            <button type="button" onClick={() => { setApprovalTab("pending"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "pending" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Pending ({pendingRequests.length})</button>
+            <button type="button" onClick={() => { setApprovalTab("approved"); setActiveRequest(null); }} className={`px-3 py-2 text-xs font-bold border ${approvalTab === "approved" ? "bg-[#003366] text-white border-[#003366]" : "bg-[#FFFCFB] text-[#003366] border-slate-300"}`}>Approved ({approvedRequests.length})</button>
+          </div>
+          {approvalTab === "pending" && pendingRequests.length > 0 && (
+            <button
+              type="button"
+              onClick={handleAutoApproveAll}
+              disabled={isAutoApprovingAll || isApproving}
+              className="h-8 px-3.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 border border-emerald-800 flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              title="Auto-approve all pending requests and advance them to Finance Verification"
+            >
+              {isAutoApprovingAll ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Auto-Approving All...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCheck className="w-4 h-4 text-emerald-200" />
+                  <span>Auto Approve All ({pendingRequests.length})</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

@@ -106,7 +106,7 @@ function TrackContent() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="font-serif italic font-bold text-2xl text-[#003366] tracking-tight">
-              Request Status & Progress Tracker
+              Request Status
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               Tracking for all submitted Requests
