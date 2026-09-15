@@ -332,7 +332,7 @@ export function StudioPanel({
         <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[32%] xl:border-r border-[#D9E1EA]" : ""} min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[380px] 2xl:w-[410px] xl:border-r border-[#D9E1EA]" : ""} min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             <div className="border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
               <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
