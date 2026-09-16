@@ -153,7 +153,7 @@ export function FinalizeMeetingModal({
               </h2>
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Verify meeting details to ensure accurate document headers and ClickUp archive records.
+              Verify meeting details to ensure accurate document headers and ClickUp records.
             </p>
           </div>
           <button
@@ -175,7 +175,7 @@ export function FinalizeMeetingModal({
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366]">
                 Meeting Details Verification
               </span>
-              <span className="text-[10px] text-slate-400">Required for export & archiving</span>
+              <span className="text-[10px] text-slate-400">Required for export & ClickUp</span>
             </div>
 
             {/* Title / Client Name */}
@@ -402,7 +402,7 @@ export function FinalizeMeetingModal({
                     : "border-transparent text-slate-400 hover:text-[#003366]"
                 }`}
               >
-                <Cloud size={14} /> Archive to ClickUp
+                <Cloud size={14} /> Save to ClickUp
               </button>
             </div>
 
@@ -449,14 +449,14 @@ export function FinalizeMeetingModal({
               </div>
             )}
 
-            {/* Tab 2: ClickUp Archiving */}
+            {/* Tab 2: ClickUp Saving */}
             {activeTab === "archive" && (
               <div className="space-y-3 bg-white border border-slate-200 p-4 shadow-2xs animate-in fade-in duration-100">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h4 className="text-xs font-bold text-[#003366]">Select Target ClickUp Space</h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Echo will archive the meeting into the selected department’s <b>Echo Meetings</b> list.
+                      Echo will save the meeting into the selected department’s <b>Echo Meetings</b> list.
                     </p>
                   </div>
                   {loadingArchiveSpaces && (
@@ -508,12 +508,12 @@ export function FinalizeMeetingModal({
                     {isProcessing ? (
                       <>
                         <Loader2 size={13} className="animate-spin text-[#C9A84C]" />
-                        <span>{processingText || "Archiving..."}</span>
+                        <span>{processingText || "Saving to ClickUp..."}</span>
                       </>
                     ) : (
                       <>
                         <Cloud size={14} />
-                        <span>Archive to ClickUp</span>
+                        <span>Save to ClickUp</span>
                       </>
                     )}
                   </button>

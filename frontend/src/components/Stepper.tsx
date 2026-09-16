@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Expand, FileCheck2, Lock, Mic2, Upload } from "lucide-react";
+import { Download, Expand, FileCheck2, Lock, Mic2, Upload } from "lucide-react";
 
 export type Stage = "Input" | "Review";
 
@@ -12,6 +12,7 @@ interface StepperProps {
   onUpload?: () => void;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  onSaveExport?: () => void;
 }
 
 export function Stepper({ 
@@ -21,6 +22,7 @@ export function Stepper({
   onUpload,
   onToggleFullscreen,
   isFullscreen = false,
+  onSaveExport,
 }: StepperProps) {
   const stages: { name: Stage; label: string; allowed: boolean }[] = [
     { name: "Input", label: "Meeting Workspace", allowed: true },
@@ -28,7 +30,7 @@ export function Stepper({
   ];
   
   return (
-    <nav className="flex w-full items-center justify-between shrink-0 overflow-x-auto border-b border-slate-200 bg-white px-3 select-none" aria-label="Notetaker views">
+    <nav className="sticky top-0 z-20 flex w-full items-center justify-between shrink-0 overflow-x-auto border-b border-slate-200 bg-white px-3 select-none shadow-2xs" aria-label="Notetaker views">
       <div className="flex items-stretch">
       {stages.map((stageItem, idx) => {
         const isActive = currentStage === stageItem.name;
@@ -58,9 +60,41 @@ export function Stepper({
         );
       })}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5 pl-3">
-        {onUpload && <button type="button" onClick={onUpload} className="inline-flex items-center gap-1.5 border border-slate-200 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-[#003366] hover:border-[#C9A84C]" title="Upload recording or transcript"><Upload size={13} /> Upload</button>}
-        {onToggleFullscreen && <button type="button" onClick={onToggleFullscreen} className="inline-flex h-8 w-8 items-center justify-center border border-slate-200 text-[#003366] hover:border-[#C9A84C]" title={isFullscreen ? "Exit fullscreen" : "Focus workspace"} aria-label={isFullscreen ? "Exit fullscreen" : "Focus workspace"}><Expand size={14} /></button>}
+      <div className="flex shrink-0 items-center gap-2 pl-3 py-1.5">
+        {onUpload && (
+          <button
+            type="button"
+            onClick={onUpload}
+            className="inline-flex items-center gap-1.5 border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#003366] hover:border-[#C9A84C] transition-colors"
+            title="Upload recording or transcript"
+          >
+            <Upload size={13} />
+            <span className="hidden sm:inline">Upload</span>
+          </button>
+        )}
+        {onToggleFullscreen && (
+          <button
+            type="button"
+            onClick={onToggleFullscreen}
+            className="inline-flex h-8 w-8 items-center justify-center border border-slate-200 bg-white text-[#003366] hover:border-[#C9A84C] transition-colors"
+            title={isFullscreen ? "Exit fullscreen" : "Focus workspace"}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Focus workspace"}
+          >
+            <Expand size={14} />
+          </button>
+        )}
+        {onSaveExport && (
+          <button
+            type="button"
+            disabled={!isReviewAllowed}
+            onClick={onSaveExport}
+            className="inline-flex items-center gap-1.5 bg-[#003366] text-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider hover:bg-[#002244] border border-[#003366] transition-all shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
+            title={isReviewAllowed ? "Save to ClickUp or Export Word/PDF" : "Complete recording or synthesize minutes first"}
+          >
+            <Download size={13} className="text-[#C9A84C]" />
+            <span>Save & Export</span>
+          </button>
+        )}
       </div>
     </nav>
   );

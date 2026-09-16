@@ -65,10 +65,11 @@ describe("FinalizeMeetingModal", () => {
     expect(onExportWord).toHaveBeenCalledOnce();
   });
 
-  it("switches to ClickUp archive tab and shows space selector", () => {
+  it("switches to ClickUp save tab and shows space selector", () => {
     render(<FinalizeMeetingModal {...baseProps} initialAction="archive" />);
 
     expect(screen.getByText("Select Target ClickUp Space")).toBeDefined();
     expect(screen.getByText("Industrial Brokerage")).toBeDefined();
+    expect(screen.getByRole("tab", { name: /save to clickup/i })).toBeDefined();
   });
 });

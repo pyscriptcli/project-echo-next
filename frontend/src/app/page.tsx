@@ -281,7 +281,7 @@ export default function Home() {
   const [loadingArchiveSpaces, setLoadingArchiveSpaces] = useState(false);
   const [audioTelemetry, setAudioTelemetry] = useState<AudioTelemetry | null>(null);
 
-  const openFinalizeModal = (action: "export" | "archive" = "export") => {
+  const openFinalizeModal = (action: "export" | "archive" | "all" = "export") => {
     setFinalizeAction(action);
     setShowFinalizeModal(true);
     if (archiveSpaces.length === 0 && !loadingArchiveSpaces) {
@@ -870,7 +870,7 @@ export default function Home() {
       return; 
     }
     setIsLoading(true);
-    setLoadingText("Archiving meeting to ClickUp...");
+    setLoadingText("Saving meeting to ClickUp...");
     try {
       const res = await saveMeeting({ ...getEffectiveMetadata(), space_id: spaceToUse }, momItems, otherDiscussions, transcript);
       const effectiveMeta = getEffectiveMetadata();
@@ -909,9 +909,9 @@ export default function Home() {
       const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
       setShowFinalizeModal(false);
       setShowArchiveModal(false); 
-      alert((res.message || "Successfully archived meeting in ClickUp!") + target);
+      alert((res.message || "Successfully saved meeting to ClickUp!") + target);
     } catch (err: any) {
-      alert(err?.message || "Unable to archive meeting in ClickUp.");
+      alert(err?.message || "Unable to save meeting to ClickUp.");
     } finally {
       setIsLoading(false);
     }
@@ -1212,16 +1212,18 @@ export default function Home() {
                         {selectedFile && <button type="button" onClick={() => handleUnifiedSourceSubmission()} disabled={isLoading} className="btn-outline !px-3 !py-2 !text-[10px]"><RotateCcw size={12} /> Re-process</button>}
                       </div>
                     )}
-                    {stage === "Review" && (
-                      <button onClick={() => openFinalizeModal("export")} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
-                        <Download size={14} />
-                        <span>Export & Archive</span>
-                      </button>
-                    )}
                   </div>
                 </div>
 
-                <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} onToggleFullscreen={() => void toggleNotetakerFullscreen()} isFullscreen={isNotetakerFullscreen} />
+                <Stepper 
+                  currentStage={stage} 
+                  onStageChange={setStage} 
+                  isReviewAllowed={isReviewAllowed} 
+                  onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} 
+                  onToggleFullscreen={() => void toggleNotetakerFullscreen()} 
+                  isFullscreen={isNotetakerFullscreen}
+                  onSaveExport={() => openFinalizeModal("all")}
+                />
 
       {/* STAGE 1: INPUT */}
       <div className={`flex min-h-0 flex-1 ${isMeetingWorkspace ? "h-full overflow-hidden p-2 md:p-2.5" : "p-2.5 md:p-3.5"}`}>
@@ -2128,13 +2130,8 @@ export default function Home() {
                 <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
                 </button>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => openFinalizeModal("archive")} className="btn-outline !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
-                    <Save size={14} /> Archive to ClickUp
-                  </button>
-                  <button onClick={() => openFinalizeModal("export")} className="btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
-                    <Download size={14} /> Export
-                  </button>
+                <div className="text-[11px] text-slate-400">
+                  Topic edits auto-saved • Use <strong className="text-[#003366]">Save & Export</strong> in the top bar to finalize
                 </div>
               </div>
 
