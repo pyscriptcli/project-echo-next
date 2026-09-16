@@ -145,6 +145,7 @@ interface MeetingsViewProps {
   selectedMeetingId: string | null;
   onSelectMeeting: (id: string) => void;
   onUpdateMeeting: (meeting: ArchivedMeeting, previousMeeting?: ArchivedMeeting) => Promise<void>;
+  onDeleteMeeting?: (meetingId: string) => Promise<void>;
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
   onSelectMeetingSpace?: (spaceId: string) => void;
@@ -155,6 +156,7 @@ export function MeetingsView({
   selectedMeetingId,
   onSelectMeeting,
   onUpdateMeeting,
+  onDeleteMeeting,
   onNewMinutes,
   onNavigateToTasks,
   onSelectMeetingSpace
@@ -166,6 +168,9 @@ export function MeetingsView({
   const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("__all__");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   useEffect(() => {
     discoverClickUpLists().then((data) => {
       setMeetingSpaces(data.spaces || []);
@@ -324,6 +329,22 @@ export function MeetingsView({
     }
   };
 
+  // Delete meeting
+  const handleConfirmDelete = async () => {
+    if (!activeMeeting) return;
+    setIsDeleting(true);
+    try {
+      if (onDeleteMeeting) {
+        await onDeleteMeeting(activeMeeting.id);
+      }
+      setShowDeleteModal(false);
+    } catch (error: any) {
+      alert(error.message || "Failed to delete meeting archive.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Re-export Word
   const handleExportWord = async () => {
     if (!activeMeeting) return;
@@ -372,21 +393,49 @@ export function MeetingsView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-gray-200/80">
         <div>
           <h1 className="text-2xl font-serif font-bold text-[#003366] italic">
-            Meetings Archive & Workspace
+            Meetings Archives
           </h1>
           <p className="text-xs font-bold tracking-wider text-gray-400 uppercase mt-0.5">
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-          <label className="flex items-center gap-2">Echo Meetings Space
-            <select value={selectedMeetingSpace} onChange={(event) => { const spaceId = event.target.value; setSelectedMeetingSpace(spaceId); if (spaceId !== "__all__") onSelectMeetingSpace?.(spaceId); else onSelectMeetingSpace?.("__all__"); }} className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]">
+          <label className="flex items-center gap-2">Space
+            <select
+              value={selectedMeetingSpace}
+              onChange={(event) => {
+                const spaceId = event.target.value;
+                setSelectedMeetingSpace(spaceId);
+                onSelectMeetingSpace?.(spaceId);
+              }}
+              className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+            >
               <option value="__all__">All spaces</option>
-              {meetingSpaces.map((space) => <option key={space.id} value={space.id}>{space.name} — {space.teamName}</option>)}
+              {meetingSpaces.map((space) => (
+                <option key={space.id} value={space.id}>
+                  {space.name} — {space.teamName}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="flex items-center gap-1.5 text-[10px]">From<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]" /></label>
-          <label className="flex items-center gap-1.5 text-[10px]">To<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]" /></label>
+          <label className="flex items-center gap-1.5 text-[10px]">
+            From
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px]">
+            To
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+            />
+          </label>
         </div>
       </div>
 
@@ -449,9 +498,16 @@ export function MeetingsView({
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                      <Calendar size={11} className="text-[#C9AB4C]" />
-                      <span>{formatEchoDate(m.date)}</span>
+                    <div className="flex items-center justify-between text-[11px] text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar size={11} className="text-[#C9AB4C]" />
+                        <span>{formatEchoDate(m.date)}</span>
+                      </div>
+                      {m.clickup_space_name && (
+                        <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-[#003366] font-medium border border-slate-200 truncate max-w-[130px]">
+                          {m.clickup_space_name}
+                        </span>
+                      )}
                     </div>
 
                     {m.location && (
@@ -507,7 +563,7 @@ export function MeetingsView({
                     </button>
                   </div>
 
-                  {/* Re-Export & Save Controls */}
+                  {/* Controls */}
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
@@ -536,6 +592,16 @@ export function MeetingsView({
                     >
                       <Save size={13} />
                       <span>Save Changes</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-colors rounded-none"
+                      title="Delete meeting archive"
+                      aria-label="Delete meeting archive"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -927,6 +993,64 @@ export function MeetingsView({
               <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">List</dt><dd className="mt-1 text-[#003366]">{activeMeeting.clickup_list_name || "Not recorded"}</dd></div>
               <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</dt><dd className="mt-1 text-[#003366]">{activeMeeting.archive_status || "Completed On Time"}</dd></div>
             </dl>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && activeMeeting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001E3C]/45 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <div className="w-full max-w-md border border-slate-200 bg-[#FFFCFB] p-5 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2 text-red-600">
+                <Trash2 size={18} />
+                <h2 id="delete-modal-title" className="text-sm font-bold uppercase tracking-wider">
+                  Delete Meeting Archive
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="text-slate-400 hover:text-[#003366]"
+                aria-label="Close modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-2">
+              <p>
+                Are you sure you want to permanently delete this meeting archive?
+              </p>
+              <div className="p-3 bg-slate-50 border border-slate-200">
+                <div className="font-serif font-bold text-sm text-[#003366] line-clamp-1">{activeMeeting.title}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">{formatEchoDate(activeMeeting.date)} • {activeMeeting.items.length} discussion topics</div>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                This will remove the meeting record from ClickUp and the archive database. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="btn-outline !py-1.5 !px-3 !text-xs rounded-none"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-1.5 text-xs rounded-none shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting && <Loader2 size={12} className="animate-spin" />}
+                <span>{isDeleting ? "Deleting..." : "Delete Archive"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

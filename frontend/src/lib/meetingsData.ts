@@ -39,18 +39,17 @@ export const INITIAL_ARCHIVED_MEETINGS: ArchivedMeeting[] = [
 const STORAGE_KEY = "project_echo_meetings_cache_v2";
 
 export function getLocalMeetings(): ArchivedMeeting[] {
-  if (typeof window === "undefined") return INITIAL_ARCHIVED_MEETINGS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_ARCHIVED_MEETINGS));
-      return INITIAL_ARCHIVED_MEETINGS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_ARCHIVED_MEETINGS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     console.error("Failed to load local meetings:", e);
-    return INITIAL_ARCHIVED_MEETINGS;
+    return [];
   }
 }
 
@@ -71,5 +70,29 @@ export function saveLocalMeeting(meeting: ArchivedMeeting): ArchivedMeeting[] {
   } catch (e) {
     console.error("Failed to save local meeting:", e);
     return [meeting];
+  }
+}
+
+export function deleteLocalMeeting(meetingId: string): ArchivedMeeting[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const current = getLocalMeetings();
+    const updated = current.filter((m) => m.id !== meetingId && m.meeting_id !== meetingId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.error("Failed to delete local meeting:", e);
+    return [];
+  }
+}
+
+export function syncLocalMeetings(remoteMeetings: ArchivedMeeting[]): ArchivedMeeting[] {
+  if (typeof window === "undefined") return remoteMeetings;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteMeetings));
+    return remoteMeetings;
+  } catch (e) {
+    console.error("Failed to sync local meetings:", e);
+    return remoteMeetings;
   }
 }

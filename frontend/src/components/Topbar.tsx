@@ -105,7 +105,7 @@ export function Topbar({
   // 1. Navigation Pages
   const APP_PAGES: Array<{ id: "dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms" | "forms-admin"; name: string; description: string; icon: any }> = [
     { id: "dashboard", name: "Dashboard", description: "Executive overview & meeting metrics", icon: LayoutDashboard },
-    { id: "meetings", name: "Meetings Archive", description: "Review and edit meeting minutes", icon: Calendar },
+    { id: "meetings", name: "Meetings Archives", description: "Review and edit meeting minutes", icon: Calendar },
     { id: "tasks", name: "Tasks Portal (ClickUp)", description: "Track & execute meeting action items", icon: CheckSquare },
     { id: "notebook", name: "Notebook", description: "Daily logs & team completeness", icon: NotebookTabs },
     { id: "market-insights", name: "Market Insights", description: "Weekly market brief & source archive", icon: Newspaper },

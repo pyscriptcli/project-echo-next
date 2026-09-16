@@ -303,6 +303,29 @@ export async function saveMeeting(metadata: any, items: any[], other_discussions
   return res.json();
 }
 
+export async function fetchMeetings(spaceId?: string) {
+  const url = spaceId && spaceId !== "__all__"
+    ? `/api/meetings?spaceId=${encodeURIComponent(spaceId)}`
+    : "/api/meetings?all=true";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to load meetings.");
+  }
+  return res.json();
+}
+
+export async function deleteMeeting(meetingId: string) {
+  const res = await fetch(`/api/meetings?meetingId=${encodeURIComponent(meetingId)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete meeting.");
+  }
+  return res.json();
+}
+
 export async function exportWord(metadata: any, items: any[], other_discussions: string) {
   const res = await fetch("/api/export-word", {
     method: "POST",

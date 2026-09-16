@@ -9,6 +9,8 @@ import {
   processSource, 
   generateMinutes, 
   saveMeeting, 
+  fetchMeetings,
+  deleteMeeting,
   exportWord, 
   exportPdf,
   askEcho,
@@ -41,7 +43,7 @@ import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
-import { getLocalMeetings, saveLocalMeeting } from "@/lib/meetingsData";
+import { getLocalMeetings, saveLocalMeeting, deleteLocalMeeting, syncLocalMeetings } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
 import { 
   Upload, 
@@ -446,19 +448,24 @@ export default function Home() {
     }
   };
 
-  // Load and sync archives
+  // Load and sync archives across all spaces
   useEffect(() => {
     const local = getLocalMeetings();
-    setArchivedMeetings(local);
-    if (local.length > 0 && !selectedMeetingId) {
-      setSelectedMeetingId(local[0].id);
+    if (local.length > 0) {
+      setArchivedMeetings(local);
+      if (!selectedMeetingId) {
+        setSelectedMeetingId(local[0].id);
+      }
     }
 
-    fetch("/api/meetings")
-      .then((res) => res.json())
+    fetchMeetings()
       .then((data) => {
-        if (data.meetings && Array.isArray(data.meetings) && data.meetings.length > 0) {
+        if (data.meetings && Array.isArray(data.meetings)) {
           setArchivedMeetings(data.meetings);
+          syncLocalMeetings(data.meetings);
+          if (data.meetings.length > 0 && !selectedMeetingId) {
+            setSelectedMeetingId(data.meetings[0].id);
+          }
         }
       })
       .catch((err) => console.log("Meetings sync fallback:", err));
@@ -1096,34 +1103,27 @@ export default function Home() {
             {currentView === "market-insights" && <MarketInsightsView />}
             {currentView === "demands" && <DemandsView sector={(new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("sector") as "retail" | "industrial" | null) || "all"} />}
 
-            {/* VIEW 2: MEETINGS ARCHIVE */}
+            {/* VIEW 2: MEETINGS ARCHIVES */}
             {currentView === "meetings" && (
               <MeetingsView
                 meetings={archivedMeetings}
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
                 onSelectMeetingSpace={async (spaceId) => {
-                  if (spaceId === "__all__") {
-                    try {
-                      const discovered = await discoverClickUpLists();
-                      const responses = await Promise.all((discovered.spaces || []).map(async (space: any) => {
-                        const response = await fetch(`/api/meetings?spaceId=${encodeURIComponent(space.id)}`);
-                        if (!response.ok) return { meetings: [] };
-                        return response.json().catch(() => ({ meetings: [] }));
-                      }));
-                      const merged = responses.flatMap((data: any) => data.meetings || []);
-                      const unique = Array.from(new Map(merged.map((meeting: ArchivedMeeting) => [meeting.id, meeting])).values());
-                      setArchivedMeetings(unique);
-                    } catch (error) {
-                      console.warn("Unable to load all ClickUp meeting spaces:", error);
+                  try {
+                    const data = await fetchMeetings(spaceId);
+                    const meetingsList = data.meetings || [];
+                    setArchivedMeetings(meetingsList);
+                    syncLocalMeetings(meetingsList);
+                    if (meetingsList.length > 0) {
+                      setSelectedMeetingId(meetingsList[0].id);
+                    } else {
+                      setSelectedMeetingId(null);
                     }
-                    return;
+                  } catch (error: any) {
+                    console.warn("Unable to load meeting space:", error);
+                    alert(error.message || "Unable to load meetings for the selected space.");
                   }
-                  const response = await fetch(`/api/meetings?spaceId=${encodeURIComponent(spaceId)}`);
-                  const data = await response.json().catch(() => ({}));
-                  if (!response.ok) { alert(data.error || "Unable to load meetings from the selected ClickUp Space."); return; }
-                  setArchivedMeetings(data.meetings || []);
-                  setSelectedMeetingId(data.meetings?.[0]?.id || null);
                 }}
                 onNavigateToTasks={(taskId) => {
                   setFocusedTaskId(taskId);
@@ -1141,6 +1141,17 @@ export default function Home() {
                   }
                   const saved = saveLocalMeeting(updated);
                   setArchivedMeetings(saved);
+                }}
+                onDeleteMeeting={async (meetingId) => {
+                  await deleteMeeting(meetingId);
+                  const updatedLocal = deleteLocalMeeting(meetingId);
+                  setArchivedMeetings((prev) => {
+                    const nextList = prev.filter((m) => m.id !== meetingId && m.meeting_id !== meetingId);
+                    if (selectedMeetingId === meetingId) {
+                      setSelectedMeetingId(nextList.length > 0 ? nextList[0].id : null);
+                    }
+                    return nextList;
+                  });
                 }}
                 onNewMinutes={() => {
                   setCurrentView("minutes");
