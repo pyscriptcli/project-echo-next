@@ -77,10 +77,75 @@ function getAudioFormat(mimeType: string, fileName?: string): string {
   return "wav";
 }
 
-let groqCooldownUntil = 0;
+export class GroqRateLimitError extends Error {
+  retryAfterSeconds: number;
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.name = "GroqRateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+/**
+ * Discovers and collects all configured Groq API keys.
+ * Supports:
+ * - GROQ_API_KEYS (comma-separated list: "key1,key2,key3")
+ * - GROQ_API_KEY (primary key)
+ * - GROQ_API_KEY_2, GROQ_API_KEY_3, ... GROQ_API_KEY_20
+ */
+export function getGroqApiKeys(): string[] {
+  const keys: string[] = [];
+
+  if (process.env.GROQ_API_KEYS) {
+    const list = process.env.GROQ_API_KEYS.split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    keys.push(...list);
+  }
+
+  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
+    keys.push(process.env.GROQ_API_KEY.trim());
+  }
+
+  for (let i = 2; i <= 20; i++) {
+    const indexed = process.env[`GROQ_API_KEY_${i}`];
+    if (indexed && indexed.trim()) {
+      keys.push(indexed.trim());
+    }
+  }
+
+  return Array.from(new Set(keys));
+}
+
+// Map of apiKey -> timestamp (ms) until which the key is cooling down
+const groqKeyCooldowns = new Map<string, number>();
+let groqRoundRobinPointer = 0;
+
+export function resetGroqPool(): void {
+  groqKeyCooldowns.clear();
+  groqRoundRobinPointer = 0;
+}
+
+export function getGroqPoolStatus(keys: string[]): { key: string; index: number; coolingDown: boolean; cooldownRemainingSec: number }[] {
+  const now = Date.now();
+  return keys.map((key, index) => {
+    const expiry = groqKeyCooldowns.get(key) || 0;
+    const coolingDown = expiry > now;
+    return {
+      key: `${key.slice(0, 6)}...${key.slice(-4)}`,
+      index: index + 1,
+      coolingDown,
+      cooldownRemainingSec: coolingDown ? Math.ceil((expiry - now) / 1000) : 0,
+    };
+  });
+}
 
 async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
-  if (Date.now() < groqCooldownUntil) throw new Error("Groq free-tier limit is cooling down");
+  const expiry = groqKeyCooldowns.get(apiKey) || 0;
+  if (Date.now() < expiry) {
+    const waitSec = Math.ceil((expiry - Date.now()) / 1000);
+    throw new GroqRateLimitError(`Groq key is cooling down (${waitSec}s remaining)`, waitSec);
+  }
 
   const formData = new FormData();
   formData.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType || "audio/webm" }), fileName || "recording.webm");
@@ -98,8 +163,8 @@ async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: st
 
   if (response.status === 429) {
     const retryAfterSeconds = Math.max(1, Number(response.headers.get("retry-after")) || 60);
-    groqCooldownUntil = Date.now() + retryAfterSeconds * 1000;
-    throw new Error(`Groq free-tier limit reached; retry after ${retryAfterSeconds}s`);
+    groqKeyCooldowns.set(apiKey, Date.now() + retryAfterSeconds * 1000);
+    throw new GroqRateLimitError(`Groq free-tier limit reached; retry after ${retryAfterSeconds}s`, retryAfterSeconds);
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -112,6 +177,58 @@ async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: st
     return body.segments.map((segment: { start?: number; text?: string }) => `${formatTimestamp(Number(segment.start) || 0)} ${String(segment.text || "").trim()}`).filter((line: string) => line.trim()).join("\n");
   }
   return String(body.text || "").trim();
+}
+
+async function transcribeWithGroqPool(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string,
+  groqKeys: string[]
+): Promise<{ text: string; keyUsed: string }> {
+  if (!groqKeys.length) {
+    throw new Error("No Groq API keys configured");
+  }
+
+  const now = Date.now();
+  // Find keys not currently cooling down
+  const availableKeys = groqKeys.filter((k) => (groqKeyCooldowns.get(k) || 0) <= now);
+
+  if (availableKeys.length === 0) {
+    const earliestExpiry = Math.min(...groqKeys.map((k) => groqKeyCooldowns.get(k) || 0));
+    const waitSec = Math.max(1, Math.ceil((earliestExpiry - now) / 1000));
+    throw new Error(`All ${groqKeys.length} Groq keys are cooling down (retry after ${waitSec}s)`);
+  }
+
+  // Order candidate keys starting at round-robin pointer
+  const startOffset = groqRoundRobinPointer % availableKeys.length;
+  const orderedKeys = [
+    ...availableKeys.slice(startOffset),
+    ...availableKeys.slice(0, startOffset),
+  ];
+
+  const poolErrors: string[] = [];
+
+  for (const candidateKey of orderedKeys) {
+    const keyNumber = groqKeys.indexOf(candidateKey) + 1;
+    try {
+      const text = await transcribeWithGroq(buffer, fileName, mimeType, candidateKey);
+      if (text) {
+        // Advance round-robin pointer for next request
+        groqRoundRobinPointer = (groqRoundRobinPointer + 1) % groqKeys.length;
+        return { text, keyUsed: candidateKey };
+      }
+    } catch (err: any) {
+      if (err instanceof GroqRateLimitError) {
+        console.warn(`[Groq Pool] Key #${keyNumber} hit 429 rate limit (cooling down for ${err.retryAfterSeconds}s). Switching to next key in pool...`);
+        poolErrors.push(`Key #${keyNumber}: 429 (${err.message})`);
+      } else {
+        console.warn(`[Groq Pool] Key #${keyNumber} error:`, err.message);
+        poolErrors.push(`Key #${keyNumber}: ${err.message}`);
+      }
+    }
+  }
+
+  throw new Error(`All available Groq keys in pool failed: ${poolErrors.join(" | ")}`);
 }
 
 async function transcribeWithOpenRouter(
@@ -163,25 +280,26 @@ async function transcribeAudioBuffer(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
-  keys: { groqKey: string; openrouterKey: string }
+  keys: { groqKeys: string[]; openrouterKey: string }
 ): Promise<{ text: string; tempPath?: string; errors: string[]; provider?: string }> {
   let audioTranscript = "";
   let tempFilePath: string | undefined;
   let provider: string | undefined;
   const errors: string[] = [];
 
-  // Free-tier first. One key and one organization quota only; never rotate accounts.
-  if (keys.groqKey) {
+  // 1. Primary: Groq Multi-Key Pool (Round-Robin with Automatic 429 Failover)
+  if (keys.groqKeys && keys.groqKeys.length > 0) {
     try {
-      audioTranscript = await transcribeWithGroq(buffer, fileName, mimeType, keys.groqKey);
+      const result = await transcribeWithGroqPool(buffer, fileName, mimeType, keys.groqKeys);
+      audioTranscript = result.text;
       if (audioTranscript) provider = "groq";
     } catch (e: any) {
-      console.warn("Groq transcription unavailable, using OpenRouter fallback:", e.message);
+      console.warn("Groq multi-key pool unavailable, using OpenRouter fallback:", e.message);
       errors.push(`Groq Whisper: ${e.message}`);
     }
   }
 
-  // Paid low-cost fallback.
+  // 2. Paid low-cost fallback: OpenRouter
   if (!audioTranscript && keys.openrouterKey) {
     try {
       audioTranscript = await transcribeWithOpenRouter(buffer, fileName, mimeType, keys.openrouterKey);
@@ -203,7 +321,7 @@ export async function POST(req: NextRequest) {
     const aiKey = headerKey || process.env.DEEPSEEK_API_KEY || "";
     const openrouterKey = req.headers.get("x-openrouter-api-key") || process.env.OPENROUTER_API_KEY || "";
     const geminiKey = req.headers.get("x-gemini-api-key") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-    const groqKey = process.env.GROQ_API_KEY || "";
+    const groqKeys = getGroqApiKeys();
     const requestUser = getUserFromRequest(req);
 
     const formData = await req.formData();
@@ -219,7 +337,7 @@ export async function POST(req: NextRequest) {
       const mimeType = file.type || "audio/wav";
 
       const { text, tempPath, errors, provider } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
-        groqKey,
+        groqKeys,
         openrouterKey,
       });
       if (tempPath) tempFilePath = tempPath;
@@ -308,7 +426,7 @@ export async function POST(req: NextRequest) {
 
     // CASE 5: Audio / Video recording (Groq Whisper -> OpenRouter Whisper)
     const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, file.name, mimeType, {
-      groqKey,
+      groqKeys,
       openrouterKey,
     });
     if (tempPath) tempFilePath = tempPath;

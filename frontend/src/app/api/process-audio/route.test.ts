@@ -9,7 +9,11 @@ function chunkRequest() {
 }
 
 describe("botless transcription routing", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    try {
+      const { resetGroqPool } = await import("./route");
+      resetGroqPool();
+    } catch {}
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
     vi.resetModules();
@@ -28,7 +32,48 @@ describe("botless transcription routing", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
   });
 
-  it("honors Groq rate limiting and falls back to OpenRouter", async () => {
+  it("round-robins across multiple Groq API keys", async () => {
+    vi.stubEnv("GROQ_API_KEY", "key-alpha");
+    vi.stubEnv("GROQ_API_KEY_2", "key-beta");
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ text: "From alpha" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ text: "From beta" }), { status: 200 }));
+    const { POST } = await import("./route");
+
+    const res1 = await POST(chunkRequest());
+    expect(await res1.json()).toMatchObject({ transcript: "From alpha", provider: "groq" });
+
+    const res2 = await POST(chunkRequest());
+    expect(await res2.json()).toMatchObject({ transcript: "From beta", provider: "groq" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const authHeaders = fetchMock.mock.calls.map((call) => (call[1] as RequestInit)?.headers);
+    expect(authHeaders).toEqual([
+      { Authorization: "Bearer key-alpha" },
+      { Authorization: "Bearer key-beta" },
+    ]);
+  });
+
+  it("fails over to secondary Groq key on 429 without touching OpenRouter", async () => {
+    vi.stubEnv("GROQ_API_KEY", "key-alpha");
+    vi.stubEnv("GROQ_API_KEY_2", "key-beta");
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "Rate limit" } }), { status: 429, headers: { "retry-after": "30" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ text: "Rescued by beta" }), { status: 200 }));
+    const { POST } = await import("./route");
+
+    const response = await POST(chunkRequest());
+
+    expect(await response.json()).toMatchObject({ transcript: "Rescued by beta", provider: "groq" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
+    expect((fetchMock.mock.calls[1][1] as RequestInit)?.headers).toEqual({ Authorization: "Bearer key-beta" });
+  });
+
+  it("honors Groq rate limiting across all keys and falls back to OpenRouter", async () => {
     vi.stubEnv("GROQ_API_KEY", "groq-key");
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key");
     const fetchMock = vi.spyOn(globalThis, "fetch")

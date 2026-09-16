@@ -45,8 +45,12 @@ Echo automatically sends MeetStream callbacks to `/api/meetstream/webhook` on th
 
 Set `GROQ_API_KEY` for free-tier-first Whisper transcription and `OPENROUTER_API_KEY` for paid fallback. Echo uses `whisper-large-v3-turbo` on Groq and `openai/whisper-large-v3` on OpenRouter by default. Optional overrides are `GROQ_WHISPER_MODEL`, `GROQ_WHISPER_PROMPT`, and `OPENROUTER_STT_MODEL`.
 
-The router respects Groq `429` responses and `Retry-After`, temporarily skips Groq during cooldown, and falls back to OpenRouter. Use one legitimate Groq project/API key; account or organization rotation is unsupported.
-Audio transcription uses only these two Whisper paths; Gemini is not an audio fallback. Document/PDF handling may still use its separately configured provider.
+**Multi-Key Free Tier Scaling & Round-Robin Pooling**:
+To multiply free-tier capacity and prevent rate-limiting during simultaneous meetings or batch uploads, configure multiple Groq API keys from separate accounts using either method:
+- **Comma-separated**: `GROQ_API_KEYS=gsk_key1,gsk_key2,gsk_key3,gsk_key4,gsk_key5`
+- **Indexed variables**: `GROQ_API_KEY=gsk_key1`, `GROQ_API_KEY_2=gsk_key2`, `GROQ_API_KEY_3=gsk_key3`, etc. (up to `GROQ_API_KEY_20`)
+
+The router automatically round-robins across all active Groq keys to distribute load evenly. If any key returns a `429 (Rate Limit)` response with `Retry-After`, the router places that individual key in cooldown and immediately fails over to the next available Groq key in the pool with 0 delay. Only if all configured Groq keys are exhausted or in cooldown will Echo fall back to OpenRouter. Audio transcription uses only these two Whisper paths; Gemini is not an audio fallback. Document/PDF handling may still use its separately configured provider.
 
 ## Forms Portal configuration
 
