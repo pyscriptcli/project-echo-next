@@ -40,6 +40,7 @@ import { NotebookView } from "@/components/NotebookView";
 import { MarketInsightsView } from "@/components/MarketInsightsView";
 import { DemandsView } from "@/components/DemandsView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
+import { FinalizeMeetingModal } from "@/components/FinalizeMeetingModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
@@ -273,10 +274,30 @@ export default function Home() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+  const [finalizeAction, setFinalizeAction] = useState<"export" | "archive" | "all">("export");
   const [archiveSpaceId, setArchiveSpaceId] = useState("");
   const [archiveSpaces, setArchiveSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
   const [loadingArchiveSpaces, setLoadingArchiveSpaces] = useState(false);
   const [audioTelemetry, setAudioTelemetry] = useState<AudioTelemetry | null>(null);
+
+  const openFinalizeModal = (action: "export" | "archive" = "export") => {
+    setFinalizeAction(action);
+    setShowFinalizeModal(true);
+    if (archiveSpaces.length === 0 && !loadingArchiveSpaces) {
+      setLoadingArchiveSpaces(true);
+      discoverClickUpLists()
+        .then((data) => {
+          const spaces = data.spaces || [];
+          setArchiveSpaces(spaces);
+          if (spaces.length > 0 && !archiveSpaceId) {
+            setArchiveSpaceId(spaces[0].id);
+          }
+        })
+        .catch(() => setArchiveSpaces([]))
+        .finally(() => setLoadingArchiveSpaces(false));
+    }
+  };
 
   useEffect(() => {
     if (!isLoading) { setLoadingProgress(0); return; }
@@ -819,6 +840,8 @@ export default function Home() {
     setLoadingText("Generating Word Document (.docx)...");
     try {
       await exportWord(getEffectiveMetadata(), momItems, otherDiscussions);
+      setShowFinalizeModal(false);
+      setShowExportModal(false);
     } catch (err: any) {
       alert("Failed to export Word document.");
     } finally {
@@ -831,6 +854,8 @@ export default function Home() {
     setLoadingText("Generating PDF (.pdf)...");
     try {
       await exportPdf(getEffectiveMetadata(), momItems, otherDiscussions);
+      setShowFinalizeModal(false);
+      setShowExportModal(false);
     } catch (err: any) {
       alert("Failed to export PDF.");
     } finally {
@@ -838,12 +863,16 @@ export default function Home() {
     }
   };
 
-  const handleSaveToDb = async () => {
-    if (!metadata.space_id && !archiveSpaceId) { setShowArchiveModal(true); return; }
+  const handleSaveToDb = async (overrideSpaceId?: string) => {
+    const spaceToUse = overrideSpaceId || metadata.space_id || archiveSpaceId;
+    if (!spaceToUse) { 
+      openFinalizeModal("archive"); 
+      return; 
+    }
     setIsLoading(true);
     setLoadingText("Archiving meeting to ClickUp...");
     try {
-      const res = await saveMeeting({ ...getEffectiveMetadata(), space_id: metadata.space_id || archiveSpaceId }, momItems, otherDiscussions, transcript);
+      const res = await saveMeeting({ ...getEffectiveMetadata(), space_id: spaceToUse }, momItems, otherDiscussions, transcript);
       const effectiveMeta = getEffectiveMetadata();
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
       const newRecord: ArchivedMeeting = {
@@ -878,7 +907,9 @@ export default function Home() {
       setArchivedMeetings(updatedList);
       setSelectedMeetingId(newMeetingId);
       const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
-      setShowArchiveModal(false); alert((res.message || "Successfully archived meeting in ClickUp!") + target);
+      setShowFinalizeModal(false);
+      setShowArchiveModal(false); 
+      alert((res.message || "Successfully archived meeting in ClickUp!") + target);
     } catch (err: any) {
       alert(err?.message || "Unable to archive meeting in ClickUp.");
     } finally {
@@ -941,33 +972,27 @@ export default function Home() {
         </div>
       )}
 
-      {showArchiveModal && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6"><h2 className="text-lg font-bold text-[#003366]">Choose ClickUp Space</h2><p className="text-sm text-gray-500 mt-2">Choose where Echo should find or create the department’s <b>Echo Meetings</b> list.</p><div className="mt-5 max-h-64 overflow-y-auto border border-gray-200">{loadingArchiveSpaces ? <div className="p-4 text-sm text-gray-500">Scanning your ClickUp Spaces…</div> : archiveSpaces.map((space) => <button key={space.id} onClick={() => setArchiveSpaceId(space.id)} className={`w-full text-left px-4 py-3 border-b border-gray-100 text-sm ${archiveSpaceId === space.id ? "bg-[#003366] text-white" : "hover:bg-[#FFFCFB]"}`}><div className="font-semibold">{space.name}</div><div className="text-xs opacity-70">{space.teamName}</div></button>)}{!loadingArchiveSpaces && archiveSpaces.length === 0 && <div className="p-4 text-sm text-gray-500">No accessible Spaces found.</div>}</div><div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowArchiveModal(false)} className="btn-outline">Cancel</button><button onClick={handleSaveToDb} disabled={!archiveSpaceId} className="btn-primary">Archive meeting</button></div></div></div>}
-
-      {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="export-title">
-          <div className="bg-[#FFFCFB] border border-gray-200 shadow-xl w-full max-w-md p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 id="export-title" className="text-lg font-serif italic font-semibold text-[#003366]">Export meeting minutes</h2>
-                <p className="text-sm text-gray-500 mt-1">Choose your file type.</p>
-              </div>
-              <button type="button" onClick={() => setShowExportModal(false)} aria-label="Close export options" className="p-1 text-gray-500 hover:text-[#003366]"><X size={18} /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              <button type="button" onClick={() => { setShowExportModal(false); void handleExportWord(); }} className="border border-gray-200 px-4 py-6 hover:border-[#C9AB4C] transition-colors text-center">
-                <FileText size={28} className="mx-auto text-[#C9AB4C] mb-2" />
-                <span className="block text-sm font-semibold text-[#003366]">Word document</span>
-                <span className="block text-xs text-gray-400 mt-1">.docx</span>
-              </button>
-              <button type="button" onClick={() => { setShowExportModal(false); void handleExportPdf(); }} className="border border-gray-200 px-4 py-6 hover:border-[#C9AB4C] transition-colors text-center">
-                <Download size={28} className="mx-auto text-[#C9AB4C] mb-2" />
-                <span className="block text-sm font-semibold text-[#003366]">PDF</span>
-                <span className="block text-xs text-gray-400 mt-1">.pdf</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Unified Finalize & Export Modal */}
+      <FinalizeMeetingModal
+        isOpen={showFinalizeModal}
+        onClose={() => setShowFinalizeModal(false)}
+        metadata={metadata}
+        onUpdateMetadata={setMetadata}
+        primeAttendees={primeAttendees}
+        onUpdatePrimeAttendees={setPrimeAttendees}
+        externalAttendees={externalAttendees}
+        onUpdateExternalAttendees={setExternalAttendees}
+        onExportWord={handleExportWord}
+        onExportPdf={handleExportPdf}
+        onArchiveClickUp={(spaceId) => handleSaveToDb(spaceId)}
+        archiveSpaces={archiveSpaces}
+        loadingArchiveSpaces={loadingArchiveSpaces}
+        selectedSpaceId={archiveSpaceId}
+        onSelectSpaceId={setArchiveSpaceId}
+        isProcessing={isLoading}
+        processingText={loadingText}
+        initialAction={finalizeAction}
+      />
 
 
 
@@ -1188,9 +1213,9 @@ export default function Home() {
                       </div>
                     )}
                     {stage === "Review" && (
-                      <button onClick={() => setShowExportModal(true)} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
+                      <button onClick={() => openFinalizeModal("export")} className="btn-primary !py-1.5 !px-4 !text-xs flex items-center gap-1.5 rounded-none shadow-2xs">
                         <Download size={14} />
-                        <span>Export</span>
+                        <span>Export & Archive</span>
                       </button>
                     )}
                   </div>
@@ -2104,10 +2129,10 @@ export default function Home() {
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
                 </button>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleSaveToDb} className="btn-outline !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
+                  <button onClick={() => openFinalizeModal("archive")} className="btn-outline !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
                     <Save size={14} /> Archive to ClickUp
                   </button>
-                  <button onClick={() => setShowExportModal(true)} className="btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
+                  <button onClick={() => openFinalizeModal("export")} className="btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none">
                     <Download size={14} /> Export
                   </button>
                 </div>
