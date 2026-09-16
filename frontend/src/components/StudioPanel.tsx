@@ -365,10 +365,10 @@ export function StudioPanel({
 
       <section aria-label="Recording Studio" className={panelClasses}>
         {/* ── Content ─────────────────────────────────────────────────── */}
-        <div className={`flex-1 min-h-0 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
+        <div className={`flex-1 min-h-0 overflow-hidden flex ${isFullscreen ? "flex-col lg:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[380px] 2xl:w-[410px] xl:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
+          <div className={`${isFullscreen ? "w-full lg:w-[320px] xl:w-[370px] 2xl:w-[400px] lg:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-4 md:p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             <div className="border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
               <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
@@ -578,7 +578,7 @@ export function StudioPanel({
           </div>
 
           {isFullscreen && (
-            <div className="w-full xl:w-[34%] 2xl:flex-1 h-full min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
+            <div className="w-full lg:flex-1 h-full min-h-0 lg:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
               <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3>
@@ -724,7 +724,7 @@ export function StudioPanel({
           )}
 
           {/* ── Right / Bottom: Ask Echo ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[34%] 2xl:flex-1 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
+          <div className={`${isFullscreen ? "w-full lg:flex-1 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 pt-3.5 pb-3 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>

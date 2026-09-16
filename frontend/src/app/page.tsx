@@ -471,6 +471,14 @@ export default function Home() {
       .catch((err) => console.log("Meetings sync fallback:", err));
   }, []);
 
+  // Ensure scroll position resets to top when entering or switching notetaker views
+  useEffect(() => {
+    if (currentView === "minutes") {
+      const mainEl = document.querySelector("main");
+      if (mainEl) mainEl.scrollTop = 0;
+    }
+  }, [currentView, stage]);
+
   // Universal Search Tasks State
   const [tasks, setTasks] = useState<ClickUpTask[]>([]);
 
@@ -910,7 +918,6 @@ export default function Home() {
 
   const loadingSteps = ["Getting your recording ready", "Transcribing the audio", "Finding the key details", "Preparing your meeting notes"];
   const loadingStepIndex = loadingText.toLowerCase().includes("synth") || loadingText.toLowerCase().includes("minutes") ? 3 : loadingText.toLowerCase().includes("metadata") || loadingText.toLowerCase().includes("details") ? 2 : loadingText.toLowerCase().includes("transcrib") ? 1 : 0;
-  const isMeetingWorkspaceLocked = currentView === "minutes" && stage === "Input" && sourceTab === "record";
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-primary font-sans text-[#1b1d1e]">
@@ -1036,7 +1043,7 @@ export default function Home() {
         <StudioRecoveryBanner />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
-        <main className={`flex-1 min-h-0 ${isMeetingWorkspaceLocked ? "h-full overflow-hidden flex flex-col p-0" : currentView === "minutes" ? "overflow-y-auto p-0" : "overflow-y-auto px-4 py-5 md:px-8"}`}>
+        <main className={`flex-1 min-h-0 overflow-y-auto ${currentView === "minutes" ? "p-0" : "px-4 py-5 md:px-8"}`}>
           {!isPageAllowed(currentView) ? (
             <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
               <div className="max-w-md w-full bg-[#FFFCFB] border border-slate-200 p-8 text-center shadow-sm">
@@ -1063,7 +1070,7 @@ export default function Home() {
             </div>
           ) : (
             <>
-          <div className={isMeetingWorkspaceLocked ? "h-full w-full flex flex-col min-h-0 overflow-hidden" : currentView === "minutes" ? "min-h-full w-full" : "w-full pb-12"}>
+          <div className={currentView === "minutes" ? "min-h-full w-full flex flex-col" : "w-full pb-12"}>
             
             {/* VIEW 1: DASHBOARD */}
             {currentView === "dashboard" && (
@@ -1163,7 +1170,7 @@ export default function Home() {
 
             {/* VIEW 3: MINUTES GENERATOR */}
             {currentView === "minutes" && (
-              <div ref={notetakerRef} className={`relative flex ${isMeetingWorkspaceLocked ? "h-full min-h-0 overflow-hidden" : "min-h-full"} flex-col bg-[#F7F9FC] font-sans text-gray-800`}>
+              <div ref={notetakerRef} className="relative flex min-h-full flex-col bg-[#F7F9FC] font-sans text-gray-800">
                 {/* Header bar (Uniform text-2xl font-serif) */}
                 <div className="flex flex-col justify-between gap-4 border-b border-slate-200 bg-[#FFFCFB] px-5 py-3.5 sm:flex-row sm:items-center md:px-7 shrink-0">
                   <div>
@@ -1190,12 +1197,12 @@ export default function Home() {
                 <Stepper currentStage={stage} onStageChange={setStage} isReviewAllowed={isReviewAllowed} onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} onToggleFullscreen={() => void toggleNotetakerFullscreen()} isFullscreen={isNotetakerFullscreen} />
 
       {/* STAGE 1: INPUT */}
-      <div className={`flex min-h-0 flex-1 ${isMeetingWorkspaceLocked ? "h-full overflow-hidden p-2.5 md:p-3.5" : "overflow-y-auto p-4 md:p-5"}`}>
+      <div className="flex min-h-0 flex-1 p-2.5 md:p-3.5">
         {stage === "Input" && (
-          <div className={`grid w-full grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2 min-h-full" : "lg:grid-cols-1 h-full min-h-0 overflow-hidden"} gap-4 items-start`}>
+          <div className={`grid w-full grid-cols-1 ${sourceTab === "source" ? "lg:grid-cols-2 min-h-full" : "lg:grid-cols-1"} gap-4 items-start`}>
             
             {/* Left Panel: Meeting Source (Uniform bg-[#FFFCFB] rounded-none card) */}
-            <div className={`flex min-h-0 flex-col ${sourceTab === "record" ? "h-full overflow-hidden" : "bg-[#FFFCFB] border border-gray-200/90 p-4 shadow-2xs"}`}>
+            <div className={`flex min-h-0 flex-col ${sourceTab === "record" ? "w-full lg:h-[calc(100vh-175px)] min-h-[580px]" : "bg-[#FFFCFB] border border-gray-200/90 p-4 shadow-2xs"}`}>
               {sourceTab === "source" && <div className="flex justify-between items-center pb-2.5 mb-3 border-b border-gray-100">
                 <span className="font-serif font-bold text-base text-[#003366] italic">Upload or paste existing material</span>
               </div>}
