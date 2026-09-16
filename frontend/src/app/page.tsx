@@ -1830,28 +1830,6 @@ export default function Home() {
         {/* STAGE 2: REVIEW (FULL WIDTH DISCUSSION POINTS MATRIX & ACTIONS) */}
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
-            
-            {/* Audio Pipeline Telemetry Optimization Badge */}
-            {audioTelemetry && (
-              <div className="bg-[#003366]/5 border border-[#003366]/20 p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-none text-xs">
-                <div className="flex items-center gap-2 text-[#003366]">
-                  <Sparkles size={14} className="text-[#c9ab4c] shrink-0" />
-                  <span className="font-bold">10-Layer Audio Pipeline:</span>
-                  <span>
-                    {audioTelemetry.originalDurationSec > 0 
-                      ? `${Math.floor(audioTelemetry.originalDurationSec / 60)}m ${audioTelemetry.originalDurationSec % 60}s audio optimized to ${Math.floor(audioTelemetry.trimmedDurationSec / 60)}m ${audioTelemetry.trimmedDurationSec % 60}s (${audioTelemetry.percentDurationSaved}% silence removed)`
-                      : "Loaded instant transcript from cache"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
-                  <span className="bg-[#FFFCFB] border border-gray-200 px-2 py-0.5">
-                    {audioTelemetry.totalChunks} chunk{audioTelemetry.totalChunks !== 1 ? "s" : ""}
-                    {audioTelemetry.cachedChunksReused > 0 ? ` (${audioTelemetry.cachedChunksReused} cached)` : ""}
-                  </span>
-                  <span>• {(audioTelemetry.processingTimeMs / 1000).toFixed(1)}s elapsed</span>
-                </div>
-              </div>
-            )}
 
             {/* Dynamic missed-topic suggestions */}
             <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 p-3.5 shadow-2xs rounded-none">
@@ -2126,13 +2104,10 @@ export default function Home() {
               </div>
 
               {/* Table / Card List Footer */}
-              <div className="p-3.5 bg-[#FFFCFB] border-t border-gray-200 flex justify-between items-center">
+              <div className="p-3.5 bg-[#FFFCFB] border-t border-gray-200 flex items-center">
                 <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
                 </button>
-                <div className="text-[11px] text-slate-400">
-                  Topic edits auto-saved • Use <strong className="text-[#003366]">Save & Export</strong> in the top bar to finalize
-                </div>
               </div>
 
             </div>
