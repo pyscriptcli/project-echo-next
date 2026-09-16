@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
   Clock,
   Download,
@@ -9,6 +10,7 @@ import {
   MessageCircle,
   Mic,
   Pause,
+  Pencil,
   Play,
   Plus,
   RotateCcw,
@@ -161,10 +163,40 @@ export function StudioPanel({
     try { sessionStorage.removeItem(ECHO_STORAGE_KEY); } catch {}
   }, []);
 
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  const startEditingNote = useCallback((note: StudioNote) => {
+    setEditingNoteId(note.id);
+    setEditingText(note.text);
+  }, []);
+
+  const saveEditingNote = useCallback(() => {
+    if (!editingNoteId) return;
+    const trimmed = editingText.trim();
+    if (!trimmed) {
+      setEditingNoteId(null);
+      setEditingText("");
+      return;
+    }
+    setNotes((prev) =>
+      prev.map((n) => (n.id === editingNoteId ? { ...n, text: trimmed } : n))
+    );
+    setEditingNoteId(null);
+    setEditingText("");
+  }, [editingNoteId, editingText]);
+
+  const cancelEditingNote = useCallback(() => {
+    setEditingNoteId(null);
+    setEditingText("");
+  }, []);
+
   const addNote = useCallback(() => {
     const text = noteInput.trim();
     if (!text) return;
-    const timestamp = `[${formatTime(recorder.elapsedSeconds)}]`;
+    const timestamp = (recorder.status === "recording" || recorder.status === "paused")
+      ? `[${formatTime(recorder.elapsedSeconds)}]`
+      : "[00:00]";
     const note: StudioNote = {
       id: `note_${Date.now()}`,
       timestamp,
@@ -173,11 +205,15 @@ export function StudioPanel({
     setNotes((prev) => [...prev, note]);
     setNoteInput("");
     setTimeout(() => notesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-  }, [noteInput, recorder.elapsedSeconds]);
+  }, [noteInput, recorder.status, recorder.elapsedSeconds]);
 
   const removeNote = useCallback((id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+    if (editingNoteId === id) {
+      setEditingNoteId(null);
+      setEditingText("");
+    }
+  }, [editingNoteId]);
 
   // ── Handlers ───────────────────────────────────────────────────────────
   const handleClose = () => {
@@ -313,7 +349,7 @@ export function StudioPanel({
   // ── Layout classes based on mode ───────────────────────────────────────
   const isFullscreen = embedded || mode === "fullscreen";
   const panelClasses = isFullscreen
-    ? `${embedded ? "w-full flex-1 min-h-0" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
+    ? `${embedded ? "w-full h-full flex-1 min-h-0 overflow-hidden" : "fixed inset-0 z-50"} bg-[#F7F9FC] flex flex-col`
     : "fixed right-0 inset-y-0 z-50 w-full max-w-xl bg-[#F7F9FC] border-l border-[#D9E1EA] shadow-2xl flex flex-col";
 
   return (
@@ -329,10 +365,10 @@ export function StudioPanel({
 
       <section aria-label="Recording Studio" className={panelClasses}>
         {/* ── Content ─────────────────────────────────────────────────── */}
-        <div className={`flex-1 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
+        <div className={`flex-1 min-h-0 overflow-hidden flex ${isFullscreen ? "flex-col xl:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[380px] 2xl:w-[410px] xl:border-r border-[#D9E1EA]" : ""} min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
+          <div className={`${isFullscreen ? "w-full xl:w-[380px] 2xl:w-[410px] xl:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
             <div className="border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
               <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
@@ -541,19 +577,155 @@ export function StudioPanel({
             )}
           </div>
 
-          {isFullscreen && <div className="w-full xl:w-[34%] min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-200 bg-white"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3><p className="text-xs text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p></div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center"><MessageCircle size={20} className="mx-auto text-[#003366]"/><p className="mt-3 text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time.</p></div>}
-              {notes.map((note) => <div key={note.id} className="group flex items-start gap-3 border border-slate-200 bg-white px-3.5 py-3 shadow-sm"><span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1">{note.timestamp}</span><span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5">{note.text}</span><button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500" aria-label="Remove note"><X size={13}/></button></div>)}
-              <div ref={notesEndRef}/>
-            </div>
-            {(isRecordingActive || isStopped) && <form onSubmit={(event) => { event.preventDefault(); addNote(); }} className="m-4 flex items-center gap-2 border border-slate-300 bg-white p-1.5 focus-within:border-[#C9A84C]"><span className="text-[11px] font-mono text-[#003366] font-semibold border-r border-slate-200 px-2">[{formatTime(recorder.elapsedSeconds)}]</span><input value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder="Add a note…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-xs outline-none"/><button type="submit" disabled={!noteInput.trim()} className="h-8 w-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Add note"><Plus size={15}/></button></form>}
-          </div>}
+          {isFullscreen && (
+            <div className="w-full xl:w-[34%] 2xl:flex-1 h-full min-h-0 xl:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5">
+                  {notes.length} {notes.length === 1 ? "note" : "notes"}
+                </span>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+                {notes.length === 0 && (
+                  <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center">
+                    <MessageCircle size={20} className="mx-auto text-[#003366]"/>
+                    <p className="mt-3 text-sm font-medium text-slate-600">Capture the moments that matter</p>
+                    <p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time.</p>
+                  </div>
+                )}
+                {notes.map((note) => (
+                  <div key={note.id} className="group flex items-start gap-2.5 border border-slate-200 bg-white p-3 shadow-xs">
+                    <span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1 bg-slate-50">
+                      {note.timestamp}
+                    </span>
+                    {editingNoteId === note.id ? (
+                      <div className="flex-1 flex flex-col gap-2 min-w-0">
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              saveEditingNote();
+                            } else if (e.key === "Escape") {
+                              cancelEditingNote();
+                            }
+                          }}
+                          rows={2}
+                          autoFocus
+                          className="w-full text-xs p-1.5 border border-[#003366] rounded-none outline-none focus:ring-1 focus:ring-[#003366] bg-white resize-y"
+                        />
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={cancelEditingNote}
+                            className="px-2 py-1 text-[10px] text-slate-500 hover:text-slate-700 border border-slate-200"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveEditingNote}
+                            disabled={!editingText.trim()}
+                            className="px-2.5 py-1 text-[10px] font-semibold text-white bg-[#003366] hover:bg-[#002244] disabled:opacity-40 flex items-center gap-1"
+                          >
+                            <Check size={11} /> Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5 break-words">
+                          {note.text}
+                        </span>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 shrink-0 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => startEditingNote(note)}
+                            className="p-1 text-slate-400 hover:text-[#003366] transition-colors"
+                            title="Edit note"
+                            aria-label="Edit note"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeNote(note.id)}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                            title="Remove note"
+                            aria-label="Remove note"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <div ref={notesEndRef}/>
+              </div>
 
-          {/* ── Right / Bottom: Timestamped Notes ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-full xl:w-[34%] min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
-            <div className="px-5 pt-4 shrink-0 bg-white border-b border-slate-200">
+              {/* Pinned Note Composer at bottom - always visible */}
+              <div className="p-3 border-t border-slate-200 bg-white shrink-0">
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    addNote();
+                  }}
+                  className="flex flex-col gap-1.5 border border-slate-300 bg-white p-2 focus-within:border-[#C9A84C] shadow-2xs"
+                >
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="font-mono text-[#003366] font-semibold">
+                      {(recorder.status === "recording" || recorder.status === "paused")
+                        ? `[${formatTime(recorder.elapsedSeconds)}]`
+                        : "[00:00]"}
+                    </span>
+                    <span>Enter to add • Shift+Enter for newline</span>
+                  </div>
+                  <textarea
+                    value={noteInput}
+                    onChange={(event) => setNoteInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        addNote();
+                      }
+                    }}
+                    rows={2}
+                    placeholder="Write a decision, follow-up, or note…"
+                    className="w-full resize-none bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                    {noteInput.trim().length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setNoteInput("")}
+                        className="text-[10px] text-slate-400 hover:text-red-500"
+                      >
+                        Clear
+                      </button>
+                    ) : <span />}
+                    <button
+                      type="submit"
+                      disabled={!noteInput.trim()}
+                      className="h-7 px-3 bg-[#003366] text-white text-xs font-semibold disabled:opacity-30 flex items-center gap-1 hover:bg-[#002244] transition-colors rounded-none"
+                      aria-label="Add note"
+                    >
+                      <Plus size={13} />
+                      <span>Add note</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ── Right / Bottom: Ask Echo ─────────────────────── */}
+          <div className={`${isFullscreen ? "w-full xl:w-[34%] 2xl:flex-1 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
+            <div className="px-5 pt-3.5 pb-3 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div>
@@ -585,17 +757,19 @@ export function StudioPanel({
                 ))}
                 <div ref={notesEndRef} />
               </div>
-              {(isRecordingActive || isStopped) && (
-                <div className="px-5 py-3 border-t border-gray-200 bg-white shrink-0">
-                  <form onSubmit={(e) => { e.preventDefault(); addNote(); }} className="flex items-center gap-2 border border-slate-200 bg-white px-2 py-1 focus-within:border-[#C9A84C] shadow-sm">
-                    <span className="text-[11px] font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1">[{formatTime(recorder.elapsedSeconds)}]</span>
-                    <input type="text" value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="flex-1 text-xs bg-transparent px-1 py-2 outline-none" />
-                    <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
-                  </form>
-                </div>
-              )}
+              <div className="px-5 py-3 border-t border-gray-200 bg-white shrink-0">
+                <form onSubmit={(e) => { e.preventDefault(); addNote(); }} className="flex items-center gap-2 border border-slate-200 bg-white px-2 py-1 focus-within:border-[#C9A84C] shadow-sm">
+                  <span className="text-[11px] font-mono text-[#003366] font-semibold shrink-0 bg-[#003366]/[0.06] px-2 py-1">
+                    {(recorder.status === "recording" || recorder.status === "paused")
+                      ? `[${formatTime(recorder.elapsedSeconds)}]`
+                      : "[00:00]"}
+                  </span>
+                  <input type="text" value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="flex-1 text-xs bg-transparent px-1 py-2 outline-none" />
+                  <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
+                </form>
+              </div>
             </> : <div className="flex-1 min-h-0 flex flex-col bg-[#FFFCFB]">
-              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5 space-y-4">
                 {echoMessages.map((message, messageIndex) => <div key={`${messageIndex}-${message.timestamp}`} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
                   <div className={`h-7 w-7 shrink-0 flex items-center justify-center ${message.role === "assistant" ? "bg-[#003366] text-[#C9A84C]" : "border border-[#003366] text-[#003366]"}`}>{message.role === "assistant" ? <Sparkles size={13} /> : <User size={13} />}</div>
                   <div className={`max-w-[86%] p-3 text-sm leading-relaxed ${message.role === "assistant" ? "border border-[#003366]/15 text-[#181D1E]" : "bg-[#003366] text-white"}`}>
@@ -611,11 +785,53 @@ export function StudioPanel({
                 {isEchoThinking && <div className="flex gap-3"><div className="h-7 w-7 bg-[#003366] text-[#C9A84C] flex items-center justify-center"><Sparkles size={13} /></div><div className="border border-[#003366]/15 p-3 text-sm text-[#181D1E]/60">Looking through your meetings…</div></div>}
                 <div ref={echoEndRef} />
               </div>
-              {echoMessages.length <= 1 && <div className="grid grid-cols-1 gap-2 px-5 pb-3 sm:grid-cols-3">{["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => <button key={prompt} type="button" onClick={() => void askFromStudio(prompt)} disabled={isEchoThinking} className="border border-[#003366]/20 bg-white p-2.5 text-left text-[11px] text-[#003366] hover:border-[#C9A84C]">{prompt}</button>)}</div>}
-              <form onSubmit={(event) => { event.preventDefault(); void askFromStudio(); }} className="m-4 mt-0 flex items-end border border-[#003366]/35 bg-white focus-within:border-[#003366]">
-                <textarea aria-label="Ask Echo from Meeting Studio" rows={1} value={echoInput} onChange={(event) => setEchoInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void askFromStudio(); } }} placeholder="Ask about your meetings, decisions, or follow-ups…" className="min-h-11 max-h-28 min-w-0 flex-1 resize-y bg-transparent px-3 py-3 text-sm outline-none" />
-                <button type="submit" disabled={!echoInput.trim() || isEchoThinking} className="m-1.5 p-2 text-[#003366] disabled:opacity-30" aria-label="Ask Echo"><Send size={16} /></button>
-              </form>
+              <div className="shrink-0 bg-[#FFFCFB] border-t border-slate-200/80 p-3 pt-2">
+                {echoMessages.length <= 1 && (
+                  <div className="grid grid-cols-1 gap-1.5 pb-2 sm:grid-cols-3">
+                    {["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => void askFromStudio(prompt)}
+                        disabled={isEchoThinking}
+                        className="border border-[#003366]/20 bg-white p-2 text-left text-[11px] text-[#003366] hover:border-[#C9A84C] transition-colors"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void askFromStudio();
+                  }}
+                  className="flex items-end border border-[#003366]/35 bg-white focus-within:border-[#003366] shadow-2xs"
+                >
+                  <textarea
+                    aria-label="Ask Echo from Meeting Studio"
+                    rows={1}
+                    value={echoInput}
+                    onChange={(event) => setEchoInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void askFromStudio();
+                      }
+                    }}
+                    placeholder="Ask about your meetings, decisions, or follow-ups…"
+                    className="min-h-10 max-h-24 min-w-0 flex-1 resize-y bg-transparent px-3 py-2.5 text-xs outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!echoInput.trim() || isEchoThinking}
+                    className="m-1 p-2 text-[#003366] hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                    aria-label="Ask Echo"
+                  >
+                    <Send size={15} />
+                  </button>
+                </form>
+              </div>
             </div>}
           </div>
         </div>

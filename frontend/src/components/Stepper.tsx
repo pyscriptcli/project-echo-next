@@ -28,7 +28,7 @@ export function Stepper({
   ];
   
   return (
-    <nav className="flex w-full items-center justify-between overflow-x-auto border-b border-slate-200 bg-white px-3 select-none" aria-label="Notetaker views">
+    <nav className="flex w-full items-center justify-between shrink-0 overflow-x-auto border-b border-slate-200 bg-white px-3 select-none" aria-label="Notetaker views">
       <div className="flex items-stretch">
       {stages.map((stageItem, idx) => {
         const isActive = currentStage === stageItem.name;
