@@ -89,4 +89,32 @@ describe("botless transcription routing", () => {
       "https://openrouter.ai/api/v1/audio/transcriptions",
     ]);
   });
+
+  it("records Groq pool performance metadata in telemetry", async () => {
+    vi.stubEnv("GROQ_API_KEY", "key-alpha-1234567890");
+    vi.stubEnv("GROQ_API_KEY_2", "key-beta-1234567890");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ text: "Telemetry test" }), { status: 200 }));
+
+    const telemetry = await import("@/lib/telemetry");
+    const recordSpy = vi.spyOn(telemetry, "recordTelemetry");
+
+    const { POST } = await import("./route");
+
+    const req = chunkRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    expect(recordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "groq",
+        metadata: expect.objectContaining({
+          groqKeyIndex: 1,
+          groqKeyAlias: "groq_key_1",
+          groqPoolSize: 2,
+          groqAttempts: 1,
+          groqFailoverOccurred: false,
+        }),
+      })
+    );
+  });
 });

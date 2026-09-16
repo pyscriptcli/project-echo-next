@@ -125,6 +125,8 @@ async function transcribeSingleChunk(
   const formData = new FormData();
   formData.append("file", chunkBlob, `chunk_${chunkIndex + 1}.wav`);
   formData.append("action", "transcribe_chunk");
+  formData.append("chunk_index", String(chunkIndex));
+  if (totalChunks > 0) formData.append("total_chunks", String(totalChunks));
 
   const res = await fetch("/api/process-audio", {
     method: "POST",
@@ -491,6 +493,7 @@ export async function transcribeRecordingBatch(
   const formData = new FormData();
   formData.append("file", audio, `live_batch_${batchIndex + 1}.${extension}`);
   formData.append("action", "transcribe_chunk");
+  formData.append("chunk_index", String(batchIndex));
   const response = await fetch("/api/process-audio", { method: "POST", headers, body: formData, signal });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

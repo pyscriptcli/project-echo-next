@@ -179,12 +179,26 @@ async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: st
   return String(body.text || "").trim();
 }
 
+export interface GroqPoolResult {
+  text: string;
+  keyUsed: string;
+  keyIndex: number;
+  keyAlias: string;
+  keyMasked: string;
+  poolSize: number;
+  availableKeysCount: number;
+  coolingDownKeysCount: number;
+  attempts: number;
+  failoverOccurred: boolean;
+  failoverHistory?: string[];
+}
+
 async function transcribeWithGroqPool(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
   groqKeys: string[]
-): Promise<{ text: string; keyUsed: string }> {
+): Promise<GroqPoolResult> {
   if (!groqKeys.length) {
     throw new Error("No Groq API keys configured");
   }
@@ -192,6 +206,7 @@ async function transcribeWithGroqPool(
   const now = Date.now();
   // Find keys not currently cooling down
   const availableKeys = groqKeys.filter((k) => (groqKeyCooldowns.get(k) || 0) <= now);
+  const coolingDownKeys = groqKeys.filter((k) => (groqKeyCooldowns.get(k) || 0) > now);
 
   if (availableKeys.length === 0) {
     const earliestExpiry = Math.min(...groqKeys.map((k) => groqKeyCooldowns.get(k) || 0));
@@ -207,23 +222,43 @@ async function transcribeWithGroqPool(
   ];
 
   const poolErrors: string[] = [];
+  const failoverHistory: string[] = [];
+  let attempts = 0;
 
   for (const candidateKey of orderedKeys) {
-    const keyNumber = groqKeys.indexOf(candidateKey) + 1;
+    attempts++;
+    const keyIndex = groqKeys.indexOf(candidateKey) + 1;
+    const keyAlias = `groq_key_${keyIndex}`;
+    const keyMasked = `${candidateKey.slice(0, 6)}...${candidateKey.slice(-4)}`;
+
     try {
       const text = await transcribeWithGroq(buffer, fileName, mimeType, candidateKey);
       if (text) {
         // Advance round-robin pointer for next request
         groqRoundRobinPointer = (groqRoundRobinPointer + 1) % groqKeys.length;
-        return { text, keyUsed: candidateKey };
+        return {
+          text,
+          keyUsed: candidateKey,
+          keyIndex,
+          keyAlias,
+          keyMasked,
+          poolSize: groqKeys.length,
+          availableKeysCount: availableKeys.length,
+          coolingDownKeysCount: coolingDownKeys.length,
+          attempts,
+          failoverOccurred: attempts > 1,
+          failoverHistory: attempts > 1 ? failoverHistory : undefined,
+        };
       }
     } catch (err: any) {
       if (err instanceof GroqRateLimitError) {
-        console.warn(`[Groq Pool] Key #${keyNumber} hit 429 rate limit (cooling down for ${err.retryAfterSeconds}s). Switching to next key in pool...`);
-        poolErrors.push(`Key #${keyNumber}: 429 (${err.message})`);
+        failoverHistory.push(`${keyAlias}: 429 rate limit (${err.retryAfterSeconds}s cooldown)`);
+        console.warn(`[Groq Pool] Key #${keyIndex} hit 429 rate limit (cooling down for ${err.retryAfterSeconds}s). Switching to next key in pool...`);
+        poolErrors.push(`Key #${keyIndex}: 429 (${err.message})`);
       } else {
-        console.warn(`[Groq Pool] Key #${keyNumber} error:`, err.message);
-        poolErrors.push(`Key #${keyNumber}: ${err.message}`);
+        failoverHistory.push(`${keyAlias}: error (${err.message})`);
+        console.warn(`[Groq Pool] Key #${keyIndex} error:`, err.message);
+        poolErrors.push(`Key #${keyIndex}: ${err.message}`);
       }
     }
   }
@@ -276,15 +311,24 @@ async function transcribeWithOpenRouter(
   throw new Error(lastError || "OpenRouter audio transcription failed across all endpoints.");
 }
 
+export interface TranscribeBufferResult {
+  text: string;
+  tempPath?: string;
+  errors: string[];
+  provider?: "groq" | "openrouter";
+  groqPoolMeta?: GroqPoolResult;
+}
+
 async function transcribeAudioBuffer(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
   keys: { groqKeys: string[]; openrouterKey: string }
-): Promise<{ text: string; tempPath?: string; errors: string[]; provider?: string }> {
+): Promise<TranscribeBufferResult> {
   let audioTranscript = "";
   let tempFilePath: string | undefined;
-  let provider: string | undefined;
+  let provider: "groq" | "openrouter" | undefined;
+  let groqPoolMeta: GroqPoolResult | undefined;
   const errors: string[] = [];
 
   // 1. Primary: Groq Multi-Key Pool (Round-Robin with Automatic 429 Failover)
@@ -292,6 +336,7 @@ async function transcribeAudioBuffer(
     try {
       const result = await transcribeWithGroqPool(buffer, fileName, mimeType, keys.groqKeys);
       audioTranscript = result.text;
+      groqPoolMeta = result;
       if (audioTranscript) provider = "groq";
     } catch (e: any) {
       console.warn("Groq multi-key pool unavailable, using OpenRouter fallback:", e.message);
@@ -310,7 +355,7 @@ async function transcribeAudioBuffer(
     }
   }
 
-  return { text: audioTranscript, tempPath: tempFilePath, errors, provider };
+  return { text: audioTranscript, tempPath: tempFilePath, errors, provider, groqPoolMeta };
 }
 
 export async function POST(req: NextRequest) {
@@ -336,7 +381,20 @@ export async function POST(req: NextRequest) {
       const fileName = file.name || "chunk.wav";
       const mimeType = file.type || "audio/wav";
 
-      const { text, tempPath, errors, provider } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
+      const chunkIndexRaw = formData.get("chunk_index");
+      const totalChunksRaw = formData.get("total_chunks");
+      const audioSecondsRaw = formData.get("audio_seconds");
+
+      const chunkIndex = chunkIndexRaw != null ? Number(chunkIndexRaw) : undefined;
+      const totalChunks = totalChunksRaw != null ? Number(totalChunksRaw) : undefined;
+      let audioSeconds = audioSecondsRaw != null ? Number(audioSecondsRaw) : undefined;
+
+      // Estimate audio duration for PCM WAV (16kHz 16-bit mono = 32,000 bytes/sec)
+      if (audioSeconds == null && (mimeType.includes("wav") || fileName.endsWith(".wav")) && buffer.length > 44) {
+        audioSeconds = Math.round(((buffer.length - 44) / 32000) * 10) / 10;
+      }
+
+      const { text, tempPath, errors, provider, groqPoolMeta } = await transcribeAudioBuffer(buffer, fileName, mimeType, {
         groqKeys,
         openrouterKey,
       });
@@ -348,7 +406,42 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
-      void recordTelemetry({ userId: String(requestUser?.id || ""), userEmail: requestUser?.email, source: "echo_recording", operation: "audio_chunk", captureMode: "botless", provider, model: provider === "groq" ? (process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo") : (process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3"), fileSizeBytes: buffer.length, processingMs: Date.now() - requestStarted, fallbackUsed: provider === "openrouter", success: true, transcriptCharacters: text.length });
+      void recordTelemetry({
+        userId: String(requestUser?.id || ""),
+        userEmail: requestUser?.email,
+        source: "echo_recording",
+        operation: "audio_chunk",
+        captureMode: "botless",
+        provider,
+        model: provider === "groq" ? (process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo") : (process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3"),
+        audioSeconds,
+        fileSizeBytes: buffer.length,
+        processingMs: Date.now() - requestStarted,
+        fallbackUsed: provider === "openrouter",
+        success: true,
+        chunkIndex,
+        totalChunks,
+        transcriptCharacters: text.length,
+        metadata: {
+          ...(groqPoolMeta ? {
+            groqKeyIndex: groqPoolMeta.keyIndex,
+            groqKeyAlias: groqPoolMeta.keyAlias,
+            groqKeyMasked: groqPoolMeta.keyMasked,
+            groqPoolSize: groqPoolMeta.poolSize,
+            groqAvailableKeys: groqPoolMeta.availableKeysCount,
+            groqCoolingDownKeys: groqPoolMeta.coolingDownKeysCount,
+            groqAttempts: groqPoolMeta.attempts,
+            groqFailoverOccurred: groqPoolMeta.failoverOccurred,
+            ...(groqPoolMeta.failoverHistory ? { groqFailoverHistory: groqPoolMeta.failoverHistory } : {}),
+          } : {}),
+          ...(provider === "openrouter" ? {
+            groqPoolExhausted: true,
+            openrouterFallback: true,
+            groqPoolErrors: errors.filter((e) => e.includes("Groq")),
+          } : {}),
+        },
+      });
+
       return NextResponse.json({ transcript: text, provider });
     }
 
@@ -425,7 +518,7 @@ export async function POST(req: NextRequest) {
     }
 
     // CASE 5: Audio / Video recording (Groq Whisper -> OpenRouter Whisper)
-    const { text, tempPath, errors } = await transcribeAudioBuffer(buffer, file.name, mimeType, {
+    const { text, tempPath, errors, provider, groqPoolMeta } = await transcribeAudioBuffer(buffer, file.name, mimeType, {
       groqKeys,
       openrouterKey,
     });
@@ -444,7 +537,38 @@ export async function POST(req: NextRequest) {
 
     transcript = text;
     metadata = await extractMetadataWithAI(transcript, aiKey);
-    void recordTelemetry({ userId: String(requestUser?.id || ""), userEmail: requestUser?.email, source: "uploaded_audio", operation: "audio_upload", captureMode: "unknown", provider: "whisper", fileSizeBytes: buffer.length, processingMs: Date.now() - requestStarted, success: true, transcriptCharacters: transcript.length });
+    void recordTelemetry({
+      userId: String(requestUser?.id || ""),
+      userEmail: requestUser?.email,
+      source: "uploaded_audio",
+      operation: "audio_upload",
+      captureMode: "unknown",
+      provider: provider || "whisper",
+      model: provider === "groq" ? (process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo") : (process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3"),
+      fileSizeBytes: buffer.length,
+      processingMs: Date.now() - requestStarted,
+      fallbackUsed: provider === "openrouter",
+      success: true,
+      transcriptCharacters: transcript.length,
+      metadata: {
+        ...(groqPoolMeta ? {
+          groqKeyIndex: groqPoolMeta.keyIndex,
+          groqKeyAlias: groqPoolMeta.keyAlias,
+          groqKeyMasked: groqPoolMeta.keyMasked,
+          groqPoolSize: groqPoolMeta.poolSize,
+          groqAvailableKeys: groqPoolMeta.availableKeysCount,
+          groqCoolingDownKeys: groqPoolMeta.coolingDownKeysCount,
+          groqAttempts: groqPoolMeta.attempts,
+          groqFailoverOccurred: groqPoolMeta.failoverOccurred,
+          ...(groqPoolMeta.failoverHistory ? { groqFailoverHistory: groqPoolMeta.failoverHistory } : {}),
+        } : {}),
+        ...(provider === "openrouter" ? {
+          groqPoolExhausted: true,
+          openrouterFallback: true,
+          groqPoolErrors: errors.filter((e) => e.includes("Groq")),
+        } : {}),
+      },
+    });
     return NextResponse.json({ transcript, metadata });
   } catch (error: any) {
     console.error("Error processing source file:", error);
