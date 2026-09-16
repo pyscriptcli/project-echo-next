@@ -669,7 +669,7 @@ export function StudioPanel({
               </div>
 
               {/* Pinned Note Composer at bottom - always visible */}
-              <div className="p-3 border-t border-slate-200 bg-white shrink-0">
+              <div className="p-2.5 border-t border-slate-200 bg-white shrink-0">
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
@@ -785,7 +785,7 @@ export function StudioPanel({
                 {isEchoThinking && <div className="flex gap-3"><div className="h-7 w-7 bg-[#003366] text-[#C9A84C] flex items-center justify-center"><Sparkles size={13} /></div><div className="border border-[#003366]/15 p-3 text-sm text-[#181D1E]/60">Looking through your meetings…</div></div>}
                 <div ref={echoEndRef} />
               </div>
-              <div className="shrink-0 bg-[#FFFCFB] border-t border-slate-200/80 p-3 pt-2">
+              <div className="shrink-0 bg-[#FFFCFB] border-t border-slate-200/80 p-2.5 pt-2">
                 {echoMessages.length <= 1 && (
                   <div className="grid grid-cols-1 gap-1.5 pb-2 sm:grid-cols-3">
                     {["Recap my last meeting", "What decisions were made?", "What should I follow up?"].map((prompt) => (
