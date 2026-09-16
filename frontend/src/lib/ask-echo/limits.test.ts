@@ -18,7 +18,7 @@ describe("checkUsagePolicy", () => {
 
   it("rejects unknown models and clamps unsafe limits", () => {
     const policy = normalizeAiPolicy({ model: "made-up-model", requestsPerMinute: 0, maxOutputTokens: 99999 });
-    expect(policy.model).toBe("deepseek-chat");
+    expect(policy.model).toBe("llama-3.3-70b-versatile");
     expect(policy.requestsPerMinute).toBe(1);
     expect(policy.maxOutputTokens).toBe(4000);
   });

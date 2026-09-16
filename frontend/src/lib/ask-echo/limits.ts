@@ -13,17 +13,19 @@ export interface AiPolicy {
 }
 
 export const APPROVED_MODELS = [
+  { id: "llama-3.3-70b-versatile", label: "Groq Llama 3.3 70B", provider: "Groq", note: "Primary free engine across 5-key pool" },
+  { id: "llama-3.1-8b-instant", label: "Groq Llama 3.1 8B", provider: "Groq", note: "Ultra-fast lightweight model" },
   { id: "deepseek-chat", label: "DeepSeek Chat", provider: "DeepSeek", note: "Balanced for everyday questions" },
   { id: "deepseek-reasoner", label: "DeepSeek Reasoner", provider: "DeepSeek", note: "For harder comparisons and analysis" },
 ] as const;
 
 export const DEFAULT_AI_POLICY: AiPolicy = {
-  model: "deepseek-chat",
-  fallbackModel: "deepseek-reasoner",
-  requestsPerMinute: 10,
-  concurrentRequestsPerUser: 1,
-  dailyTokensPerUser: 50_000,
-  monthlyOrganizationTokens: 2_000_000,
+  model: "llama-3.3-70b-versatile",
+  fallbackModel: "deepseek-chat",
+  requestsPerMinute: 30,
+  concurrentRequestsPerUser: 2,
+  dailyTokensPerUser: 100_000,
+  monthlyOrganizationTokens: 5_000_000,
   maxInputCharacters: 4_000,
   maxConversationTurns: 8,
   maxSources: 6,

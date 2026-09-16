@@ -68,13 +68,36 @@ export async function answerAskEcho(input: unknown, user: { id?: string | number
     }).filter((citation: { marker: string; sourceId: string }) => allowedSourceIds.has(citation.sourceId)).slice(0, 8) : [];
     const response: AskEchoResponse = { answer: String(result.content.answer || "I couldn't find enough in the workspace to answer that."), sources, citations, confidence, followUps: Array.isArray(result.content.followUps) ? result.content.followUps.map(String).slice(0, 3) : [], usage: result.usage };
     const latencyMs = Date.now() - started;
-    await recordUsage({ userEmail, model: policy.model, status: "success", latencyMs, ...result.usage });
-    void recordTelemetry({ userId: String(user.id || ""), userEmail, source: "ask_echo", operation: "ask_echo", provider: "deepseek", model: policy.model, processingMs: latencyMs, success: true, metadata: { sourceCount: sources.length } });
+    const providerUsed = result.provider || "groq";
+    const modelUsed = result.model || policy.model;
+    await recordUsage({ userEmail, model: modelUsed, status: "success", latencyMs, ...result.usage });
+    void recordTelemetry({
+      userId: String(user.id || ""),
+      userEmail,
+      source: "ask_echo",
+      operation: "ask_echo",
+      provider: providerUsed,
+      model: modelUsed,
+      processingMs: latencyMs,
+      fallbackUsed: result.fallbackUsed || false,
+      success: true,
+      metadata: {
+        sourceCount: sources.length,
+        ...(result.groqMeta ? {
+          groqKeyIndex: result.groqMeta.keyIndex,
+          groqKeyAlias: result.groqMeta.keyAlias,
+          groqKeyMasked: result.groqMeta.keyMasked,
+          groqPoolSize: result.groqMeta.poolSize,
+          groqAttempts: result.groqMeta.attempts,
+          groqFailoverOccurred: result.groqMeta.failoverOccurred,
+        } : {}),
+      },
+    });
     return response;
   } catch (error) {
     const latencyMs = Date.now() - started;
     await recordUsage({ userEmail, model: policy.model, status: "failed", latencyMs, inputTokens: 0, outputTokens: 0, totalTokens: 0 });
-    void recordTelemetry({ userId: String(user.id || ""), userEmail, source: "ask_echo", operation: "ask_echo", provider: "deepseek", model: policy.model, processingMs: latencyMs, success: false, errorCategory: "ask_echo_error", errorMessage: error instanceof Error ? error.message : String(error) });
+    void recordTelemetry({ userId: String(user.id || ""), userEmail, source: "ask_echo", operation: "ask_echo", provider: "groq", model: policy.model, processingMs: latencyMs, success: false, errorCategory: "ask_echo_error", errorMessage: error instanceof Error ? error.message : String(error) });
     throw error;
   } finally {
     const remaining = (activeRequests.get(userEmail) || 1) - 1;

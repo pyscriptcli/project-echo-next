@@ -77,68 +77,19 @@ function getAudioFormat(mimeType: string, fileName?: string): string {
   return "wav";
 }
 
-export class GroqRateLimitError extends Error {
-  retryAfterSeconds: number;
-  constructor(message: string, retryAfterSeconds: number) {
-    super(message);
-    this.name = "GroqRateLimitError";
-    this.retryAfterSeconds = retryAfterSeconds;
-  }
-}
-
-/**
- * Discovers and collects all configured Groq API keys.
- * Supports:
- * - GROQ_API_KEYS (comma-separated list: "key1,key2,key3")
- * - GROQ_API_KEY (primary key)
- * - GROQ_API_KEY_2, GROQ_API_KEY_3, ... GROQ_API_KEY_20
- */
-export function getGroqApiKeys(): string[] {
-  const keys: string[] = [];
-
-  if (process.env.GROQ_API_KEYS) {
-    const list = process.env.GROQ_API_KEYS.split(",")
-      .map((k) => k.trim())
-      .filter((k) => k.length > 0);
-    keys.push(...list);
-  }
-
-  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
-    keys.push(process.env.GROQ_API_KEY.trim());
-  }
-
-  for (let i = 2; i <= 20; i++) {
-    const indexed = process.env[`GROQ_API_KEY_${i}`];
-    if (indexed && indexed.trim()) {
-      keys.push(indexed.trim());
-    }
-  }
-
-  return Array.from(new Set(keys));
-}
-
-// Map of apiKey -> timestamp (ms) until which the key is cooling down
-const groqKeyCooldowns = new Map<string, number>();
+export {
+  GroqRateLimitError,
+  getGroqApiKeys,
+  groqKeyCooldowns,
+  resetGroqPool,
+  getGroqPoolStatus,
+} from "@/lib/groqPool";
+import {
+  GroqRateLimitError,
+  getGroqApiKeys,
+  groqKeyCooldowns,
+} from "@/lib/groqPool";
 let groqRoundRobinPointer = 0;
-
-export function resetGroqPool(): void {
-  groqKeyCooldowns.clear();
-  groqRoundRobinPointer = 0;
-}
-
-export function getGroqPoolStatus(keys: string[]): { key: string; index: number; coolingDown: boolean; cooldownRemainingSec: number }[] {
-  const now = Date.now();
-  return keys.map((key, index) => {
-    const expiry = groqKeyCooldowns.get(key) || 0;
-    const coolingDown = expiry > now;
-    return {
-      key: `${key.slice(0, 6)}...${key.slice(-4)}`,
-      index: index + 1,
-      coolingDown,
-      cooldownRemainingSec: coolingDown ? Math.ceil((expiry - now) / 1000) : 0,
-    };
-  });
-}
 
 async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: string, apiKey: string): Promise<string> {
   const expiry = groqKeyCooldowns.get(apiKey) || 0;
