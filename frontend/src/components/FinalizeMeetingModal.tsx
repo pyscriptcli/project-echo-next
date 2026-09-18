@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   FileText,
@@ -76,7 +76,9 @@ export function FinalizeMeetingModal({
   const [newPrimeName, setNewPrimeName] = useState("");
   const [newExternalName, setNewExternalName] = useState("");
   const [titleError, setTitleError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"export" | "archive">("archive");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const activeTabDefault = initialAction === "export" ? "export" : "archive";
+  const [activeTab, setActiveTab] = useState<"export" | "archive">(activeTabDefault);
 
   // Personal list & confidentiality state
   const [archiveDestination, setArchiveDestination] = useState<"team" | "personal">("team");
@@ -135,6 +137,12 @@ export function FinalizeMeetingModal({
   const validateTitle = (): boolean => {
     if (!metadata.client_name || !metadata.client_name.trim()) {
       setTitleError(true);
+      if (titleInputRef.current) {
+        titleInputRef.current.focus();
+        if (typeof titleInputRef.current.scrollIntoView === "function") {
+          titleInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
       return false;
     }
     setTitleError(false);
@@ -299,13 +307,14 @@ export function FinalizeMeetingModal({
                 Meeting Title / Client Name <span className="text-red-600">*</span>
               </label>
               <input
+                ref={titleInputRef}
                 type="text"
                 value={metadata.client_name || ""}
                 onChange={(e) => {
                   onUpdateMetadata({ ...metadata, client_name: e.target.value });
                   if (e.target.value.trim()) setTitleError(false);
                 }}
-                placeholder="e.g. Q3 Commercial Real Estate Strategy - Megaworld"
+                placeholder="e.g. Q3 Commercial Real Estate Strategy - Megaworld (Required)"
                 className={`w-full text-xs px-3 py-2 bg-white border ${
                   titleError ? "border-red-500 ring-1 ring-red-400" : "border-slate-300 focus:border-[#C9A84C]"
                 } rounded-none outline-none text-[#181D1E] shadow-2xs transition-colors`}

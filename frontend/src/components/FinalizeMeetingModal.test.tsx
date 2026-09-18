@@ -72,4 +72,14 @@ describe("FinalizeMeetingModal", () => {
     expect(screen.getByText("Industrial Brokerage")).toBeDefined();
     expect(screen.getByRole("tab", { name: /save to clickup/i })).toBeDefined();
   });
+
+  it("displays validation warning if title is empty when clicking Save to ClickUp", () => {
+    render(<FinalizeMeetingModal {...baseProps} initialAction="archive" />);
+
+    const saveBtn = screen.getByRole("button", { name: /save to clickup/i });
+    fireEvent.click(saveBtn);
+
+    expect(baseProps.onArchiveClickUp).not.toHaveBeenCalled();
+    expect(screen.getByText(/Please enter a meeting title or client name before continuing/i)).toBeDefined();
+  });
 });

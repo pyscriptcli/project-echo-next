@@ -536,12 +536,6 @@ export default function Home() {
   const [otherDiscussions, setOtherDiscussions] = useState("");
   const [showReviewAssist, setShowReviewAssist] = useState(true);
 
-  const generateMeetingTitle = (content: string) => {
-    const firstLine = content.split(/\n|[.!?]/).map((line) => line.trim()).find((line) => line.length >= 12);
-    if (!firstLine) return `Meeting — ${new Date().toLocaleDateString()}`;
-    return firstLine.replace(/^(speaker\s*\d+\s*[:\-]\s*)/i, "").slice(0, 80).trim();
-  };
-
   // Handle Drag and Drop events
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -693,10 +687,6 @@ export default function Home() {
         additionalMeetingNotes
       );
 
-      if (!metadata.client_name?.trim()) {
-        const generatedTitle = (momRes as any).title || (momRes as any).meeting_title || generateMeetingTitle(preparedTranscript || res.transcript || pastedText);
-        setMetadata((current: any) => ({ ...current, client_name: generatedTitle }));
-      }
       if (!metadata.end_time) setMetadata((current: any) => ({ ...current, end_time: new Date().toTimeString().slice(0, 5) }));
 
       setMomItems(
@@ -743,10 +733,6 @@ export default function Home() {
     try {
       const topics = "1. Project Updates\n2. Next Steps";
       const res = await generateMinutes(content, topics, additionalMeetingNotes);
-      if (!metadata.client_name?.trim()) {
-        const generatedTitle = (res as any).title || (res as any).meeting_title || generateMeetingTitle(content);
-        setMetadata((current: any) => ({ ...current, client_name: generatedTitle }));
-      }
       if (!metadata.end_time) setMetadata((current: any) => ({ ...current, end_time: new Date().toTimeString().slice(0, 5) }));
       setMomItems(
         (res.matched_items || []).map((item: any, idx: number) => ({
@@ -826,10 +812,15 @@ export default function Home() {
 
   // Export handlers with effective metadata
   const handleExportWord = async () => {
+    const effectiveMeta = getEffectiveMetadata();
+    if (!effectiveMeta.client_name?.trim()) {
+      openFinalizeModal("export");
+      return;
+    }
     setIsLoading(true);
     setLoadingText("Generating Word Document (.docx)...");
     try {
-      await exportWord(getEffectiveMetadata(), momItems, otherDiscussions);
+      await exportWord(effectiveMeta, momItems, otherDiscussions);
       setShowFinalizeModal(false);
       setShowExportModal(false);
     } catch (err: any) {
@@ -840,10 +831,15 @@ export default function Home() {
   };
 
   const handleExportPdf = async () => {
+    const effectiveMeta = getEffectiveMetadata();
+    if (!effectiveMeta.client_name?.trim()) {
+      openFinalizeModal("export");
+      return;
+    }
     setIsLoading(true);
     setLoadingText("Generating PDF (.pdf)...");
     try {
-      await exportPdf(getEffectiveMetadata(), momItems, otherDiscussions);
+      await exportPdf(effectiveMeta, momItems, otherDiscussions);
       setShowFinalizeModal(false);
       setShowExportModal(false);
     } catch (err: any) {
@@ -854,6 +850,11 @@ export default function Home() {
   };
 
   const handleSaveToDb = async (overrideSpaceId?: string, options?: { listId?: string; isConfidential?: boolean }) => {
+    const effectiveMeta = getEffectiveMetadata();
+    if (!effectiveMeta.client_name?.trim()) {
+      openFinalizeModal("archive");
+      return;
+    }
     const isConfidential = Boolean(options?.isConfidential);
     const targetListId = options?.listId;
     const spaceToUse = overrideSpaceId || metadata.space_id || archiveSpaceId;
@@ -1393,14 +1394,14 @@ export default function Home() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
                               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
-                                Meeting Title / Client
+                                Meeting Title / Client <span className="text-red-600">*</span>
                               </label>
                               <input
                                 type="text"
                                 value={metadata.client_name || ""}
                                 onChange={(event) => setMetadata({ ...metadata, client_name: event.target.value })}
-                                placeholder="Internal"
-                                className="w-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs italic text-slate-800 placeholder:italic outline-none focus:border-[#C9A84C] transition-colors"
+                                placeholder="e.g. Q3 Commercial Real Estate Strategy (Required)"
+                                className="w-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:italic outline-none focus:border-[#C9A84C] transition-colors"
                               />
                             </div>
                             <div>
