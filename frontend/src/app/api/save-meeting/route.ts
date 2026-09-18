@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       : closedStatus || generalCompleteStatus || (availableStatuses[availableStatuses.length - 1]?.status);
 
     const tags = isConfidential
-      ? ["echo", "confidential", "meeting-archive"]
+      ? ["echo", "private", "meeting-archive"]
       : ["echo", "meeting-archive"];
 
     const basePayload = {
@@ -167,11 +167,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       status: "success",
-      message: isConfidential ? "Confidential meeting archived in ClickUp." : "Meeting archived in ClickUp.",
+      message: isConfidential ? "Meeting archived to Private list in ClickUp." : "Meeting archived in ClickUp.",
       meeting_id: task.id,
       clickup: {
         workspace: meeting_details.workspace || "Current workspace",
-        department: isConfidential ? "Confidential" : (meeting_details.department || "Unassigned"),
+        department: isConfidential ? "Private" : (meeting_details.department || "Unassigned"),
         spaceId: String(spaceId || list?.space?.id || ""),
         spaceName,
         listName: list.name,

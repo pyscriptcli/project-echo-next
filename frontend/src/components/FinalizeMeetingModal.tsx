@@ -523,12 +523,12 @@ export function FinalizeMeetingModal({
               <div className="space-y-3 bg-white border border-slate-200 p-4 shadow-2xs animate-in fade-in duration-100">
                 {/* Success Banner if meeting was saved */}
                 {saveSuccess && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in duration-150">
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-950 flex items-center justify-between gap-2.5 animate-in fade-in duration-150">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
                       <div>
                         <span className="text-xs font-bold">
-                          {saveSuccess.isConfidential ? "Confidential meeting archived in ClickUp!" : "Meeting archived in ClickUp!"}
+                          {saveSuccess.isConfidential ? "Meeting archived to Private list in ClickUp!" : "Meeting archived in ClickUp!"}
                         </span>
                         {saveSuccess.taskUrl && (
                           <a
@@ -543,13 +543,6 @@ export function FinalizeMeetingModal({
                         )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("export")}
-                      className="px-2.5 py-1 text-xs font-semibold bg-[#003366] text-white hover:bg-[#002244] shrink-0"
-                    >
-                      Download Document →
-                    </button>
                   </div>
                 )}
 
@@ -577,7 +570,7 @@ export function FinalizeMeetingModal({
                     }`}
                   >
                     <Lock size={13} className={archiveDestination === "personal" ? "text-[#C9A84C]" : ""} />
-                    <span>Personal / Confidential</span>
+                    <span>Personal / Private</span>
                   </button>
                 </div>
 
@@ -659,7 +652,7 @@ export function FinalizeMeetingModal({
                     <div>
                       <h4 className="text-xs font-bold text-[#003366] flex items-center gap-1.5">
                         <Lock size={13} className="text-[#C9A84C]" />
-                        <span>Personal / Confidential List</span>
+                        <span>Personal / Private List</span>
                       </h4>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Only you and direct members with permissions to your private list will be able to access this meeting in ClickUp.
@@ -764,12 +757,12 @@ export function FinalizeMeetingModal({
                         {isProcessing ? (
                           <>
                             <Loader2 size={13} className="animate-spin text-[#C9A84C]" />
-                            <span>{processingText || "Saving Confidential Meeting..."}</span>
+                            <span>{processingText || "Saving to Private List..."}</span>
                           </>
                         ) : (
                           <>
                             <Lock size={13} className="text-[#C9A84C]" />
-                            <span>Save Confidential Meeting</span>
+                            <span>Save to Private List</span>
                           </>
                         )}
                       </button>

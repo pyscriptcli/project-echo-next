@@ -862,7 +862,7 @@ export default function Home() {
       return; 
     }
     setIsLoading(true);
-    setLoadingText(isConfidential ? "Saving confidential meeting to ClickUp..." : "Saving meeting to ClickUp...");
+    setLoadingText(isConfidential ? "Saving meeting to Private list in ClickUp..." : "Saving meeting to ClickUp...");
     try {
       const payloadMeta = {
         ...getEffectiveMetadata(),
