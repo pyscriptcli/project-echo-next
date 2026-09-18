@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+const requireFeature = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/access-control-server", () => ({ requireFeature }));
 
 function chunkRequest() {
   const form = new FormData();
@@ -9,6 +13,11 @@ function chunkRequest() {
 }
 
 describe("botless transcription routing", () => {
+  beforeEach(() => {
+    requireFeature.mockReset();
+    requireFeature.mockResolvedValue(null);
+  });
+
   afterEach(async () => {
     try {
       const { resetGroqPool } = await import("./route");
@@ -30,6 +39,17 @@ describe("botless transcription routing", () => {
     expect(await response.json()).toMatchObject({ transcript: "Hello team", provider: "groq" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
+  });
+
+  it("rejects denied recording access before invoking a transcription provider", async () => {
+    requireFeature.mockResolvedValue(NextResponse.json({ code: "FEATURE_FORBIDDEN" }, { status: 403 }));
+    vi.stubEnv("GROQ_API_KEY", "groq-key");
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const { POST } = await import("./route");
+    const response = await POST(chunkRequest());
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "FEATURE_FORBIDDEN" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("round-robins across multiple Groq API keys", async () => {

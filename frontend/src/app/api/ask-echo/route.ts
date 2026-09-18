@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     }));
   } catch (error) {
     const status = Number((error as { status?: number }).status || 500);
-    if (error instanceof AdminConfigError) return NextResponse.json({ error: error.message, code: "CONFIG_UNAVAILABLE" }, { status: error.status });
+    const isConfigError = (typeof AdminConfigError === "function" && error instanceof AdminConfigError) || (error && typeof error === "object" && (error as { name?: string }).name === "AdminConfigError");
+    if (isConfigError) return NextResponse.json({ error: (error as Error).message, code: "CONFIG_UNAVAILABLE" }, { status: Number((error as { status?: number }).status || 503) });
     const message = status >= 500 ? "Echo couldn’t answer that just now. Please try again." : (error instanceof Error ? error.message : "Ask Echo couldn’t answer right now. Please try again.");
     if (status >= 500) console.error("[Ask Echo] Request failed:", error);
     return NextResponse.json({ error: message }, { status });
