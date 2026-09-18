@@ -23,7 +23,8 @@ import {
   AlertCircle,
   CheckSquare,
   Info,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
@@ -495,9 +496,20 @@ export function MeetingsView({
                       <h4 className={`font-serif text-base lg:text-[17px] font-bold italic line-clamp-1 ${isSelected ? "text-[#003366]" : "text-[#1b1d1e]"}`}>
                         {m.title}
                       </h4>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider shrink-0 mt-0.5">
-                        {m.meeting_type}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {m.is_confidential ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
+                            <Lock size={10} className="text-amber-800" /> Private
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-[#003366] border border-blue-200 uppercase tracking-wider">
+                            <Users size={10} className="text-[#003366]" /> Shared
+                          </span>
+                        )}
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
+                          {m.meeting_type}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-gray-500">

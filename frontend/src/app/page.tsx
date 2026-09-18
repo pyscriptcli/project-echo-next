@@ -853,16 +853,24 @@ export default function Home() {
     }
   };
 
-  const handleSaveToDb = async (overrideSpaceId?: string) => {
+  const handleSaveToDb = async (overrideSpaceId?: string, options?: { listId?: string; isConfidential?: boolean }) => {
+    const isConfidential = Boolean(options?.isConfidential);
+    const targetListId = options?.listId;
     const spaceToUse = overrideSpaceId || metadata.space_id || archiveSpaceId;
-    if (!spaceToUse) { 
+    if (!isConfidential && !spaceToUse) { 
       openFinalizeModal("archive"); 
       return; 
     }
     setIsLoading(true);
-    setLoadingText("Saving meeting to ClickUp...");
+    setLoadingText(isConfidential ? "Saving confidential meeting to ClickUp..." : "Saving meeting to ClickUp...");
     try {
-      const res = await saveMeeting({ ...getEffectiveMetadata(), space_id: spaceToUse }, momItems, otherDiscussions, transcript);
+      const payloadMeta = {
+        ...getEffectiveMetadata(),
+        ...(spaceToUse ? { space_id: spaceToUse } : {}),
+        ...(targetListId ? { list_id: targetListId } : {}),
+        is_confidential: isConfidential,
+      };
+      const res = await saveMeeting(payloadMeta, momItems, otherDiscussions, transcript);
       const effectiveMeta = getEffectiveMetadata();
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
       const newRecord: ArchivedMeeting = {
@@ -891,17 +899,22 @@ export default function Home() {
         clickup_list_id: res.clickup?.listId,
         clickup_list_name: res.clickup?.listName,
         clickup_task_url: res.clickup?.taskUrl || (res.clickup?.taskId ? `https://app.clickup.com/t/${res.clickup.taskId}` : undefined),
-        archive_status: res.clickup?.archiveStatus
+        archive_status: res.clickup?.archiveStatus,
+        is_confidential: isConfidential,
       };
       const updatedList = saveLocalMeeting(newRecord);
       setArchivedMeetings(updatedList);
       setSelectedMeetingId(newMeetingId);
       const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
-      setShowFinalizeModal(false);
-      setShowArchiveModal(false); 
-      alert((res.message || "Successfully saved meeting to ClickUp!") + target);
+      if (!options) {
+        setShowFinalizeModal(false);
+        setShowArchiveModal(false); 
+        alert((res.message || "Successfully saved meeting to ClickUp!") + target);
+      }
+      return res;
     } catch (err: any) {
       alert(err?.message || "Unable to save meeting to ClickUp.");
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -974,7 +987,7 @@ export default function Home() {
         onUpdateExternalAttendees={setExternalAttendees}
         onExportWord={handleExportWord}
         onExportPdf={handleExportPdf}
-        onArchiveClickUp={(spaceId) => handleSaveToDb(spaceId)}
+        onArchiveClickUp={(spaceId, options) => handleSaveToDb(spaceId, options)}
         archiveSpaces={archiveSpaces}
         loadingArchiveSpaces={loadingArchiveSpaces}
         selectedSpaceId={archiveSpaceId}

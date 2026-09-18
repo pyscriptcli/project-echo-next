@@ -10,7 +10,8 @@ import {
   ChevronRight, 
   ArrowRight, 
   CheckCircle2, 
-  Plus
+  Plus,
+  Lock
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -336,6 +337,15 @@ export function DashboardView({
                         {meeting.title}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
+                        {meeting.is_confidential ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-none bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider flex items-center gap-1">
+                            <Lock size={11} className="text-amber-800" /> Private
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-none bg-blue-50 text-[#003366] border border-blue-200 uppercase tracking-wider flex items-center gap-1">
+                            <Users size={11} className="text-[#003366]" /> Shared
+                          </span>
+                        )}
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
                           {meeting.meeting_type}
                         </span>

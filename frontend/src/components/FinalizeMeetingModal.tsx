@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   Loader2,
   Check,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  ExternalLink
 } from "lucide-react";
 
 export const VENUE_OPTIONS = [
@@ -39,7 +41,7 @@ interface FinalizeMeetingModalProps {
   onUpdateExternalAttendees: (attendees: string[]) => void;
   onExportWord: () => Promise<void>;
   onExportPdf: () => Promise<void>;
-  onArchiveClickUp: (spaceId: string) => Promise<void>;
+  onArchiveClickUp: (spaceId: string, options?: { listId?: string; isConfidential?: boolean }) => Promise<any>;
   archiveSpaces: Array<{ id: string; name: string; teamName: string }>;
   loadingArchiveSpaces: boolean;
   selectedSpaceId: string;
@@ -74,13 +76,57 @@ export function FinalizeMeetingModal({
   const [newPrimeName, setNewPrimeName] = useState("");
   const [newExternalName, setNewExternalName] = useState("");
   const [titleError, setTitleError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"export" | "archive">("export");
+  const [activeTab, setActiveTab] = useState<"export" | "archive">("archive");
+
+  // Personal list & confidentiality state
+  const [archiveDestination, setArchiveDestination] = useState<"team" | "personal">("team");
+  const [personalListId, setPersonalListId] = useState<string>("");
+  const [personalListName, setPersonalListName] = useState<string>("");
+  const [personalListInput, setPersonalListInput] = useState<string>("");
+  const [isConfiguringPersonalList, setIsConfiguringPersonalList] = useState<boolean>(false);
+  const [isValidatingPersonalList, setIsValidatingPersonalList] = useState<boolean>(false);
+  const [personalListError, setPersonalListError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<{
+    taskUrl?: string;
+    taskTitle?: string;
+    listName?: string;
+    isConfidential?: boolean;
+  } | null>(null);
+
+  // Load preferences from localStorage + Supabase on open
+  useEffect(() => {
+    if (isOpen) {
+      setSaveSuccess(null);
+      setPersonalListError(null);
+      const localId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || "" : "";
+      const localName = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_name") || "" : "";
+      if (localId) {
+        setPersonalListId(localId);
+        setPersonalListName(localName || "Personal List");
+      }
+      fetch("/api/user/preferences")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.preferences?.personal_list_id) {
+            setPersonalListId(data.preferences.personal_list_id);
+            setPersonalListName(data.preferences.personal_list_name || "Personal List");
+            if (typeof window !== "undefined") {
+              localStorage.setItem("project_echo_personal_list_id", data.preferences.personal_list_id);
+              if (data.preferences.personal_list_name) {
+                localStorage.setItem("project_echo_personal_list_name", data.preferences.personal_list_name);
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   useEffect(() => {
-    if (initialAction === "archive") {
-      setActiveTab("archive");
-    } else {
+    if (initialAction === "export") {
       setActiveTab("export");
+    } else {
+      setActiveTab("archive");
     }
   }, [initialAction, isOpen]);
 
@@ -95,6 +141,46 @@ export function FinalizeMeetingModal({
     return true;
   };
 
+  const handleSavePersonalList = async () => {
+    if (!personalListInput.trim()) return;
+    setIsValidatingPersonalList(true);
+    setPersonalListError(null);
+    try {
+      const res = await fetch("/api/clickup/validate-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: personalListInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setPersonalListError(data.error || "ClickUp list not found or inaccessible.");
+        return;
+      }
+      setPersonalListId(data.list.id);
+      setPersonalListName(data.list.name);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("project_echo_personal_list_id", data.list.id);
+        localStorage.setItem("project_echo_personal_list_name", data.list.name);
+      }
+      setIsConfiguringPersonalList(false);
+      setPersonalListInput("");
+      fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preferences: {
+            personal_list_id: data.list.id,
+            personal_list_name: data.list.name,
+          },
+        }),
+      }).catch(() => {});
+    } catch (err: any) {
+      setPersonalListError(err.message || "Failed to validate list.");
+    } finally {
+      setIsValidatingPersonalList(false);
+    }
+  };
+
   const handleWordClick = async () => {
     if (!validateTitle()) return;
     await onExportWord();
@@ -107,8 +193,33 @@ export function FinalizeMeetingModal({
 
   const handleArchiveClick = async () => {
     if (!validateTitle()) return;
-    if (!selectedSpaceId) return;
-    await onArchiveClickUp(selectedSpaceId);
+    if (archiveDestination === "personal") {
+      if (!personalListId) {
+        setIsConfiguringPersonalList(true);
+        setPersonalListError("Please configure your private ClickUp list first.");
+        return;
+      }
+      const result: any = await onArchiveClickUp("", { listId: personalListId, isConfidential: true });
+      if (result && result.clickup?.taskUrl) {
+        setSaveSuccess({
+          taskUrl: result.clickup.taskUrl,
+          taskTitle: metadata.client_name,
+          listName: personalListName,
+          isConfidential: true,
+        });
+      }
+    } else {
+      if (!selectedSpaceId) return;
+      const result: any = await onArchiveClickUp(selectedSpaceId, { isConfidential: false });
+      if (result && result.clickup?.taskUrl) {
+        setSaveSuccess({
+          taskUrl: result.clickup.taskUrl,
+          taskTitle: metadata.client_name,
+          listName: result.clickup.listName || "Echo Meetings",
+          isConfidential: false,
+        });
+      }
+    }
   };
 
   const handleAddPrime = (e?: React.FormEvent) => {
@@ -158,15 +269,17 @@ export function FinalizeMeetingModal({
               Verify meeting details to ensure accurate document headers and ClickUp records.
             </p>
           </div>
-          {canExport && <button
-            type="button"
-            onClick={onClose}
-            disabled={isProcessing}
-            aria-label="Close modal"
-            className="p-1 text-slate-400 hover:text-[#003366] transition-colors rounded-none disabled:opacity-40"
-          >
-            <X size={18} />
-          </button>}
+          {canExport && (
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isProcessing}
+              aria-label="Close modal"
+              className="p-1 text-slate-400 hover:text-[#003366] transition-colors rounded-none disabled:opacity-40"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Scrollable Form Body */}
@@ -312,7 +425,7 @@ export function FinalizeMeetingModal({
                     type="text"
                     value={newPrimeName}
                     onChange={(e) => setNewPrimeName(e.target.value)}
-                    placeholder="Add team member..."
+                    placeholder="Add PRIME member..."
                     className="flex-1 text-xs px-2 py-1 bg-white border border-slate-200 focus:border-[#C9A84C] outline-none"
                   />
                   <button
@@ -331,9 +444,6 @@ export function FinalizeMeetingModal({
                   <span className="text-[11px] font-bold text-[#003366] flex items-center gap-1.5">
                     <Building2 size={13} className="text-[#C9A84C]" /> External Attendees ({externalAttendees.length})
                   </span>
-                  {metadata.meeting_type === "External" && externalAttendees.length === 0 && (
-                    <span className="text-[10px] text-amber-600 font-semibold">Recommended</span>
-                  )}
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-2 min-h-[32px] max-h-24 overflow-y-auto p-1 bg-slate-50 border border-slate-100">
                   {externalAttendees.length === 0 ? (
@@ -378,21 +488,8 @@ export function FinalizeMeetingModal({
 
           {/* Section: Destination & Action Hub */}
           <div className="pt-2 border-t border-slate-200">
-            {/* Tabs for Action Focus */}
+            {/* Tabs for Action Focus: Save to ClickUp on the left, Download Document on the right */}
             <div className="flex border-b border-slate-200 mb-4" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === "export"}
-                onClick={() => setActiveTab("export")}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === "export"
-                    ? "border-[#C9A84C] text-[#003366] bg-white"
-                    : "border-transparent text-slate-400 hover:text-[#003366]"
-                }`}
-              >
-                <Download size={14} /> Download Document (.docx / .pdf)
-              </button>
               <button
                 type="button"
                 role="tab"
@@ -406,9 +503,283 @@ export function FinalizeMeetingModal({
               >
                 <Cloud size={14} /> Save to ClickUp
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "export"}
+                onClick={() => setActiveTab("export")}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                  activeTab === "export"
+                    ? "border-[#C9A84C] text-[#003366] bg-white"
+                    : "border-transparent text-slate-400 hover:text-[#003366]"
+                }`}
+              >
+                <Download size={14} /> Download Document (.docx / .pdf)
+              </button>
             </div>
 
-            {/* Tab 1: Export Files */}
+            {/* Tab 1: ClickUp Saving */}
+            {activeTab === "archive" && (
+              <div className="space-y-3 bg-white border border-slate-200 p-4 shadow-2xs animate-in fade-in duration-100">
+                {/* Success Banner if meeting was saved */}
+                {saveSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-xs font-bold">
+                          {saveSuccess.isConfidential ? "Confidential meeting archived in ClickUp!" : "Meeting archived in ClickUp!"}
+                        </span>
+                        {saveSuccess.taskUrl && (
+                          <a
+                            href={saveSuccess.taskUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#003366] hover:underline font-semibold ml-2"
+                          >
+                            <span>Open Task in ClickUp</span>
+                            <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("export")}
+                      className="px-2.5 py-1 text-xs font-semibold bg-[#003366] text-white hover:bg-[#002244] shrink-0"
+                    >
+                      Download Document →
+                    </button>
+                  </div>
+                )}
+
+                {/* 2-way Destination Switcher: Shared Team Space vs Personal Confidential */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setArchiveDestination("team")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold transition-all ${
+                      archiveDestination === "team"
+                        ? "bg-white text-[#003366] shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-[#003366]"
+                    }`}
+                  >
+                    <Users size={13} className={archiveDestination === "team" ? "text-[#C9A84C]" : ""} />
+                    <span>Shared / Team Space</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setArchiveDestination("personal")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold transition-all ${
+                      archiveDestination === "personal"
+                        ? "bg-[#003366] text-white shadow-xs"
+                        : "text-slate-500 hover:text-[#003366]"
+                    }`}
+                  >
+                    <Lock size={13} className={archiveDestination === "personal" ? "text-[#C9A84C]" : ""} />
+                    <span>Personal / Confidential</span>
+                  </button>
+                </div>
+
+                {/* Shared Team Space Mode */}
+                {archiveDestination === "team" && (
+                  <div className="space-y-3 pt-1 animate-in fade-in duration-100">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-xs font-bold text-[#003366]">Select Target ClickUp Space</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Echo will save the meeting into the selected department’s <b>Echo Meetings</b> list.
+                        </p>
+                      </div>
+                      {loadingArchiveSpaces && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-[#003366] font-semibold">
+                          <Loader2 size={12} className="animate-spin text-[#C9A84C]" /> Scanning Spaces…
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto border border-slate-200 divide-y divide-slate-100">
+                      {loadingArchiveSpaces ? (
+                        <div className="p-4 text-center text-xs text-slate-400">Loading your ClickUp spaces...</div>
+                      ) : archiveSpaces.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400">No accessible ClickUp spaces found.</div>
+                      ) : (
+                        archiveSpaces.map((space) => {
+                          const isSelected = selectedSpaceId === space.id;
+                          return (
+                            <button
+                              key={space.id}
+                              type="button"
+                              onClick={() => onSelectSpaceId(space.id)}
+                              className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs transition-colors ${
+                                isSelected
+                                  ? "bg-[#003366] text-white"
+                                  : "hover:bg-slate-50 text-slate-800"
+                              }`}
+                            >
+                              <div>
+                                <span className="font-semibold">{space.name}</span>
+                                <span className={`block text-[10px] ${isSelected ? "text-slate-200" : "text-slate-400"}`}>
+                                  {space.teamName}
+                                </span>
+                              </div>
+                              {isSelected && <Check size={14} className="text-[#C9A84C]" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={handleArchiveClick}
+                        disabled={!selectedSpaceId || isProcessing}
+                        className="btn-primary !py-2 !px-5 text-xs flex items-center gap-2 rounded-none disabled:opacity-40"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin text-[#C9A84C]" />
+                            <span>{processingText || "Saving to ClickUp..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Cloud size={14} />
+                            <span>Save to ClickUp</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Personal / Confidential Mode */}
+                {archiveDestination === "personal" && (
+                  <div className="space-y-3 pt-1 animate-in fade-in duration-100">
+                    <div>
+                      <h4 className="text-xs font-bold text-[#003366] flex items-center gap-1.5">
+                        <Lock size={13} className="text-[#C9A84C]" />
+                        <span>Personal / Confidential List</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Only you and direct members with permissions to your private list will be able to access this meeting in ClickUp.
+                      </p>
+                    </div>
+
+                    {/* Configured Personal List Card */}
+                    {personalListId && !isConfiguringPersonalList ? (
+                      <div className="p-3.5 bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-800">
+                            <Lock size={15} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-800 truncate">
+                                {personalListName || "My Personal List"}
+                              </span>
+                              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-amber-100 text-amber-800 border border-amber-300">
+                                Private
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              List ID: {personalListId}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPersonalListInput(personalListId);
+                            setIsConfiguringPersonalList(true);
+                          }}
+                          className="text-xs font-semibold text-[#003366] hover:underline shrink-0 ml-2"
+                        >
+                          Change List
+                        </button>
+                      </div>
+                    ) : (
+                      /* Configuration / Input Box */
+                      <div className="space-y-2 p-3 bg-slate-50 border border-slate-200">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          Configure Your Private ClickUp List
+                        </label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={personalListInput}
+                            onChange={(e) => {
+                              setPersonalListInput(e.target.value);
+                              setPersonalListError(null);
+                            }}
+                            placeholder="Paste ClickUp list URL or enter List ID..."
+                            className="flex-1 text-xs px-2.5 py-1.5 bg-white border border-slate-300 focus:border-[#003366] outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSavePersonalList}
+                            disabled={!personalListInput.trim() || isValidatingPersonalList}
+                            className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1 disabled:opacity-40"
+                          >
+                            {isValidatingPersonalList ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                <span>Verifying...</span>
+                              </>
+                            ) : (
+                              <span>Save List</span>
+                            )}
+                          </button>
+                          {personalListId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsConfiguringPersonalList(false);
+                                setPersonalListError(null);
+                              }}
+                              className="px-2.5 py-1.5 text-xs text-slate-500 border border-slate-200 bg-white hover:bg-slate-100"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                        {personalListError && (
+                          <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1">
+                            <AlertCircle size={12} /> {personalListError}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-slate-500">
+                          Tip: Open your private list in ClickUp, copy the browser URL (e.g. <code>https://app.clickup.com/123/v/li/456</code>), and paste it here.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={handleArchiveClick}
+                        disabled={!personalListId || isProcessing || isConfiguringPersonalList}
+                        className="btn-primary !py-2 !px-5 text-xs flex items-center gap-2 rounded-none disabled:opacity-40"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin text-[#C9A84C]" />
+                            <span>{processingText || "Saving Confidential Meeting..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={13} className="text-[#C9A84C]" />
+                            <span>Save Confidential Meeting</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Export Files */}
             {activeTab === "export" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-100">
                 {/* Word Export Card */}
@@ -450,78 +821,6 @@ export function FinalizeMeetingModal({
                 </button>
               </div>
             )}
-
-            {/* Tab 2: ClickUp Saving */}
-            {activeTab === "archive" && (
-              <div className="space-y-3 bg-white border border-slate-200 p-4 shadow-2xs animate-in fade-in duration-100">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h4 className="text-xs font-bold text-[#003366]">Select Target ClickUp Space</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Echo will save the meeting into the selected department’s <b>Echo Meetings</b> list.
-                    </p>
-                  </div>
-                  {loadingArchiveSpaces && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-[#003366] font-semibold">
-                      <Loader2 size={12} className="animate-spin text-[#C9A84C]" /> Scanning Spaces…
-                    </span>
-                  )}
-                </div>
-
-                <div className="max-h-48 overflow-y-auto border border-slate-200 divide-y divide-slate-100">
-                  {loadingArchiveSpaces ? (
-                    <div className="p-4 text-center text-xs text-slate-400">Loading your ClickUp spaces...</div>
-                  ) : archiveSpaces.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">No accessible ClickUp spaces found.</div>
-                  ) : (
-                    archiveSpaces.map((space) => {
-                      const isSelected = selectedSpaceId === space.id;
-                      return (
-                        <button
-                          key={space.id}
-                          type="button"
-                          onClick={() => onSelectSpaceId(space.id)}
-                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs transition-colors ${
-                            isSelected
-                              ? "bg-[#003366] text-white"
-                              : "hover:bg-slate-50 text-slate-800"
-                          }`}
-                        >
-                          <div>
-                            <span className="font-semibold">{space.name}</span>
-                            <span className={`block text-[10px] ${isSelected ? "text-slate-200" : "text-slate-400"}`}>
-                              {space.teamName}
-                            </span>
-                          </div>
-                          {isSelected && <Check size={14} className="text-[#C9A84C]" />}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={handleArchiveClick}
-                    disabled={!selectedSpaceId || isProcessing}
-                    className="btn-primary !py-2 !px-5 text-xs flex items-center gap-2 rounded-none disabled:opacity-40"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin text-[#C9A84C]" />
-                        <span>{processingText || "Saving to ClickUp..."}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Cloud size={14} />
-                        <span>Save to ClickUp</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -530,14 +829,14 @@ export function FinalizeMeetingModal({
           <span className="text-[10px] text-slate-400">
             PRIME Philippines • Minutes of the Meeting Engine
           </span>
-          {canExport && <button
+          <button
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-100 transition-colors"
           >
             Close
-          </button>}
+          </button>
         </div>
       </div>
     </div>
