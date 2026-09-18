@@ -105,6 +105,7 @@ export interface FormsConfig {
   emailTemplates?: FormEmailTemplate[];
   allowedSignInDomains: string[];
   aiPolicy?: AiPolicy;
+  features?: { askEchoEnabled: boolean };
   formFeatures?: { rfpAutofill: boolean; pdfPreview: boolean; emailNotifications: boolean };
 }
 
@@ -120,6 +121,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   allowedSignInDomains: ["primephilippines.com"],
   aiPolicy: DEFAULT_AI_POLICY,
   formFeatures: { rfpAutofill: true, pdfPreview: true, emailNotifications: true },
+  features: { askEchoEnabled: true },
 };
 
 function normalizeEmail(email?: string) {
@@ -161,20 +163,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const isOwner = isFormsOwner({ email: userEmail, username });
 
   useEffect(() => {
-    const local = localStorage.getItem("echo_forms_config");
-    if (local) {
-      try {
-        const parsed = JSON.parse(local);
-        setConfig({
-          ...DEFAULT_CONFIG,
-          ...parsed,
-          pagePermissions: parsed.pagePermissions || [],
-          emailTemplates: parsed.emailTemplates || [],
-          sidebarOrder: parsed.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
-        });
-      } catch {}
-    }
-    fetch("/api/forms/config")
+    fetch("/api/forms/config", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.config) {
@@ -189,7 +178,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           });
         }
       })
-      .catch(() => {});
+      .catch(() => setNotice("Could not load Admin configuration from Supabase."));
   }, []);
 
   useEffect(() => {
@@ -206,14 +195,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
 
   const save = async (next: FormsConfig = config) => {
     setConfig(next);
-    localStorage.setItem("echo_forms_config", JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent("echo-config-updated", { detail: next }));
     const res = await fetch("/api/forms/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(next),
     });
-    setNotice(res.ok ? "Configuration saved." : "Could not sync configuration to the server. It remains saved on this device.");
+    if (res.ok) window.dispatchEvent(new CustomEvent("echo-config-updated"));
+    setNotice(res.ok ? "Configuration saved." : "Could not save configuration to Supabase.");
     window.setTimeout(() => setNotice(""), 3500);
   };
 
@@ -244,7 +232,6 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       mappings: [...config.mappings.filter((item) => item.id !== next.id), next],
     };
     setConfig(updated);
-    localStorage.setItem("echo_forms_config", JSON.stringify(updated));
     setNotice("Unsaved routing changes");
   };
 
@@ -437,7 +424,6 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
     const next = { ...emailTemplate, ...patch };
     const updated = { ...config, emailTemplates: [...(config.emailTemplates || []).filter((item) => item.id !== next.id), next] };
     setConfig(updated);
-    localStorage.setItem("echo_forms_config", JSON.stringify(updated));
     setNotice("Unsaved email template changes");
   };
 
@@ -1067,7 +1053,8 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
         {formsSubtab === "features" ? <div className="space-y-3">
           <div><h2 className="text-lg font-bold text-slate-800">Form Features</h2><p className="text-xs text-gray-500 mt-1">Turn form capabilities on or off for all users.</p></div>
-          {([["rfpAutofill", "RFP Autofill", "Allow requestors to prefill RFP fields from uploaded documents or demo data."], ["pdfPreview", "PDF Preview", "Allow users to generate a PDF preview before submitting."], ["emailNotifications", "Email Notifications", "Send automated request status emails to requestors."]] as const).map(([key, label, description]) => { const enabled = config.formFeatures?.[key] ?? true; return <label key={key} className="flex items-center justify-between gap-4 border border-gray-200 bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">{label}</span><span className="block text-xs text-gray-500 mt-1">{description}</span></span><input type="checkbox" checked={enabled} onChange={(e) => { const next = { ...config, formFeatures: { ...(config.formFeatures || DEFAULT_CONFIG.formFeatures!), [key]: e.target.checked } }; setConfig(next); localStorage.setItem("echo_forms_config", JSON.stringify(next)); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>; })}
+          <label className="flex items-center justify-between gap-4 border border-[#C9AB4C] bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">Ask Echo availability</span><span className="block text-xs text-gray-500 mt-1">Show or hide Ask Echo throughout Project Echo. Transcription remains available when disabled.</span></span><input type="checkbox" checked={config.features?.askEchoEnabled !== false} onChange={(e) => { setConfig({ ...config, features: { ...(config.features || { askEchoEnabled: true }), askEchoEnabled: e.target.checked } }); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>
+          {([["rfpAutofill", "RFP Autofill", "Allow requestors to prefill RFP fields from uploaded documents or demo data."], ["pdfPreview", "PDF Preview", "Allow users to generate a PDF preview before submitting."], ["emailNotifications", "Email Notifications", "Send automated request status emails to requestors."]] as const).map(([key, label, description]) => { const enabled = config.formFeatures?.[key] ?? true; return <label key={key} className="flex items-center justify-between gap-4 border border-gray-200 bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">{label}</span><span className="block text-xs text-gray-500 mt-1">{description}</span></span><input type="checkbox" checked={enabled} onChange={(e) => { const next = { ...config, formFeatures: { ...(config.formFeatures || DEFAULT_CONFIG.formFeatures!), [key]: e.target.checked } }; setConfig(next); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>; })}
         </div> : <>
         <h2 className="text-lg font-bold text-slate-800 mb-1">Department Forms &amp; ClickUp Destinations</h2>
         <p className="text-xs text-gray-500 mb-4">

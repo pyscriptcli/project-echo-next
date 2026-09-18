@@ -46,6 +46,7 @@ interface StudioPanelProps {
   onOpenSource?: (page: string, recordId: string, url?: string) => void;
   onRecordingStart?: (startTime: string) => void;
   onRecordingStop?: (endTime: string) => void;
+  askEchoEnabled?: boolean;
 }
 
 interface EchoMessage {
@@ -104,6 +105,7 @@ export function StudioPanel({
   onOpenSource,
   onRecordingStart,
   onRecordingStop,
+  askEchoEnabled = true,
 }: StudioPanelProps) {
   const recorder = useStudioRecorder();
   const liveTranscript = useLiveTranscription(recorder.audioStream);
@@ -120,6 +122,7 @@ export function StudioPanel({
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo" | "transcript">("echo");
+  React.useEffect(() => { if (!askEchoEnabled && workspaceTab === "echo") setWorkspaceTab("transcript"); }, [askEchoEnabled, workspaceTab]);
   const [echoInput, setEchoInput] = useState("");
   const [echoMessages, setEchoMessages] = useState<EchoMessage[]>(() => {
     try {
@@ -728,10 +731,10 @@ export function StudioPanel({
             <div className="px-5 pt-3.5 pb-3 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div>
+                  {askEchoEnabled ? <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div> : <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Transcript</h3>}
                   <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
                 </div>
-                {!isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
+                {askEchoEnabled && !isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
                 </div>}

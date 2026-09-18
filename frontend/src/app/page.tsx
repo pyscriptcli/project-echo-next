@@ -412,6 +412,7 @@ export default function Home() {
     "dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms",
   ]);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [askEchoEnabled, setAskEchoEnabled] = useState(false);
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
@@ -426,6 +427,7 @@ export default function Home() {
         .then((data) => {
           if (!data) return;
           setIsAdminUser(Boolean(data.isAdmin));
+          setAskEchoEnabled(data.config?.features?.askEchoEnabled === true);
           if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
             setAllowedPages(data.allowedPages);
             const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
@@ -1053,6 +1055,7 @@ export default function Home() {
           onNavigateToPage={(page) => handleSelectView(page as NavView)}
           allowedPages={allowedPages as any}
           isAdmin={isAdminUser}
+          askEchoEnabled={askEchoEnabled}
           studioRecording={{
             active: studioRecordingState.active,
             isMinimized: isStudioOpen && studioMode === "minimized" && studioRecordingState.active,
@@ -1368,6 +1371,7 @@ export default function Home() {
                   <StudioPanel
                     isOpen
                     embedded
+                    askEchoEnabled={askEchoEnabled}
                     mode="fullscreen"
                     onRecordingStart={handleRecordingStart}
                     onRecordingStop={handleRecordingStop}
@@ -2164,7 +2168,7 @@ export default function Home() {
       />
 
       {/* Universal Slide-Over AI Assistant Drawer */}
-      <UniversalEchoDrawer
+      {askEchoEnabled && <UniversalEchoDrawer
         isOpen={isUniversalEchoOpen}
         onClose={() => setIsUniversalEchoOpen(false)}
         meetings={archivedMeetings}
@@ -2175,7 +2179,7 @@ export default function Home() {
           else if (url) window.open(url, "_blank", "noopener,noreferrer");
           setIsUniversalEchoOpen(false);
         }}
-      />
+      />}
 
     </div>
   );

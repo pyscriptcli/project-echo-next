@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
 import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
+import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
+
+export const dynamic = "force-dynamic";
 
 const OWNER_EMAIL = "admin@primephilippines.com";
 interface UserPagePermission {
@@ -39,12 +41,6 @@ const DEFAULT_CONFIG: FormsConfigData = {
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];
 
-function client() {
-  const url = process.env.SUPABASE_URL || "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
-  return url && key ? createClient(url, key) : null;
-}
-
 function isOwnerOrAdmin(req: NextRequest, config: any) {
   if (req.cookies.get("echo_admin_test")?.value === "1") return true;
   const user = getUserFromRequest(req);
@@ -65,29 +61,14 @@ export async function GET(req: NextRequest) {
   const user = token ? getUserFromRequest(req) : null;
   const userEmail = (user?.email || "").toLowerCase().trim();
 
-  const supabase = client();
-  let config = DEFAULT_CONFIG;
-  let source = "local";
-
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("echo_forms_config")
-      .select("config")
-      .eq("id", "global")
-      .maybeSingle();
-
-    if (!error && data?.config) {
-      config = {
-        ...DEFAULT_CONFIG,
-        ...data.config,
-        mappings: Array.isArray(data.config.mappings) && data.config.mappings.length > 0 ? data.config.mappings : REPOSITORY_FORM_MAPPINGS,
-        pagePermissions: data.config.pagePermissions || [],
-        defaultPageAccess: data.config.defaultPageAccess || ["forms"],
-        sidebarOrder: data.config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
-      };
-      source = "supabase";
-    }
+  let config: any;
+  try {
+    config = await loadAdminConfig();
+  } catch (error) {
+    const status = error instanceof AdminConfigError ? error.status : 503;
+    return NextResponse.json({ error: "Admin configuration is unavailable.", code: "CONFIG_UNAVAILABLE" }, { status, headers: { "Cache-Control": "no-store" } });
   }
+  const source = "supabase";
 
   const configuredDefaultPages =
     Array.isArray(config.defaultPageAccess) && config.defaultPageAccess.length > 0
@@ -101,7 +82,7 @@ export async function GET(req: NextRequest) {
       allowedPages: defaultPages,
       userAllowedPages: defaultPages,
       defaultPageAccess: defaultPages,
-      sidebarOrder: config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
+      sidebarOrder: config.sidebarOrder || [],
       isAdmin: false,
       source,
     });
@@ -137,7 +118,7 @@ export async function GET(req: NextRequest) {
       config: {
         ...config,
         defaultPageAccess: defaultPages,
-        sidebarOrder: config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
+        sidebarOrder: config.sidebarOrder || [],
       },
       allowedPages,
       userAllowedPages: allowedPages,
@@ -164,6 +145,7 @@ export async function GET(req: NextRequest) {
         formLabel: m.formLabel,
         listId: m.listId,
       })),
+      features: { askEchoEnabled: config.features?.askEchoEnabled === true },
       defaultPageAccess: defaultPages,
     },
     allowedPages,
@@ -180,26 +162,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
   }
 
-  const supabase = client();
-  if (!supabase) {
-    return NextResponse.json({ saved: false, source: "local", warning: "Supabase is not configured." }, { status: 503 });
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid configuration payload" }, { status: 400 }); }
+  const supabaseConfig = body as Record<string, unknown>;
+  supabaseConfig.aiPolicy = normalizeAiPolicy(supabaseConfig.aiPolicy);
+  let existing: any;
+  try { existing = await loadAdminConfig(); } catch (error) {
+    const status = error instanceof AdminConfigError ? error.status : 503;
+    return NextResponse.json({ error: "Admin configuration is unavailable.", code: "CONFIG_UNAVAILABLE" }, { status });
   }
-
-  const body = await req.json();
-  body.aiPolicy = normalizeAiPolicy(body.aiPolicy);
-  const { data: existing } = await supabase.from("echo_forms_config").select("config").eq("id", "global").maybeSingle();
-  if (!isOwnerOrAdmin(req, existing?.config || DEFAULT_CONFIG)) {
+  if (!isOwnerOrAdmin(req, existing)) {
     return NextResponse.json({ error: "Forms admin permission required" }, { status: 403 });
   }
-
-  const { error } = await supabase.from("echo_forms_config").upsert(
-    { id: "global", config: body, updated_at: new Date().toISOString() },
-    { onConflict: "id" }
-  );
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const saved = await saveAdminConfig({ ...existing, ...supabaseConfig, features: { ...existing.features, ...(supabaseConfig.features as Record<string, unknown> | undefined) } });
+    return NextResponse.json({ saved: true, source: "supabase", config: saved }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const status = error instanceof AdminConfigError ? error.status : 500;
+    return NextResponse.json({ error: "Admin configuration could not be saved.", code: "CONFIG_SAVE_FAILED" }, { status });
   }
-
-  return NextResponse.json({ saved: true, source: "supabase" });
 }

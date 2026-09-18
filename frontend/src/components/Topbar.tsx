@@ -35,6 +35,7 @@ interface TopbarProps {
   onNavigateToPage?: (page: "dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms" | "forms-admin") => void;
   allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms">;
   isAdmin?: boolean;
+  askEchoEnabled?: boolean;
   studioRecording?: {
     active?: boolean;
     isMinimized: boolean;
@@ -56,6 +57,7 @@ export function Topbar({
   onNavigateToPage,
   allowedPages,
   isAdmin,
+  askEchoEnabled = false,
   studioRecording,
 }: TopbarProps) {
   const formatMeetingClock = (seconds: number) => {
@@ -389,7 +391,7 @@ export function Topbar({
         )}
 
         {/* Ask Echo Trigger Button (#1b1d1e deep charcoal) */}
-        {(!allowedPages || allowedPages.includes("minutes")) && (
+        {askEchoEnabled && (!allowedPages || allowedPages.includes("minutes")) && (
           <button
             type="button"
             onClick={onOpenUniversalEcho}
