@@ -422,7 +422,7 @@ export default function Home() {
   // Fetch page governance and role access
   useEffect(() => {
     const refreshGovernance = () => {
-      fetch("/api/forms/config")
+      fetch("/api/forms/config", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (!data) return;

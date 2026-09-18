@@ -1201,7 +1201,7 @@ export default function FormsPortal({
   const [configuredMembers, setConfiguredMembers] = useState<AdminUser[]>([]);
   const [serverAdmin, setServerAdmin] = useState(false);
   useEffect(() => {
-    fetch("/api/forms/config")
+    fetch("/api/forms/config", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         setConfiguredAdmins(data?.config?.admins || []);

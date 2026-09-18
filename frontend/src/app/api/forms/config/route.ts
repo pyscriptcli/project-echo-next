@@ -40,6 +40,7 @@ const DEFAULT_CONFIG: FormsConfigData = {
 };
 
 const ALL_APP_PAGES = ["dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];
+const NO_STORE_HEADERS = { "Cache-Control": "no-store, max-age=0" };
 
 function isOwnerOrAdmin(req: NextRequest, config: any) {
   if (req.cookies.get("echo_admin_test")?.value === "1") return true;
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest) {
       sidebarOrder: config.sidebarOrder || [],
       isAdmin: false,
       source,
-    });
+    }, { headers: NO_STORE_HEADERS });
   }
 
   const isAdmin = testAdmin ||
@@ -125,7 +126,7 @@ export async function GET(req: NextRequest) {
       defaultPageAccess: defaultPages,
       isAdmin: true,
       source,
-    });
+    }, { headers: NO_STORE_HEADERS });
   }
 
   // Non-admins receive their allowed pages and safe forms config
@@ -153,7 +154,7 @@ export async function GET(req: NextRequest) {
     defaultPageAccess: defaultPages,
     isAdmin: false,
     source,
-  });
+  }, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
