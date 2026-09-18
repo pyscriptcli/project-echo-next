@@ -23,6 +23,8 @@ interface ToolbarProps {
   selectedForm?: string;
   onSelectForm?: (formKey: string) => void;
   onPreFillDemo?: () => void;
+  canPreviewPdf?: boolean;
+  canSubmit?: boolean;
 }
 
 export function Toolbar({
@@ -37,6 +39,8 @@ export function Toolbar({
   selectedForm = "rfp",
   onSelectForm,
   onPreFillDemo,
+  canPreviewPdf = true,
+  canSubmit = true,
 }: ToolbarProps) {
   return (
     <div className="w-full sticky top-3 z-40 mb-4 bg-[#FFFCFB] border border-slate-300 shadow-sm px-4 py-2.5 flex flex-col lg:flex-row lg:items-center gap-3 relative">
@@ -80,7 +84,7 @@ export function Toolbar({
         <button
           type="button"
           onClick={onPreviewPdf}
-          disabled={isGeneratingPdf}
+          disabled={isGeneratingPdf || !canPreviewPdf}
           className="h-8 px-3 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 text-[#003366] hover:bg-[#FFFCFB] transition-colors cursor-pointer disabled:opacity-50"
         >
           {isGeneratingPdf ? (
@@ -88,7 +92,7 @@ export function Toolbar({
           ) : (
             <FileDown className="w-3.5 h-3.5 text-[#003366]" />
           )}
-          <span>Download PDF</span>
+          <span>{canPreviewPdf ? "Download PDF" : "PDF disabled"}</span>
         </button>
 
         <button
@@ -105,7 +109,7 @@ export function Toolbar({
           id="submit-to-clickup-btn"
           type="button"
           onClick={onSubmit}
-          disabled={isSubmitting || isGeneratingPdf}
+          disabled={isSubmitting || isGeneratingPdf || !canSubmit}
           className="h-8 px-4 text-xs font-bold text-white bg-[#003366] hover:bg-[#002244] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
         >
           {isSubmitting ? (

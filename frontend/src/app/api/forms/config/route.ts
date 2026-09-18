@@ -3,7 +3,7 @@ import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
 import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
-import { resolveAllowedPages } from "@/lib/ask-echo/access";
+import { resolveAccess, normalizeFeatures, ALL_FEATURES, type FeatureId } from "@/lib/access-control";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,7 @@ interface UserPagePermission {
   email: string;
   name?: string;
   allowedPages: string[];
+  allowedFeatures?: FeatureId[];
 }
 
 interface FormsConfigData {
@@ -21,6 +22,7 @@ interface FormsConfigData {
   mappings: any[];
   pagePermissions: UserPagePermission[];
   defaultPageAccess?: string[];
+  defaultFeatureAccess?: FeatureId[];
   sidebarOrder?: string[];
   emailTemplates?: any[];
   allowedSignInDomains: string[];
@@ -77,11 +79,14 @@ export async function GET(req: NextRequest) {
     : [];
   if (configuredDefaultPages.length === 0) configuredDefaultPages.push("forms");
   const defaultPages = Array.from(new Set(configuredDefaultPages));
+  const defaultFeatures = normalizeFeatures(config.defaultFeatureAccess, ALL_FEATURES);
 
   // If user is not authenticated or not logged in yet, return public default page access policy
   if ((!token || !userEmail) && !testAdmin) {
     return NextResponse.json({
       allowedPages: defaultPages,
+      allowedFeatures: defaultFeatures,
+      defaultFeatureAccess: defaultFeatures,
       userAllowedPages: defaultPages,
       defaultPageAccess: defaultPages,
       sidebarOrder: config.sidebarOrder || [],
@@ -99,12 +104,14 @@ export async function GET(req: NextRequest) {
     );
 
   // Compute allowed pages for current user
-  let allowedPages = defaultPages;
-  allowedPages = resolveAllowedPages(userEmail, {
+  const access = resolveAccess(userEmail, {
     defaultPageAccess: defaultPages,
-    pagePermissions: Array.isArray(config.pagePermissions) ? config.pagePermissions as Array<{ email: string; allowedPages: string[] }> : [],
-    admins: Array.isArray(config.admins) ? config.admins as Array<{ email: string; active?: boolean }> : [],
+    defaultFeatureAccess: defaultFeatures,
+    pagePermissions: Array.isArray(config.pagePermissions) ? config.pagePermissions : [],
+    features: config.features,
+    formFeatures: config.formFeatures,
   });
+  const allowedPages = access.allowedPages;
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {
@@ -112,11 +119,14 @@ export async function GET(req: NextRequest) {
       config: {
         ...config,
         defaultPageAccess: defaultPages,
+        defaultFeatureAccess: defaultFeatures,
         sidebarOrder: config.sidebarOrder || [],
       },
       allowedPages,
       userAllowedPages: allowedPages,
       defaultPageAccess: defaultPages,
+      allowedFeatures: access.allowedFeatures,
+      userAllowedFeatures: access.allowedFeatures,
       isAdmin: true,
       source,
     }, { headers: NO_STORE_HEADERS });
@@ -140,11 +150,15 @@ export async function GET(req: NextRequest) {
         listId: m.listId,
       })),
       features: { askEchoEnabled: config.features?.askEchoEnabled === true },
+      formFeatures: { rfpAutofill: config.formFeatures?.rfpAutofill !== false, pdfPreview: config.formFeatures?.pdfPreview !== false },
       defaultPageAccess: defaultPages,
     },
     allowedPages,
     userAllowedPages: allowedPages,
     defaultPageAccess: defaultPages,
+    allowedFeatures: access.allowedFeatures,
+    userAllowedFeatures: access.allowedFeatures,
+    defaultFeatureAccess: defaultFeatures,
     isAdmin: false,
     source,
   }, { headers: NO_STORE_HEADERS });
@@ -159,6 +173,16 @@ export async function POST(req: NextRequest) {
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid configuration payload" }, { status: 400 }); }
   const supabaseConfig = body as Record<string, unknown>;
+  if (Array.isArray(supabaseConfig.defaultFeatureAccess)) {
+    supabaseConfig.defaultFeatureAccess = normalizeFeatures(supabaseConfig.defaultFeatureAccess, ALL_FEATURES);
+  }
+  if (Array.isArray(supabaseConfig.pagePermissions)) {
+    const featureFallback = normalizeFeatures(supabaseConfig.defaultFeatureAccess, ALL_FEATURES);
+    supabaseConfig.pagePermissions = (supabaseConfig.pagePermissions as Array<Record<string, unknown>>).map((rule) => ({
+      ...rule,
+      allowedFeatures: normalizeFeatures(rule.allowedFeatures, featureFallback),
+    }));
+  }
   supabaseConfig.aiPolicy = normalizeAiPolicy(supabaseConfig.aiPolicy);
   let existing: any;
   try { existing = await loadAdminConfig(); } catch (error) {

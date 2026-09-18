@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { answerAskEcho } from "@/lib/ask-echo/service";
 import { AdminConfigError, isAskEchoEnabled } from "@/lib/admin-config/store";
+import { requireFeature } from "@/lib/access-control-server";
 
 export async function POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   const user = getUserFromRequest(req);
   if (!token || !user?.email) return NextResponse.json({ error: "Please sign in before using Ask Echo." }, { status: 401 });
   try {
+    const denied = await requireFeature(req, "ask-echo");
+    if (denied) return denied;
     if (!(await isAskEchoEnabled())) {
       return NextResponse.json({ error: "Ask Echo is currently disabled by an administrator.", code: "FEATURE_DISABLED" }, { status: 403 });
     }

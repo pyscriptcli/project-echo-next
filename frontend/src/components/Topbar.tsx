@@ -36,6 +36,8 @@ interface TopbarProps {
   allowedPages?: Array<"dashboard" | "meetings" | "tasks" | "notebook" | "market-insights" | "demands" | "minutes" | "forms">;
   isAdmin?: boolean;
   askEchoEnabled?: boolean;
+  allowedFeatures?: string[];
+  canRecord?: boolean;
   studioRecording?: {
     active?: boolean;
     isMinimized: boolean;
@@ -58,6 +60,8 @@ export function Topbar({
   allowedPages,
   isAdmin,
   askEchoEnabled = false,
+  allowedFeatures,
+  canRecord = true,
   studioRecording,
 }: TopbarProps) {
   const formatMeetingClock = (seconds: number) => {
@@ -373,7 +377,7 @@ export function Topbar({
       <div className="flex items-center gap-2.5 shrink-0">
         
         {/* New Meeting Integrated Control Group */}
-        {(isAdmin || !allowedPages || allowedPages.includes("meetings") || allowedPages.includes("minutes")) && (
+        {canRecord && (isAdmin || !allowedPages || allowedPages.includes("meetings") || allowedPages.includes("minutes")) && (
         <div className="inline-flex items-center rounded-none border border-[#C9AB4C] bg-transparent shadow-2xs overflow-hidden">
           {/* Main "New Meeting" Transparent Button with Gold Border */}
           <button
@@ -391,7 +395,7 @@ export function Topbar({
         )}
 
         {/* Ask Echo Trigger Button (#1b1d1e deep charcoal) */}
-        {askEchoEnabled && (!allowedPages || allowedPages.includes("minutes")) && (
+        {askEchoEnabled && (!allowedFeatures || allowedFeatures.includes("ask-echo")) && (!allowedPages || allowedPages.includes("minutes")) && (
           <button
             type="button"
             onClick={onOpenUniversalEcho}

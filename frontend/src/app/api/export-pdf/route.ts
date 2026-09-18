@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { requireFeature } from "@/lib/access-control-server";
 
 function cleanField(val: any): string {
   if (!val) return "";
@@ -20,6 +21,8 @@ function cleanField(val: any): string {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireFeature(req, "meetings-export");
+  if (denied) return denied;
   try {
     const { meeting_details, items, other_discussions } = await req.json();
 

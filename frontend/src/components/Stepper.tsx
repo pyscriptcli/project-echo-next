@@ -13,6 +13,7 @@ interface StepperProps {
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
   onSaveExport?: () => void;
+  canUpload?: boolean;
 }
 
 export function Stepper({ 
@@ -23,6 +24,7 @@ export function Stepper({
   onToggleFullscreen,
   isFullscreen = false,
   onSaveExport,
+  canUpload = true,
 }: StepperProps) {
   const stages: { name: Stage; label: string; allowed: boolean }[] = [
     { name: "Input", label: "Meeting Workspace", allowed: true },
@@ -61,7 +63,7 @@ export function Stepper({
       })}
       </div>
       <div className="flex shrink-0 items-center gap-2 pl-3 py-1.5">
-        {onUpload && (
+        {onUpload && canUpload && (
           <button
             type="button"
             onClick={onUpload}

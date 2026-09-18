@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
+import { requireFeature } from "@/lib/access-control-server";
 import { createCanvas } from "@napi-rs/canvas";
 
 export const maxDuration = 60;
@@ -21,6 +22,8 @@ async function toVisionImages(buffer: Buffer, mimeType: string) {
 
 export async function POST(req: NextRequest) {
   if (!getTokenFromRequest(req)) return NextResponse.json({ success: false, message: "ClickUp authentication required" }, { status: 401 });
+  const denied = await requireFeature(req, "forms-rfp-autofill");
+  if (denied) return denied;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

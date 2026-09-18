@@ -140,7 +140,9 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
   const taskIdParam = searchParams.get("taskId");
   const prefillParam = searchParams.get("prefill");
   const [rfpAutofillEnabled, setRfpAutofillEnabled] = useState(true);
-  useEffect(() => { fetch("/api/forms/config").then((res) => res.ok ? res.json() : null).then((data) => setRfpAutofillEnabled(data?.config?.formFeatures?.rfpAutofill !== false)).catch(() => {}); }, []);
+  const [pdfPreviewEnabled, setPdfPreviewEnabled] = useState(true);
+  const [formsSubmitEnabled, setFormsSubmitEnabled] = useState(true);
+  useEffect(() => { fetch("/api/forms/config", { cache: "no-store" }).then((res) => res.ok ? res.json() : null).then((data) => { const features = data?.allowedFeatures || []; setRfpAutofillEnabled(features.includes("forms-rfp-autofill") && data?.config?.formFeatures?.rfpAutofill !== false); setPdfPreviewEnabled(features.includes("forms-pdf-preview") && data?.config?.formFeatures?.pdfPreview !== false); setFormsSubmitEnabled(features.includes("forms-submit")); }).catch(() => { setRfpAutofillEnabled(false); setPdfPreviewEnabled(false); setFormsSubmitEnabled(false); }); }, []);
   const tourParam = searchParams.get("tour");
 
   const [formData, setFormData] = useState<RfpFormData>(getInitialFormData);
@@ -758,6 +760,8 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
             setMissingFieldsList([]);
             setErrorMessage(null);
           }}
+          canPreviewPdf={pdfPreviewEnabled}
+          canSubmit={formsSubmitEnabled}
         />
 
         {/* Error banner */}
@@ -770,7 +774,7 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
 
         {/* AI Supplier Quotation Scanner (Dedicated for RFP) */}
         <div id="quotation-dropzone-section">
-          {selectedForm === "rfp" && <QuotationDropzone onDataExtracted={handleDataExtracted} />}
+          {selectedForm === "rfp" && rfpAutofillEnabled && <QuotationDropzone onDataExtracted={handleDataExtracted} />}
         </div>
 
         {/* Extraction Review & Undo Banner */}

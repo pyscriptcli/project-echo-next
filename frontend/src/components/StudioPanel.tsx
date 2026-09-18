@@ -47,6 +47,7 @@ interface StudioPanelProps {
   onRecordingStart?: (startTime: string) => void;
   onRecordingStop?: (endTime: string) => void;
   askEchoEnabled?: boolean;
+  allowedFeatures?: string[];
 }
 
 interface EchoMessage {
@@ -106,6 +107,7 @@ export function StudioPanel({
   onRecordingStart,
   onRecordingStop,
   askEchoEnabled = true,
+  allowedFeatures,
 }: StudioPanelProps) {
   const recorder = useStudioRecorder();
   const liveTranscript = useLiveTranscription(recorder.audioStream);
@@ -122,7 +124,9 @@ export function StudioPanel({
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo" | "transcript">("echo");
-  React.useEffect(() => { if (!askEchoEnabled && workspaceTab === "echo") setWorkspaceTab("transcript"); }, [askEchoEnabled, workspaceTab]);
+  const canAskEcho = askEchoEnabled && (!allowedFeatures || allowedFeatures.includes("ask-echo"));
+  const canRecord = !allowedFeatures || allowedFeatures.includes("notetaker-record");
+  React.useEffect(() => { if (!canAskEcho && workspaceTab === "echo") setWorkspaceTab("transcript"); }, [canAskEcho, workspaceTab]);
   const [echoInput, setEchoInput] = useState("");
   const [echoMessages, setEchoMessages] = useState<EchoMessage[]>(() => {
     try {
@@ -426,7 +430,7 @@ export function StudioPanel({
             {/* Recording Control Button */}
             <div className="flex flex-col items-center gap-3">
               {recorder.status === "idle" && captureMode === "device" && (
-                <div className="flex flex-col items-center gap-2"><button type="button" onClick={() => void recorder.start()} className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm"><Mic size={40} /></button><span className="text-xs font-semibold text-[#003366]">Start meeting</span></div>
+                <div className="flex flex-col items-center gap-2"><button type="button" disabled={!canRecord} onClick={() => void recorder.start()} className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-40"><Mic size={40} /></button><span className="text-xs font-semibold text-[#003366]">{canRecord ? "Start meeting" : "Recording disabled"}</span></div>
               )}
 
               {recorder.status === "recording" && (
@@ -731,18 +735,18 @@ export function StudioPanel({
             <div className="px-5 pt-3.5 pb-3 shrink-0 bg-white border-b border-slate-200">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  {askEchoEnabled ? <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div> : <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Transcript</h3>}
+                  {canAskEcho ? <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div> : <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Transcript</h3>}
                   <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
                 </div>
-                {askEchoEnabled && !isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
+                {canAskEcho && !isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
                 </div>}
-                {isFullscreen && askEchoEnabled && <div className="flex gap-1" role="tablist" aria-label="Echo workspace"><button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Ask Echo</button><button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Transcript</button></div>}
+                {isFullscreen && canAskEcho && <div className="flex gap-1" role="tablist" aria-label="Echo workspace"><button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Ask Echo</button><button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Transcript</button></div>}
               </div>
             </div>
 
-            {isFullscreen && (!askEchoEnabled || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-5"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Echo is transcribing…" : liveTranscript.completedBatches > 0 ? `Echo is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Echo is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Echo processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
+            {isFullscreen && (!canAskEcho || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-5"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Echo is transcribing…" : liveTranscript.completedBatches > 0 ? `Echo is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Echo is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Echo processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
                 {notes.length === 0 && (
                   <div className="mx-auto mt-6 max-w-xs text-center">

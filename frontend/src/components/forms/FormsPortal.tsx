@@ -25,6 +25,7 @@ import FormsApprovalsView from "./FormsApprovalsView";
 import { isFormsOwner } from "@/lib/forms/owner";
 import { APPROVED_MODELS, DEFAULT_AI_POLICY, type AiPolicy } from "@/lib/ask-echo/limits";
 import { REPOSITORY_FORMS, REPOSITORY_FORM_MAPPINGS } from "./forms.config";
+import { ALL_FEATURES, FEATURE_CATALOG, type FeatureId } from "@/lib/access-control";
 
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
@@ -81,6 +82,7 @@ export interface UserPagePermission {
   email: string;
   name?: string;
   allowedPages: AppPage[];
+  allowedFeatures?: FeatureId[];
 }
 
 export type EmailEvent = "submitted" | "approved" | "revision_requested" | "completed";
@@ -101,6 +103,7 @@ export interface FormsConfig {
   mappings: FormMapping[];
   pagePermissions?: UserPagePermission[];
   defaultPageAccess?: AppPage[];
+  defaultFeatureAccess?: FeatureId[];
   sidebarOrder?: AppPage[];
   emailTemplates?: FormEmailTemplate[];
   allowedSignInDomains: string[];
@@ -116,6 +119,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   mappings: REPOSITORY_FORM_MAPPINGS,
   pagePermissions: [],
   defaultPageAccess: ["forms"],
+  defaultFeatureAccess: ALL_FEATURES,
   sidebarOrder: APP_PAGE_LIST.map((page) => page.id),
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
@@ -159,6 +163,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [newPageSelectedPages, setNewPageSelectedPages] = useState<AppPage[]>([
     "forms",
   ]);
+  const [newPageSelectedFeatures, setNewPageSelectedFeatures] = useState<FeatureId[]>(ALL_FEATURES);
 
   const isOwner = isFormsOwner({ email: userEmail, username });
 
@@ -173,6 +178,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             members: data.config.members || [],
             pagePermissions: data.config.pagePermissions || [],
             defaultPageAccess: data.config.defaultPageAccess || ["forms"],
+            defaultFeatureAccess: data.config.defaultFeatureAccess || ALL_FEATURES,
             emailTemplates: data.config.emailTemplates || [],
             sidebarOrder: data.config.sidebarOrder || DEFAULT_CONFIG.sidebarOrder,
           });
@@ -337,12 +343,32 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         email,
         name: newPageUserName.trim() || email,
         allowedPages: newPageSelectedPages.length > 0 ? newPageSelectedPages : ["forms" as AppPage],
+        allowedFeatures: newPageSelectedFeatures,
       },
     ];
     save({ ...config, pagePermissions: updatedRules });
     setNewPageUserEmail("");
     setNewPageUserName("");
     setNewPageSelectedPages(["forms"]);
+    setNewPageSelectedFeatures(config.defaultFeatureAccess || ALL_FEATURES);
+  };
+
+  const toggleFeatureForUser = (userEmailToToggle: string, feature: FeatureId) => {
+    const norm = normalizeEmail(userEmailToToggle);
+    const updatedRules = (config.pagePermissions || []).map((rule) => {
+      if (normalizeEmail(rule.email) !== norm) return rule;
+      const current = rule.allowedFeatures || config.defaultFeatureAccess || ALL_FEATURES;
+      const next = current.includes(feature) ? current.filter((item) => item !== feature) : [...current, feature];
+      return { ...rule, allowedFeatures: next };
+    });
+    save({ ...config, pagePermissions: updatedRules });
+  };
+
+  const toggleDefaultFeature = (feature: FeatureId) => {
+    const current = config.defaultFeatureAccess || ALL_FEATURES;
+    const next = current.includes(feature) ? current.filter((item) => item !== feature) : [...current, feature];
+    if (!next.length) return;
+    save({ ...config, defaultFeatureAccess: next });
   };
 
   const togglePageForUser = (userEmailToToggle: string, page: AppPage) => {
@@ -707,6 +733,18 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           </div>
         </div>
 
+        <div className="mt-3 border border-slate-200 bg-[#FFFCFB] p-4">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#003366]">Default Feature Access</div>
+          <p className="mt-1 text-xs text-slate-500">Feature access applies after page access and global feature toggles.</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {ALL_FEATURES.map((feature) => {
+              const enabled = (config.defaultFeatureAccess || ALL_FEATURES).includes(feature);
+              return <button key={feature} type="button" aria-pressed={enabled} onClick={() => toggleDefaultFeature(feature)} className={`border px-2.5 py-1 text-[11px] ${enabled ? "border-[#003366] bg-[#003366] font-semibold text-white" : "border-slate-300 text-slate-500"}`}>{FEATURE_CATALOG[feature].label}</button>;
+            })}
+            <span className="self-center text-[11px] italic text-slate-500">{(config.defaultFeatureAccess || ALL_FEATURES).length} of {ALL_FEATURES.length} enabled by default</span>
+          </div>
+        </div>
+
         {/* Add / Restrict User Page Access Form */}
         <div className="mt-4 bg-[#FFFCFB] border border-slate-200 p-4">
           <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
@@ -793,6 +831,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                     </button>
                   );
                 })}
+                <div className="basis-full pt-2 text-[11px] font-semibold text-slate-600">Allowed Features:</div>
+                {ALL_FEATURES.map((feature) => {
+                  const enabled = newPageSelectedFeatures.includes(feature);
+                  const page = FEATURE_CATALOG[feature].requiredPage;
+                  const unavailable = Boolean(page && !newPageSelectedPages.includes(page));
+                  return <button key={feature} type="button" disabled={unavailable} aria-pressed={enabled && !unavailable} title={unavailable ? `Requires ${page}` : undefined} onClick={() => setNewPageSelectedFeatures(enabled ? newPageSelectedFeatures.filter((item) => item !== feature) : [...newPageSelectedFeatures, feature])} className={`text-[11px] px-2 py-1 border ${unavailable ? "cursor-not-allowed border-slate-200 text-slate-300" : enabled ? "border-[#C9AB4C] bg-[#C9AB4C]/20 text-[#003366]" : "border-slate-300 text-slate-600"}`}>{FEATURE_CATALOG[feature].label}</button>;
+                })}
                 <button
                   type="button"
                   onClick={addPagePermission}
@@ -849,6 +894,13 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
                         {page.label}
                       </button>
                     );
+                  })}
+                  <span className="basis-full pt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Features</span>
+                  {ALL_FEATURES.map((feature) => {
+                    const isAllowed = (rule.allowedFeatures || config.defaultFeatureAccess || ALL_FEATURES).includes(feature);
+                    const requiredPage = FEATURE_CATALOG[feature].requiredPage;
+                    const unavailable = Boolean(requiredPage && !rule.allowedPages.includes(requiredPage));
+                    return <button key={feature} type="button" disabled={unavailable} aria-pressed={isAllowed && !unavailable} onClick={() => toggleFeatureForUser(rule.email, feature)} title={unavailable ? `Requires ${requiredPage}` : `Click to ${isAllowed ? "restrict" : "grant"} ${FEATURE_CATALOG[feature].label}`} className={`text-[10px] px-2 py-1 border ${unavailable ? "cursor-not-allowed border-slate-100 text-slate-300" : isAllowed ? "border-[#C9AB4C] bg-[#C9AB4C]/20 text-[#003366] font-semibold" : "border-slate-200 text-slate-400 line-through"}`}>{FEATURE_CATALOG[feature].label}</button>;
                   })}
                 </div>
 

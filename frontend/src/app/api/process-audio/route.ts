@@ -7,6 +7,7 @@ import os from "os";
 import mammoth from "mammoth";
 import { getUserFromRequest } from "@/lib/auth";
 import { recordTelemetry } from "@/lib/telemetry";
+import { requireFeature } from "@/lib/access-control-server";
 
 async function extractMetadataWithAI(text: string, apiKey: string) {
   if (!apiKey) return {};
@@ -324,6 +325,8 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const directText = formData.get("text") as string | null;
     const action = formData.get("action") as string | null;
+    const denied = await requireFeature(req, action === "transcribe_chunk" ? "notetaker-record" : "notetaker-upload");
+    if (denied) return denied;
 
     // CASE 0: Parallel Audio Chunk Transcription (bypasses metadata extraction for intermediate segments)
     if (action === "transcribe_chunk" && file) {

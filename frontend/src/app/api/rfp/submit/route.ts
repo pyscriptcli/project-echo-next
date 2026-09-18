@@ -10,11 +10,14 @@ import { getTokenFromRequest } from "@/lib/auth";
 import { getUserFromRequest } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import { createFormRequestId } from "@/lib/forms/requestId";
+import { requireFeature } from "@/lib/access-control-server";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const denied = await requireFeature(req, "forms-submit");
+    if (denied) return denied;
     const token = getTokenFromRequest(req);
     if (!token) return NextResponse.json({ success: false, message: "ClickUp authentication required" }, { status: 401 });
     const formData = await req.formData();

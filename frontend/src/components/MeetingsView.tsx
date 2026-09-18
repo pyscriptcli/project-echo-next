@@ -149,6 +149,7 @@ interface MeetingsViewProps {
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
   onSelectMeetingSpace?: (spaceId: string) => void;
+  canExport?: boolean;
 }
 
 export function MeetingsView({
@@ -159,7 +160,8 @@ export function MeetingsView({
   onDeleteMeeting,
   onNewMinutes,
   onNavigateToTasks,
-  onSelectMeetingSpace
+  onSelectMeetingSpace,
+  canExport = true
 }: MeetingsViewProps) {
   // Search & Filter state
   const [searchFilter, setSearchFilter] = useState("");
@@ -565,7 +567,7 @@ export function MeetingsView({
 
                   {/* Controls */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                    {canExport && <button
                       type="button"
                       onClick={handleExportWord}
                       disabled={isExporting}
@@ -573,9 +575,9 @@ export function MeetingsView({
                     >
                       <FileText size={13} className="text-[#C9AB4C]" />
                       <span>Word (.docx)</span>
-                    </button>
+                    </button>}
 
-                    <button
+                    {canExport && <button
                       type="button"
                       onClick={handleExportPdf}
                       disabled={isExporting}
@@ -583,7 +585,7 @@ export function MeetingsView({
                     >
                       <Download size={13} className="text-[#C9AB4C]" />
                       <span>PDF (.pdf)</span>
-                    </button>
+                    </button>}
 
                     <button
                       type="button"

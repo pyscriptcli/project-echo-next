@@ -47,6 +47,7 @@ interface FinalizeMeetingModalProps {
   isProcessing: boolean;
   processingText: string;
   initialAction?: "export" | "archive" | "all";
+  canExport?: boolean;
 }
 
 export function FinalizeMeetingModal({
@@ -67,7 +68,8 @@ export function FinalizeMeetingModal({
   onSelectSpaceId,
   isProcessing,
   processingText,
-  initialAction = "all"
+  initialAction = "all",
+  canExport = true
 }: FinalizeMeetingModalProps) {
   const [newPrimeName, setNewPrimeName] = useState("");
   const [newExternalName, setNewExternalName] = useState("");
@@ -156,7 +158,7 @@ export function FinalizeMeetingModal({
               Verify meeting details to ensure accurate document headers and ClickUp records.
             </p>
           </div>
-          <button
+          {canExport && <button
             type="button"
             onClick={onClose}
             disabled={isProcessing}
@@ -164,7 +166,7 @@ export function FinalizeMeetingModal({
             className="p-1 text-slate-400 hover:text-[#003366] transition-colors rounded-none disabled:opacity-40"
           >
             <X size={18} />
-          </button>
+          </button>}
         </div>
 
         {/* Scrollable Form Body */}
@@ -528,14 +530,14 @@ export function FinalizeMeetingModal({
           <span className="text-[10px] text-slate-400">
             PRIME Philippines • Minutes of the Meeting Engine
           </span>
-          <button
+          {canExport && <button
             type="button"
             onClick={onClose}
             disabled={isProcessing}
             className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
           >
             Close
-          </button>
+          </button>}
         </div>
       </div>
     </div>

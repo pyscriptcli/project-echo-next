@@ -404,6 +404,7 @@ export default function Home() {
   ]);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [askEchoEnabled, setAskEchoEnabled] = useState(false);
+  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
@@ -419,6 +420,7 @@ export default function Home() {
           if (!data) return;
           setIsAdminUser(Boolean(data.isAdmin));
           setAskEchoEnabled(data.config?.features?.askEchoEnabled === true);
+          setAllowedFeatures(Array.isArray(data.allowedFeatures) ? data.allowedFeatures : []);
           if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
             setAllowedPages(data.allowedPages);
             const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
@@ -980,6 +982,7 @@ export default function Home() {
         isProcessing={isLoading}
         processingText={loadingText}
         initialAction={finalizeAction}
+        canExport={allowedFeatures.includes("meetings-export")}
       />
 
 
@@ -1042,6 +1045,8 @@ export default function Home() {
           allowedPages={allowedPages as any}
           isAdmin={isAdminUser}
           askEchoEnabled={askEchoEnabled}
+          allowedFeatures={allowedFeatures}
+          canRecord={allowedFeatures.includes("notetaker-record")}
           studioRecording={{
             active: studioRecordingState.active,
             isMinimized: isStudioOpen && studioMode === "minimized" && studioRecordingState.active,
@@ -1149,6 +1154,7 @@ export default function Home() {
                     alert(error.message || "Unable to load meetings for the selected space.");
                   }
                 }}
+                canExport={allowedFeatures.includes("meetings-export")}
                 onNavigateToTasks={(taskId) => {
                   setFocusedTaskId(taskId);
                   setCurrentView("tasks");
@@ -1209,6 +1215,7 @@ export default function Home() {
                   onStageChange={setStage} 
                   isReviewAllowed={isReviewAllowed} 
                   onUpload={() => setSourceTab(sourceTab === "record" ? "source" : "record")} 
+                  canUpload={allowedFeatures.includes("notetaker-upload")}
                   onToggleFullscreen={() => void toggleNotetakerFullscreen()} 
                   isFullscreen={isNotetakerFullscreen}
                   onSaveExport={() => openFinalizeModal("all")}
@@ -1358,6 +1365,7 @@ export default function Home() {
                     isOpen
                     embedded
                     askEchoEnabled={askEchoEnabled}
+                    allowedFeatures={allowedFeatures}
                     mode="fullscreen"
                     onRecordingStart={handleRecordingStart}
                     onRecordingStop={handleRecordingStop}
@@ -2154,7 +2162,7 @@ export default function Home() {
       />
 
       {/* Universal Slide-Over AI Assistant Drawer */}
-      {askEchoEnabled && <UniversalEchoDrawer
+      {askEchoEnabled && allowedFeatures.includes("ask-echo") && <UniversalEchoDrawer
         isOpen={isUniversalEchoOpen}
         onClose={() => setIsUniversalEchoOpen(false)}
         meetings={archivedMeetings}
