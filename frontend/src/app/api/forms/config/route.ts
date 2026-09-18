@@ -3,6 +3,7 @@ import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
 import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
+import { resolveAllowedPages } from "@/lib/ask-echo/access";
 
 export const dynamic = "force-dynamic";
 
@@ -71,11 +72,11 @@ export async function GET(req: NextRequest) {
   }
   const source = "supabase";
 
-  const configuredDefaultPages =
-    Array.isArray(config.defaultPageAccess) && config.defaultPageAccess.length > 0
-      ? config.defaultPageAccess
-      : ["forms"];
-  const defaultPages = Array.from(new Set([...configuredDefaultPages, "market-insights"]));
+  const configuredDefaultPages: string[] = Array.isArray(config.defaultPageAccess)
+    ? (config.defaultPageAccess as unknown[]).filter((page: unknown): page is string => typeof page === "string")
+    : [];
+  if (configuredDefaultPages.length === 0) configuredDefaultPages.push("forms");
+  const defaultPages = Array.from(new Set(configuredDefaultPages));
 
   // If user is not authenticated or not logged in yet, return public default page access policy
   if ((!token || !userEmail) && !testAdmin) {
@@ -99,19 +100,11 @@ export async function GET(req: NextRequest) {
 
   // Compute allowed pages for current user
   let allowedPages = defaultPages;
-  const isOwner = testAdmin || userEmail === OWNER_EMAIL;
-  const userRule = (config.pagePermissions || []).find(
-    (p: any) => String(p.email).toLowerCase().trim() === userEmail
-  );
-  if (isOwner) {
-    allowedPages = ALL_APP_PAGES;
-  } else if (userRule && Array.isArray(userRule.allowedPages) && userRule.allowedPages.length > 0) {
-    allowedPages = userRule.allowedPages;
-  } else if (isAdmin) {
-    allowedPages = ALL_APP_PAGES;
-  }
-  // The shared market brief is intentionally available to every Echo user.
-  allowedPages = Array.from(new Set([...allowedPages, "market-insights", "demands"]));
+  allowedPages = resolveAllowedPages(userEmail, {
+    defaultPageAccess: defaultPages,
+    pagePermissions: Array.isArray(config.pagePermissions) ? config.pagePermissions as Array<{ email: string; allowedPages: string[] }> : [],
+    admins: Array.isArray(config.admins) ? config.admins as Array<{ email: string; active?: boolean }> : [],
+  });
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {

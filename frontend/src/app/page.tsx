@@ -398,16 +398,7 @@ export default function Home() {
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
   // Page Access Governance state
-  const [allowedPages, setAllowedPages] = useState<NavView[]>([
-    "dashboard",
-    "tasks",
-    "notebook",
-    "market-insights",
-    "demands",
-    "meetings",
-    "minutes",
-    "forms",
-  ]);
+  const [allowedPages, setAllowedPages] = useState<NavView[]>([]);
   const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
     "dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms",
   ]);
@@ -431,15 +422,11 @@ export default function Home() {
           if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
             setAllowedPages(data.allowedPages);
             const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
-            if (!data.isAdmin && !isOwner) {
-              setCurrentView((prev) => {
-                if (prev === "forms-admin") return data.allowedPages[0] || "forms";
-                if (!data.allowedPages.includes(prev)) {
-                  return data.allowedPages[0] || "forms";
-                }
-                return prev;
-              });
-            }
+            setCurrentView((prev) => {
+              if (prev === "forms-admin") return prev;
+              if (!data.allowedPages.includes(prev)) return data.allowedPages[0] || "forms";
+              return prev;
+            });
           }
           if (Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0) {
             setSidebarOrder(data.config.sidebarOrder as NavView[]);
@@ -454,7 +441,6 @@ export default function Home() {
   }, [authUser]);
 
   const isPageAllowed = (view: NavView) => {
-    if (authUser?.email?.toLowerCase() === "admin@primephilippines.com") return true;
     if (view === "forms-admin") return false;
     return allowedPages.includes(view);
   };

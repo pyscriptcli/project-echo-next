@@ -127,11 +127,7 @@ export function Sidebar({
   const navItems = allNavItems.slice().sort((a, b) => {
     const fallback = allNavItems.length;
     return (orderIndex.get(a.id) ?? fallback) - (orderIndex.get(b.id) ?? fallback);
-  }).filter((item) => {
-    if (isProjectAdmin) return true;
-    if (!allowedPages || allowedPages.length === 0) return true;
-    return allowedPages.includes(item.id);
-  });
+  }).filter((item) => Boolean(allowedPages?.includes(item.id)));
 
   return (
     <div
