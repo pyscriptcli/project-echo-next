@@ -124,12 +124,10 @@ export function StudioPanel({
   const [botStatus, setBotStatus] = useState("");
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
-  const [showMeetingDetails, setShowMeetingDetails] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo" | "transcript">("echo");
   const canAskEcho = askEchoEnabled && (!allowedFeatures || allowedFeatures.includes("ask-echo"));
   const canRecord = !allowedFeatures || allowedFeatures.includes("notetaker-record");
   React.useEffect(() => { if (!canAskEcho && workspaceTab === "echo") setWorkspaceTab("transcript"); }, [canAskEcho, workspaceTab]);
-  React.useEffect(() => { if (recorder.status === "idle") setShowMeetingDetails(false); }, [recorder.status]);
   const [echoInput, setEchoInput] = useState("");
   const [echoMessages, setEchoMessages] = useState<EchoMessage[]>(() => {
     try {
@@ -384,7 +382,7 @@ export function StudioPanel({
               <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
             </div>
             {recorder.status === "idle" && (
-              <div className="hidden border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
+              <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
                 <strong className="text-[#003366]">Recording mode</strong>
                 <p className="text-xs mt-1">Choose how Echo should capture the conversation.</p>
                 <div className="grid grid-cols-2 gap-2 mt-2.5">
@@ -403,17 +401,17 @@ export function StudioPanel({
                   <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-4 !text-xs rounded-md">{isSendingBot ? "Starting…" : "Start meeting"}</button>
                 </div>
                 {botStatus && <p className="text-[11px] text-[#003366] mt-2" role="status">{botStatus}</p>}
-                <button type="button" onClick={() => setCaptureMode("device")} className="mt-2 text-[11px] font-semibold text-[#003366] underline decoration-[#C9AB4C] underline-offset-2">Record on this device instead</button>
               </div>
             )}
 
             {/* Mic Selector */}
             {recorder.status === "idle" && captureMode === "device" && (
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-                <label className="sr-only" htmlFor="studio-microphone">Microphone</label>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                  Microphone
+                </label>
                 <div className="relative">
                   <select
-                    id="studio-microphone"
                     value={recorder.selectedDeviceId || ""}
                     onChange={(e) => recorder.selectDevice(e.target.value)}
                     className="w-full border border-slate-200 bg-white text-sm text-[#181D1E] px-3 py-2.5 pr-8 appearance-none rounded-md focus:outline-none focus:border-[#C9A84C]"
@@ -427,13 +425,11 @@ export function StudioPanel({
                   </select>
                   <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
-                <button type="button" disabled={!canRecord} onClick={() => void recorder.start()} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 bg-[#003366] px-3 py-2 text-xs font-semibold text-white hover:bg-[#00264d] disabled:cursor-not-allowed disabled:opacity-40"><Mic size={14} />Start meeting</button>
-                <button type="button" onClick={() => setCaptureMode("meeting_link")} className="hidden text-[11px] font-semibold text-[#003366] underline decoration-[#C9AB4C] underline-offset-2 2xl:inline">Use meeting link</button>
               </div>
             )}
 
             {/* Recording Control Button */}
-            <div className="hidden flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3">
               {recorder.status === "idle" && captureMode === "device" && (
                 <div className="flex flex-col items-center gap-2"><button type="button" disabled={!canRecord} onClick={() => void recorder.start()} className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-40"><Mic size={40} /></button><span className="text-xs font-semibold text-[#003366]">{canRecord ? "Start meeting" : "Recording disabled"}</span></div>
               )}
@@ -516,14 +512,14 @@ export function StudioPanel({
               )}
             </div>
 
-            {(isRecordingActive || isStopped) && <div className="space-y-2 border border-slate-200 border-l-2 border-l-[#C9A84C] bg-white px-3 py-2.5 shadow-sm rounded-sm">
+            {(isRecordingActive || isStopped) && <div className="space-y-3 border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white px-5 py-4 shadow-sm rounded-sm">
             {/* Timer */}
             {isRecordingActive && (
-              <div className="flex items-center justify-between gap-3">
-                <span className={`text-base font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
+              <div className="text-center">
+                <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
                   {formatTime(recorder.elapsedSeconds)}
                 </span>
-                <p className={`text-[11px] font-semibold tracking-wide ${recorder.status === "paused" ? "text-amber-600" : "text-red-500"}`}>
+                <p className={`text-[11px] font-semibold tracking-wide mt-1 ${recorder.status === "paused" ? "text-amber-600" : "text-red-500"}`}>
                   {recorder.status === "paused" ? "Paused" : "Recording"}
                 </p>
               </div>
@@ -546,13 +542,12 @@ export function StudioPanel({
             )}
             </div>}
 
-            {(isRecordingActive || isStopped) && <button type="button" onClick={() => setShowMeetingDetails((current) => !current)} className="self-start text-[11px] font-semibold text-[#003366] underline decoration-[#C9AB4C] underline-offset-2">{showMeetingDetails ? "Hide meeting details" : "Show meeting details"}</button>}
-            {showMeetingDetails && (isRecordingActive || isStopped) && meetingDetails}
+            {meetingDetails}
 
             {/* Status text for idle */}
             {recorder.status === "idle" && (
               <p className="text-xs text-gray-500 text-center">
-                Start meeting to share the tab audio and begin recording.
+                Click the mic to start. Echo will check that meeting audio is included before recording.
               </p>
             )}
 
