@@ -561,10 +561,9 @@ export function StudioPanel({
             {recorder.captureIssue && (
               <div role="alert" className="border border-amber-300 border-l-4 border-l-[#C9A84C] bg-amber-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
-                <p className="mt-1 text-xs leading-relaxed">Choose again and turn on the audio option in the browser window. Recording has not started.</p>
+                <p className="mt-1 text-xs leading-relaxed">Select the meeting tab and enable “Share tab audio” in the browser window. Recording has not started.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Choose again</button>
-                  <button type="button" onClick={() => void recorder.start({ microphoneOnly: true })} className="border border-[#003366]/30 bg-white px-3 py-2 text-xs font-semibold text-[#003366]">Use microphone only</button>
+                  <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Share tab audio</button>
                 </div>
               </div>
             )}

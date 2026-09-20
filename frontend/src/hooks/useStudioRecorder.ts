@@ -37,7 +37,7 @@ export interface UseStudioRecorderReturn {
   selectDevice: (deviceId: string) => void;
 
   /** Start a new recording session. */
-  start: (options?: { microphoneOnly?: boolean }) => Promise<void>;
+  start: () => Promise<void>;
   /** Pause the active recording. */
   pause: () => void;
   /** Resume a paused recording. */
@@ -139,7 +139,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
   }, []);
 
   // ── Start Recording ────────────────────────────────────────────────────
-  const start = useCallback(async (options?: { microphoneOnly?: boolean }) => {
+  const start = useCallback(async () => {
     setError(null);
     setCaptureIssue(null);
     setRecordedFile(null);
@@ -162,12 +162,12 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
       let finalStream: MediaStream;
       let micDeviceLabel = "Default";
 
-      if (sourceMode === "online_meeting" && !options?.microphoneOnly && !navigator.mediaDevices.getDisplayMedia) {
+      if (sourceMode === "online_meeting" && !navigator.mediaDevices.getDisplayMedia) {
         setCaptureIssue("missing_shared_audio");
         return;
       }
 
-      if (sourceMode === "online_meeting" && !options?.microphoneOnly && navigator.mediaDevices.getDisplayMedia) {
+      if (sourceMode === "online_meeting" && navigator.mediaDevices.getDisplayMedia) {
         // Browsers own this picker. We can suggest a monitor and request audio,
         // but the user must make the final selection and enable audio.
         let displayStream: MediaStream | null = null;
