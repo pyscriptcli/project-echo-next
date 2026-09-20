@@ -689,7 +689,7 @@ export function StudioPanel({
                     <span className="font-mono text-[#003366] font-semibold">
                       {(recorder.status === "recording" || recorder.status === "paused")
                         ? `[${formatTime(recorder.elapsedSeconds)}]`
-                        : "[00:00]"}
+                        : "[00:00:00]"}
                     </span>
                     <span>Enter to add • Shift+Enter for newline</span>
                   </div>
@@ -702,9 +702,9 @@ export function StudioPanel({
                         addNote();
                       }
                     }}
-                    rows={2}
+                    rows={5}
                     placeholder="Write a decision, follow-up, or note…"
-                    className="w-full resize-none bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400"
+                    className="min-h-32 w-full resize-y bg-transparent text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
                   />
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                     {noteInput.trim().length > 0 ? (
