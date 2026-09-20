@@ -632,7 +632,7 @@ export function MeetingsView({
                   {/* Title */}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-                      Meeting Title / Client
+                      Meeting Name
                     </label>
                     <input
                       type="text"

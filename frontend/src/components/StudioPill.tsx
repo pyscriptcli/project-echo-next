@@ -11,11 +11,12 @@ interface StudioPillProps {
   onRestore: () => void;
 }
 
-/** Formats seconds into MM:SS display. */
+/** Formats elapsed recording time as HH:MM:SS. */
 function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /**

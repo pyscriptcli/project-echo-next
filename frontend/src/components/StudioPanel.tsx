@@ -65,9 +65,10 @@ const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m Ec
 // ─────────────────────────────────────────────────────────────────────────────
 
 function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -579,7 +580,7 @@ export function StudioPanel({
                   {notes.map((note) => <div key={note.id} className="group flex items-start gap-3 border border-slate-200 bg-white px-3.5 py-3 shadow-sm"><span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1">{note.timestamp}</span><span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5">{note.text}</span><button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500" aria-label="Remove note"><X size={13} /></button></div>)}
                   <div ref={notesEndRef} />
                 </div>
-                {(isRecordingActive || isStopped) && <form onSubmit={(event) => { event.preventDefault(); addNote(); }} className="mt-3 flex items-center gap-2 border border-slate-300 bg-white p-1.5 focus-within:border-[#C9A84C]"><span className="text-[11px] font-mono text-[#003366] font-semibold border-r border-slate-200 px-2">[{formatTime(recorder.elapsedSeconds)}]</span><input value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder="Write a decision, follow-up, or thought…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-xs outline-none" /><button type="submit" disabled={!noteInput.trim()} className="h-8 w-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Add note"><Plus size={15} /></button></form>}
+                {(isRecordingActive || isStopped) && <form onSubmit={(event) => { event.preventDefault(); addNote(); }} className="mt-3 flex items-end gap-2 border border-slate-300 bg-white p-1.5 focus-within:border-[#C9A84C]"><span className="mb-1 text-[11px] font-mono text-[#003366] font-semibold border-r border-slate-200 px-2">[{formatTime(recorder.elapsedSeconds)}]</span><textarea rows={3} value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder="Write a decision, follow-up, or thought…" className="min-h-20 min-w-0 flex-1 resize-y bg-transparent px-1 py-2 text-xs outline-none" /><button type="submit" disabled={!noteInput.trim()} className="mb-1 h-8 w-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Add note"><Plus size={15} /></button></form>}
               </div>
             )}
           </div>
@@ -771,7 +772,7 @@ export function StudioPanel({
                       ? `[${formatTime(recorder.elapsedSeconds)}]`
                       : "[00:00]"}
                   </span>
-                  <input type="text" value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="flex-1 text-xs bg-transparent px-1 py-2 outline-none" />
+                  <textarea rows={3} value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Write a decision, follow-up, or thought…" className="min-h-20 flex-1 resize-y text-xs bg-transparent px-1 py-2 outline-none" />
                   <button type="submit" disabled={!noteInput.trim()} className="w-8 h-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" title="Add note"><Plus size={15} /></button>
                 </form>
               </div>

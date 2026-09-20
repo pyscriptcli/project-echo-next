@@ -524,7 +524,7 @@ export default function Home() {
   });
 
   // PRIME Team Attendees (Tag Chips)
-  const [primeAttendees, setPrimeAttendees] = useState<string[]>(["Dave Policarpio"]);
+  const [primeAttendees, setPrimeAttendees] = useState<string[]>([]);
   const [newPrimeAttendee, setNewPrimeAttendee] = useState("");
 
   // External Attendees (Tag Chips)
@@ -667,15 +667,8 @@ export default function Home() {
             ? res.metadata.location 
             : prev.location
         }));
-        if (res.metadata.attendees && Array.isArray(res.metadata.attendees)) {
-          // Add newly discovered attendees
-          const newExternals = res.metadata.attendees.filter(
-            (a: string) => !primeAttendees.includes(a) && !externalAttendees.includes(a)
-          );
-          if (newExternals.length > 0) {
-            setExternalAttendees((prev) => [...prev, ...newExternals]);
-          }
-        }
+        // Attendees are always entered manually by the user. Do not infer or
+        // auto-populate internal/external attendees from transcript metadata.
       }
 
       // Automatically synthesize minutes draft
@@ -1394,7 +1387,7 @@ export default function Home() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
                               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
-                                Meeting Title / Client <span className="text-red-600">*</span>
+                                Meeting Name <span className="text-red-600">*</span>
                               </label>
                               <input
                                 type="text"
@@ -1711,9 +1704,9 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Client / Project Name */}
+                {/* Meeting name */}
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Client / Project / Company Name</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Meeting Name</label>
                   <input 
                     type="text" 
                     placeholder="e.g. Acme Corp or Internal Project Echo" 

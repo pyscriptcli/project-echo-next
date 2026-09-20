@@ -43,12 +43,12 @@ export function StudioRecoveryBanner() {
     }
   };
 
-  /** Format elapsed seconds into human-readable duration. */
+  /** Format elapsed recording time as HH:MM:SS. */
   const formatDuration = (seconds: number): string => {
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor(seconds / 60) % 60;
+    const remainder = seconds % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
   };
 
   /** Format ISO date into short display. */

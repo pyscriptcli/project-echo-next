@@ -304,7 +304,7 @@ export function FinalizeMeetingModal({
             {/* Title / Client Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Meeting Title / Client Name <span className="text-red-600">*</span>
+                Meeting Name <span className="text-red-600">*</span>
               </label>
               <input
                 ref={titleInputRef}
