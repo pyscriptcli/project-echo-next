@@ -151,6 +151,7 @@ interface MeetingsViewProps {
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
   onSelectMeetingSpace?: (spaceId: string) => void;
+  userEmail?: string;
   canExport?: boolean;
 }
 
@@ -163,6 +164,7 @@ export function MeetingsView({
   onNewMinutes,
   onNavigateToTasks,
   onSelectMeetingSpace,
+  userEmail,
   canExport = true
 }: MeetingsViewProps) {
   // Search & Filter state
@@ -1025,6 +1027,7 @@ export function MeetingsView({
       <EmailMeetingModal
         isOpen={showEmailModal && !!activeMeeting}
         onClose={() => setShowEmailModal(false)}
+        fromEmail={userEmail}
         meeting={activeMeeting ? {
           title: activeMeeting.title,
           date: activeMeeting.date,

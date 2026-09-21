@@ -998,6 +998,7 @@ export default function Home() {
       <EmailMeetingModal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
+        fromEmail={authUser?.email}
         meeting={{
           title: getEffectiveMetadata().client_name,
           date: getEffectiveMetadata().date,
@@ -1158,6 +1159,7 @@ export default function Home() {
             {currentView === "meetings" && (
               <MeetingsView
                 meetings={archivedMeetings}
+                userEmail={authUser?.email}
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
                 onSelectMeetingSpace={async (spaceId) => {
