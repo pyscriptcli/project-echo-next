@@ -29,6 +29,7 @@ import {
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
+import { EmailMeetingModal } from "./EmailMeetingModal";
 import { formatEchoDate } from "@/lib/dateUtils";
 
 const VENUE_OPTIONS = [
@@ -209,6 +210,7 @@ export function MeetingsView({
   const [isExporting, setIsExporting] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [showArchiveDetails, setShowArchiveDetails] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Quick Add ClickUp Task state
   const [quickAddTaskData, setQuickAddTaskData] = useState<{
@@ -597,6 +599,15 @@ export function MeetingsView({
                     >
                       <Download size={13} className="text-[#C9AB4C]" />
                       <span>PDF (.pdf)</span>
+                    </button>}
+
+                    {canExport && <button
+                      type="button"
+                      onClick={() => setShowEmailModal(true)}
+                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none"
+                    >
+                      <Send size={13} className="text-[#C9AB4C]" />
+                      <span>Email via Outlook</span>
                     </button>}
 
                     <button
@@ -1010,6 +1021,25 @@ export function MeetingsView({
           </div>
         </div>
       )}
+
+      <EmailMeetingModal
+        isOpen={showEmailModal && !!activeMeeting}
+        onClose={() => setShowEmailModal(false)}
+        meeting={activeMeeting ? {
+          title: activeMeeting.title,
+          date: activeMeeting.date,
+          metadata: {
+            client_name: activeMeeting.title,
+            date: activeMeeting.date,
+            meeting_type: activeMeeting.meeting_type,
+            location: activeMeeting.location,
+            attendees_prime: activeMeeting.attendees_prime,
+            attendees_external: activeMeeting.attendees_external,
+          },
+          items: activeMeeting.items,
+          summary: activeMeeting.summary,
+        } : { metadata: {}, items: [] }}
+      />
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && activeMeeting && (

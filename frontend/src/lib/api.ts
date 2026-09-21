@@ -349,7 +349,7 @@ export async function exportWord(metadata: any, items: any[], other_discussions:
   a.remove();
 }
 
-export async function exportPdf(metadata: any, items: any[], other_discussions: string) {
+export async function requestMeetingPdf(metadata: any, items: any[], other_discussions: string) {
   const res = await fetch("/api/export-pdf", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -361,13 +361,24 @@ export async function exportPdf(metadata: any, items: any[], other_discussions: 
   });
   if (!res.ok) throw new Error("Export failed");
   const blob = await res.blob();
+  const filename = `MoM_${String(metadata.client_name || "Meeting").replace(/[^a-z0-9-_]+/gi, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;
+  return { blob, filename };
+}
+
+export function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `MoM_${metadata.client_name || "Meeting"}_${new Date().toISOString().split("T")[0]}.pdf`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+}
+
+export async function exportPdf(metadata: any, items: any[], other_discussions: string) {
+  const { blob, filename } = await requestMeetingPdf(metadata, items, other_discussions);
+  downloadBlob(blob, filename);
 }
 
 // ─── ClickUp Tasks API ────────────────────────────────────────────────────────

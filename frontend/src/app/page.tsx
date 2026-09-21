@@ -41,6 +41,7 @@ import { MarketInsightsView } from "@/components/MarketInsightsView";
 import { DemandsView } from "@/components/DemandsView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { FinalizeMeetingModal } from "@/components/FinalizeMeetingModal";
+import { EmailMeetingModal } from "@/components/EmailMeetingModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
@@ -275,6 +276,7 @@ export default function Home() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [finalizeAction, setFinalizeAction] = useState<"export" | "archive" | "all">("export");
   const [archiveSpaceId, setArchiveSpaceId] = useState("");
   const [archiveSpaces, setArchiveSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
@@ -981,6 +983,7 @@ export default function Home() {
         onUpdateExternalAttendees={setExternalAttendees}
         onExportWord={handleExportWord}
         onExportPdf={handleExportPdf}
+        onEmailPdf={() => setShowEmailModal(true)}
         onArchiveClickUp={(spaceId, options) => handleSaveToDb(spaceId, options)}
         archiveSpaces={archiveSpaces}
         loadingArchiveSpaces={loadingArchiveSpaces}
@@ -990,6 +993,18 @@ export default function Home() {
         processingText={loadingText}
         initialAction={finalizeAction}
         canExport={allowedFeatures.includes("meetings-export")}
+      />
+
+      <EmailMeetingModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        meeting={{
+          title: getEffectiveMetadata().client_name,
+          date: getEffectiveMetadata().date,
+          metadata: getEffectiveMetadata(),
+          items: momItems,
+          summary: otherDiscussions,
+        }}
       />
 
 
