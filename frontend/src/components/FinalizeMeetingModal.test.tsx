@@ -41,7 +41,7 @@ describe("FinalizeMeetingModal", () => {
     expect(screen.getByText(/Meeting Details Verification/i)).toBeDefined();
 
     // Open the compact export control, then choose Word while title is empty
-    fireEvent.click(screen.getByRole("button", { name: /export meeting minutes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /share meeting minutes/i }));
     const wordBtn = screen.getByText("Word Document");
     fireEvent.click(wordBtn);
 
@@ -60,7 +60,7 @@ describe("FinalizeMeetingModal", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /export meeting minutes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /share meeting minutes/i }));
     const wordBtn = screen.getByText("Word Document");
     fireEvent.click(wordBtn);
 

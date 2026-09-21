@@ -794,10 +794,10 @@ export function FinalizeMeetingModal({
               <div className="space-y-3 animate-in fade-in duration-100">
                 <button type="button" onClick={() => setShowExportChoices((open) => !open)} disabled={isProcessing} aria-expanded={showExportChoices} className="flex w-full items-center gap-3 border border-slate-200 bg-white p-3.5 text-left hover:border-[#C9AB4C] hover:bg-slate-50/50 transition-all shadow-2xs group disabled:opacity-50">
                   <div className="w-9 h-9 bg-[#003366]/5 border border-[#003366]/15 flex items-center justify-center shrink-0 text-[#003366]"><Download size={18} /></div>
-                  <div className="flex-1 min-w-0"><span className="block text-xs font-bold text-[#003366]">Export meeting minutes</span><span className="block text-[11px] text-slate-500 mt-0.5">Choose Word (.docx) or PDF (.pdf)</span></div>
+                  <div className="flex-1 min-w-0"><span className="block text-xs font-bold text-[#003366]">Share meeting minutes</span><span className="block text-[11px] text-slate-500 mt-0.5">Export Word, PDF, or open Outlook</span></div>
                   <ChevronRight size={16} className={`text-slate-400 transition-transform ${showExportChoices ? "rotate-90 text-[#003366]" : ""}`} />
                 </button>
-                {showExportChoices && <div className="grid grid-cols-1 gap-2 border-l-2 border-[#C9AB4C] pl-3 sm:grid-cols-2">
+                {showExportChoices && <div className="grid grid-cols-1 gap-2 border-l-2 border-[#C9AB4C] pl-3 sm:grid-cols-3">
                 {/* Word Export Card */}
                 <button
                   type="button"
@@ -836,8 +836,6 @@ export function FinalizeMeetingModal({
                   <Download size={15} className="text-slate-400 group-hover:text-[#003366] shrink-0" />
                 </button>
 
-                </div>}
-
                 {onEmailPdf && <button
                   type="button"
                   onClick={onEmailPdf}
@@ -849,10 +847,12 @@ export function FinalizeMeetingModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="block text-xs font-bold text-[#003366]">Email via Outlook</span>
-                    <span className="block text-[11px] text-slate-500 mt-0.5">Download PDF and open a ready-to-review draft</span>
+                    <span className="block text-[11px] text-slate-500 mt-0.5">Open a ready-to-review draft</span>
                   </div>
                   <ExternalLink size={15} className="text-slate-400 group-hover:text-[#003366] shrink-0" />
                 </button>}
+
+                </div>}
               </div>
             )}
           </div>
