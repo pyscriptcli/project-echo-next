@@ -210,6 +210,7 @@ export function MeetingsView({
   const [externalInput, setExternalInput] = useState("");
 
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [showArchiveDetails, setShowArchiveDetails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -583,25 +584,24 @@ export function MeetingsView({
 
                   {/* Controls */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {canExport && <button
-                      type="button"
-                      onClick={handleExportWord}
-                      disabled={isExporting}
-                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none"
-                    >
-                      <FileText size={13} className="text-[#C9AB4C]" />
-                      <span>Word (.docx)</span>
-                    </button>}
-
-                    {canExport && <button
-                      type="button"
-                      onClick={handleExportPdf}
-                      disabled={isExporting}
-                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none"
-                    >
-                      <Download size={13} className="text-[#C9AB4C]" />
-                      <span>PDF (.pdf)</span>
-                    </button>}
+                    {canExport && <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowExportMenu((open) => !open)}
+                        disabled={isExporting}
+                        aria-haspopup="menu"
+                        aria-expanded={showExportMenu}
+                        className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none"
+                      >
+                        <Download size={13} className="text-[#C9AB4C]" />
+                        <span>{isExporting ? "Exporting…" : "Export"}</span>
+                        <ChevronDown size={13} className="ml-0.5" />
+                      </button>
+                      {showExportMenu && !isExporting && <div role="menu" className="absolute right-0 top-full z-20 mt-1 min-w-[150px] border border-[#003366]/20 bg-[#FFFCFB] p-1 shadow-lg">
+                        <button type="button" role="menuitem" onClick={() => { setShowExportMenu(false); void handleExportWord(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5"><FileText size={13} className="text-[#C9AB4C]" /> Word (.docx)</button>
+                        <button type="button" role="menuitem" onClick={() => { setShowExportMenu(false); void handleExportPdf(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5"><Download size={13} className="text-[#C9AB4C]" /> PDF (.pdf)</button>
+                      </div>}
+                    </div>}
 
                     {canExport && <button
                       type="button"

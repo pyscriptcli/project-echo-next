@@ -40,7 +40,8 @@ describe("FinalizeMeetingModal", () => {
     expect(screen.getByText("Finalize Meeting Minutes")).toBeDefined();
     expect(screen.getByText(/Meeting Details Verification/i)).toBeDefined();
 
-    // Click Word Document export while title is empty
+    // Open the compact export control, then choose Word while title is empty
+    fireEvent.click(screen.getByRole("button", { name: /export meeting minutes/i }));
     const wordBtn = screen.getByText("Word Document");
     fireEvent.click(wordBtn);
 
@@ -59,6 +60,7 @@ describe("FinalizeMeetingModal", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: /export meeting minutes/i }));
     const wordBtn = screen.getByText("Word Document");
     fireEvent.click(wordBtn);
 
