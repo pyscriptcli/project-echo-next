@@ -26,7 +26,8 @@ describe("Outlook compose helpers", () => {
       body: "Attach the PDF, then review and send.",
     });
     expect(url).toContain("to=one%40example.com%2Ctwo%40example.com");
-    expect(url).toContain("subject=Minutes+%26+decisions");
+    expect(url).toContain("subject=Minutes%20%26%20decisions");
+    expect(url).not.toContain("+");
     expect(url).not.toContain("cc=");
   });
 });

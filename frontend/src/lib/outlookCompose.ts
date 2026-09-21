@@ -49,10 +49,13 @@ export function isValidRecipientList(value: string) {
 }
 
 export function createOutlookComposeUrl(draft: OutlookMeetingDraft) {
-  const params = new URLSearchParams();
-  params.set("to", normalizeRecipients(draft.to));
-  if (draft.cc.trim()) params.set("cc", normalizeRecipients(draft.cc));
-  params.set("subject", draft.subject.trim());
-  params.set("body", draft.body.trim());
-  return `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
+  // Outlook's deeplink does not consistently decode application/x-www-form-urlencoded
+  // `+` spaces. Use RFC 3986 percent-encoding so spaces remain spaces in the draft.
+  const params = [
+    `to=${encodeURIComponent(normalizeRecipients(draft.to))}`,
+    draft.cc.trim() ? `cc=${encodeURIComponent(normalizeRecipients(draft.cc))}` : "",
+    `subject=${encodeURIComponent(draft.subject.trim())}`,
+    `body=${encodeURIComponent(draft.body.trim())}`,
+  ].filter(Boolean);
+  return `https://outlook.office.com/mail/deeplink/compose?${params.join("&")}`;
 }

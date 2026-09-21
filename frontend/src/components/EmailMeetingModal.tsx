@@ -17,6 +17,7 @@ export function EmailMeetingModal({ isOpen, meeting, onClose }: EmailMeetingModa
   const [error, setError] = useState("");
   const [isPreparing, setIsPreparing] = useState(false);
   const [outlookUrl, setOutlookUrl] = useState("");
+  const [popupBlocked, setPopupBlocked] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -24,6 +25,7 @@ export function EmailMeetingModal({ isOpen, meeting, onClose }: EmailMeetingModa
       setFilename("");
       setError("");
       setOutlookUrl("");
+      setPopupBlocked(false);
     }
   }, [isOpen, meeting.title, meeting.date]);
 
@@ -49,8 +51,12 @@ export function EmailMeetingModal({ isOpen, meeting, onClose }: EmailMeetingModa
       const url = createOutlookComposeUrl(draft);
       setFilename(generatedFilename);
       setOutlookUrl(url);
-      if (popup) popup.location.href = url;
-      else setError("The PDF was downloaded, but your browser blocked the Outlook window. Use Open Outlook below.");
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        setPopupBlocked(true);
+        setError("The PDF was downloaded, but your browser blocked the Outlook window. Use the fallback link below.");
+      }
     } catch (cause) {
       popup?.close();
       setError(cause instanceof Error ? cause.message : "Could not prepare the PDF.");
@@ -73,8 +79,8 @@ export function EmailMeetingModal({ isOpen, meeting, onClose }: EmailMeetingModa
           <label className="block text-xs font-semibold text-[#003366]">Subject<input value={draft.subject} onChange={(e) => updateDraft("subject", e.target.value)} className="mt-1 w-full border border-slate-300 bg-white px-3 py-2 text-xs outline-none focus:border-[#C9AB4C]" /></label>
           <label className="block text-xs font-semibold text-[#003366]">Message<textarea value={draft.body} onChange={(e) => updateDraft("body", e.target.value)} rows={6} className="mt-1 w-full resize-y border border-slate-300 bg-white px-3 py-2 text-xs leading-relaxed outline-none focus:border-[#C9AB4C]" /></label>
           {error && <div className="flex items-start gap-2 border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700"><AlertCircle size={14} className="mt-0.5 shrink-0" />{error}</div>}
-          {filename && <div className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800"><Download size={14} /><span>Downloaded <b>{filename}</b>. Attach it in Outlook.</span></div>}
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-3"><button type="button" onClick={onClose} disabled={isPreparing} className="border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button><button type="button" onClick={handlePrepare} disabled={isPreparing} className="flex items-center gap-2 bg-[#003366] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{isPreparing ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} className="text-[#C9AB4C]" />}{isPreparing ? "Preparing PDF…" : "Download PDF & Open Outlook"}</button>{outlookUrl && <a href={outlookUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-2 text-[11px] font-semibold text-[#003366] hover:underline">Open Outlook <ExternalLink size={12} /></a>}</div>
+          {filename && <div className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800"><Download size={14} /><span><b>PDF downloaded:</b> {filename}. Attach it in the Outlook draft before sending.</span></div>}
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-3"><button type="button" onClick={onClose} disabled={isPreparing} className="border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600">{filename ? "Done" : "Cancel"}</button><button type="button" onClick={handlePrepare} disabled={isPreparing} className="flex items-center gap-2 bg-[#003366] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{isPreparing ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} className="text-[#C9AB4C]" />}{isPreparing ? "Preparing PDF…" : "Download PDF & Open Outlook"}</button>{popupBlocked && outlookUrl && <a href={outlookUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 border border-[#003366] px-3 py-2 text-[11px] font-semibold text-[#003366] hover:bg-[#003366]/5">Open Outlook <ExternalLink size={12} /></a>}</div>
         </div>
       </div>
     </div>
