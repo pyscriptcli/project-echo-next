@@ -3,6 +3,28 @@ import { cleanEnv, getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 
 const MEETSTREAM_URL = "https://api.meetstream.ai/api/v1/bots/create_bot";
 
+export type MeetingPlatform = "google_meet" | "zoom" | "teams";
+
+export function parseMeetingLink(value: string): { meetingLink: string; platform: MeetingPlatform } | null {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:") return null;
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "meet.google.com" && /^\/[^/]+/.test(url.pathname)) {
+      return { meetingLink: url.toString(), platform: "google_meet" };
+    }
+    if ((host === "zoom.us" || host.endsWith(".zoom.us")) && /\/j\//i.test(url.pathname)) {
+      return { meetingLink: url.toString(), platform: "zoom" };
+    }
+    if ((host === "teams.microsoft.com" || host === "teams.live.com" || host.endsWith(".teams.microsoft.com")) && /\/l\/meetup-join\//i.test(url.pathname)) {
+      return { meetingLink: url.toString(), platform: "teams" };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function appUrl(req: NextRequest) {
   const configuredUrl = cleanEnv(
     process.env.MEETSTREAM_WEBHOOK_BASE_URL ||
@@ -30,8 +52,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const meetingLink = String(body.meetingLink || "").trim();
-    if (!/^https:\/\//i.test(meetingLink)) return NextResponse.json({ error: "Enter a valid meeting link." }, { status: 400 });
+    const parsed = parseMeetingLink(String(body.meetingLink || ""));
+    if (!parsed) return NextResponse.json({ error: "Paste a valid Google Meet, Microsoft Teams, or Zoom meeting link." }, { status: 400 });
 
     const webhookUrl = `${appUrl(req)}/api/meetstream/webhook`;
     const response = await fetch(MEETSTREAM_URL, {
@@ -42,13 +64,15 @@ export async function POST(req: NextRequest) {
         "Idempotency-Key": crypto.randomUUID(),
       },
       body: JSON.stringify({
-        meeting_link: meetingLink,
+        meeting_link: parsed.meetingLink,
         bot_name: "Echo.ai",
-        video_required: true,
+        // Echo is a transcription-first product. Avoid video capture costs and
+        // bandwidth unless we add an explicit video mode later.
+        video_required: false,
         callback_url: webhookUrl,
         // MeetStream is the capture layer only. Echo transcribes the completed
         // audio through the same Groq -> OpenRouter pipeline used for botless recording.
-        custom_attributes: { source: "echo", mode: "bot", user_id: String(user.id) },
+        custom_attributes: { source: "echo", mode: "bot", platform: parsed.platform, user_id: String(user.id) },
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -56,7 +80,7 @@ export async function POST(req: NextRequest) {
       console.error("[MeetStream] create bot rejected", { status: response.status, detail: data.detail || data.message });
       return NextResponse.json({ error: data.detail || data.message || "Echo.ai could not join this meeting." }, { status: response.status });
     }
-    return NextResponse.json({ botId: data.bot_id, status: data.status || "Active" });
+    return NextResponse.json({ botId: data.bot_id, transcriptId: data.transcript_id || null, platform: parsed.platform, status: data.status || "Joining" });
   } catch (error) {
     console.error("[MeetStream] create bot failed", error);
     return NextResponse.json({ error: "Echo.ai could not join this meeting." }, { status: 502 });

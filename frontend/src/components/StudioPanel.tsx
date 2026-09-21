@@ -122,6 +122,7 @@ export function StudioPanel({
   const [meetingTitle, setMeetingTitle] = useState("");
   const [meetingType, setMeetingType] = useState("Internal");
   const [botStatus, setBotStatus] = useState("");
+  const [botId, setBotId] = useState<string | null>(null);
   const [isSendingBot, setIsSendingBot] = useState(false);
   const [captureMode, setCaptureMode] = useState<"meeting_link" | "device">("device");
   const [workspaceTab, setWorkspaceTab] = useState<"notes" | "echo" | "transcript">("echo");
@@ -279,7 +280,8 @@ export function StudioPanel({
       const response = await fetch("/api/meetstream/bots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ meetingLink }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Echo.ai could not join this meeting.");
-      setBotStatus("Meeting in progress · Echo.ai is capturing audio.");
+      setBotId(data.botId || null);
+      setBotStatus("Echo is joining the meeting… admit Echo.ai if the meeting asks for approval.");
       setMeetingLink("");
     } catch (error) {
       setBotStatus(error instanceof Error ? error.message : "Echo.ai could not join this meeting.");
@@ -287,6 +289,43 @@ export function StudioPanel({
       setIsSendingBot(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!botId) return;
+    let cancelled = false;
+    const terminalStatuses = new Set(["Done", "Completed", "Stopped", "Denied", "NotAllowed", "Error", "Failed", "Kicked"]);
+    const readStatus = async () => {
+      try {
+        const response = await fetch(`/api/meetstream/bots/${encodeURIComponent(botId)}`, { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to read Echo meeting status.");
+        if (cancelled) return;
+        const status = String(data.status || "Unknown");
+        const messages: Record<string, string> = {
+          Joining: "Echo is joining the meeting…",
+          InWaitingRoom: "Echo is waiting for admission to the meeting.",
+          InMeeting: "Echo is in the meeting and catching up.",
+          Recording: "Echo is recording the meeting.",
+          Leaving: "Echo is leaving the meeting and preparing the recording.",
+          MediaProcessing: "Echo is processing the meeting audio.",
+          Transcribing: "Echo is transcribing the meeting.",
+          Done: "Echo finished processing the meeting.",
+          Completed: "Echo finished processing the meeting.",
+          Denied: "Echo was not admitted to the meeting.",
+          NotAllowed: "Echo was not allowed to join the meeting.",
+          Failed: "Echo could not process the meeting.",
+          Error: "Echo could not process the meeting.",
+        };
+        setBotStatus(messages[status] || `Echo status: ${status}`);
+        if (terminalStatuses.has(status)) setBotId(null);
+      } catch (error) {
+        if (!cancelled) setBotStatus(error instanceof Error ? error.message : "Unable to read Echo meeting status.");
+      }
+    };
+    void readStatus();
+    const interval = window.setInterval(() => void readStatus(), 5000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [botId]);
 
   const askFromStudio = async (prompt?: string) => {
     const question = (prompt || echoInput).trim();
