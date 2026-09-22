@@ -267,7 +267,7 @@ export function MoveMeetingModal({
             <div>
               <span className="font-semibold text-gray-500 uppercase text-[10px] tracking-wider block">Current Location</span>
               <span className="font-medium text-[#003366]">
-                {meeting.is_confidential ? "🔒 Personal List" : `${meeting.clickup_space_name || "Space"} → ${meeting.clickup_list_name || "List"}`}
+                {meeting.is_confidential ? "Personal List" : `${meeting.clickup_space_name || "Space"} → ${meeting.clickup_list_name || "List"}`}
               </span>
             </div>
             <ArrowRight size={16} className="text-gray-400" />
@@ -390,7 +390,7 @@ export function MoveMeetingModal({
                     </button>
                   </div>
                   <div className="p-2.5 bg-white border border-gray-200 text-xs font-medium text-[#003366]">
-                    🔒 {personalListName} <span className="text-gray-400 font-mono text-[10px]">({personalListId})</span>
+                    {personalListName} <span className="text-gray-400 font-mono text-[10px]">({personalListId})</span>
                   </div>
                   <p className="text-[10px] text-gray-500 italic">
                     Moving this meeting will mark it with the <span className="font-semibold text-[#003366]">&quot;private&quot;</span> tag and place it directly into your personal list.

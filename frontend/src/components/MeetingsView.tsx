@@ -422,8 +422,10 @@ export function MeetingsView({
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-          <label className="flex items-center gap-2">Space
+        <div className="flex flex-wrap items-center justify-end gap-2.5 text-xs">
+          {/* Space Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Space</span>
             <select
               value={selectedMeetingSpace}
               onChange={(event) => {
@@ -431,35 +433,54 @@ export function MeetingsView({
                 setSelectedMeetingSpace(spaceId);
                 onSelectMeetingSpace?.(spaceId);
               }}
-              className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+              className="h-8 border border-gray-200 bg-white px-2.5 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             >
               <option value="__all__">All spaces</option>
-              <option value="__personal__">🔒 Personal List</option>
+              <option value="__personal__">Personal List</option>
               {meetingSpaces.map((space) => (
                 <option key={space.id} value={space.id}>
                   {space.name} — {space.teamName}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex items-center gap-1.5 text-[10px]">
-            From
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">From</span>
             <input
               type="date"
               value={fromDate}
               onChange={(event) => setFromDate(event.target.value)}
-              className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+              className="h-8 border border-gray-200 bg-white px-2 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             />
-          </label>
-          <label className="flex items-center gap-1.5 text-[10px]">
-            To
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">To</span>
             <input
               type="date"
               value={toDate}
               onChange={(event) => setToDate(event.target.value)}
-              className="border border-gray-300 bg-[#FFFCFB] px-2 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
+              className="h-8 border border-gray-200 bg-white px-2 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             />
-          </label>
+          </div>
+
+          {(fromDate || toDate || selectedMeetingSpace !== "__all__") && (
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+                setSelectedMeetingSpace("__all__");
+                onSelectMeetingSpace?.("__all__");
+              }}
+              className="h-8 px-2 text-[11px] font-medium text-gray-400 hover:text-[#003366] transition-colors cursor-pointer"
+              title="Reset all filters"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
