@@ -275,11 +275,6 @@ export function DashboardView({
             <Clock size={16} className="text-[#C9AB4C]" />
           </div>
           <div className="text-3xl font-serif font-bold text-[#003366]">{formattedMeetingTime}</div>
-          <div className="mt-2">
-            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1.5 py-0.5">
-              Avg: {avgMinutes}m / meeting
-            </span>
-          </div>
         </div>
 
         {/* CARD 3: TOTAL MEETING COST */}
@@ -293,11 +288,6 @@ export function DashboardView({
           <div className="text-3xl font-serif font-bold text-[#003366]">
             ₱{totalCostPhp.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div className="mt-2">
-            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1.5 py-0.5">
-              Avg: ₱{avgCostPerMeeting.toFixed(2)} / meeting
-            </span>
-          </div>
         </div>
 
         {/* CARD 4: COST / HOUR */}
@@ -310,11 +300,6 @@ export function DashboardView({
           </div>
           <div className="text-3xl font-serif font-bold text-[#003366]">
             ₱{TOTAL_AI_PHP_PER_HOUR.toFixed(2)} <span className="text-sm font-sans font-normal text-gray-500">/ hr</span>
-          </div>
-          <div className="mt-2">
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5">
-              Blended AI rate
-            </span>
           </div>
         </div>
       </div>

@@ -13,10 +13,14 @@ export interface DiscussionItem {
 export interface MeetingDetails {
   client_name: string;
   date: string;
+  start_time?: string;
+  end_time?: string;
   meeting_type: "Internal" | "External" | "Team" | string;
   location: string;
   attendees_prime?: string[];
   attendees_external?: string[];
+  duration_minutes?: number;
+  duration_seconds?: number;
 }
 
 export interface ArchivedMeeting {
@@ -24,6 +28,8 @@ export interface ArchivedMeeting {
   meeting_id: string;
   title: string;
   date: string;
+  start_time?: string;
+  end_time?: string;
   meeting_type: "Internal" | "External" | "Team";
   location: string;
   attendees_prime: string[];

@@ -9,6 +9,8 @@ function meetingDescription(meeting: any) {
     `**Meeting:** ${meeting.title || "Executive Meeting"}`,
     `**Date:** ${meeting.date || ""}`,
     `**Type:** ${meeting.meeting_type || ""}`,
+    `**Start Time:** ${meeting.start_time || "—"}`,
+    `**End Time:** ${meeting.end_time || "—"}`,
     `**Duration:** ${meeting.duration_minutes ? `${meeting.duration_minutes} mins` : meeting.duration_seconds ? `${Math.round(meeting.duration_seconds / 60)} mins` : "—"}`,
     `**Location:** ${meeting.location || ""}`,
     `**Team attendees:** ${(meeting.attendees_prime || []).join(", ") || "—"}`,
@@ -24,7 +26,17 @@ function meetingDescription(meeting: any) {
 }
 
 function changeSummary(before: any, after: any) {
-  const fields = [["title", "meeting title"], ["date", "date"], ["meeting_type", "meeting type"], ["location", "location"], ["summary", "summary"], ["transcript", "full transcript"]];
+  const fields = [
+    ["title", "meeting title"], 
+    ["date", "date"], 
+    ["start_time", "start time"],
+    ["end_time", "end time"],
+    ["duration_minutes", "duration"],
+    ["meeting_type", "meeting type"], 
+    ["location", "location"], 
+    ["summary", "summary"], 
+    ["transcript", "full transcript"]
+  ];
   const changes = fields.filter(([field]) => JSON.stringify(before?.[field]) !== JSON.stringify(after?.[field])).map(([, label]) => label);
   if (JSON.stringify(before?.items) !== JSON.stringify(after?.items)) changes.push("discussion points");
   if (JSON.stringify(before?.attendees_prime) !== JSON.stringify(after?.attendees_prime) || JSON.stringify(before?.attendees_external) !== JSON.stringify(after?.attendees_external)) changes.push("attendees");
@@ -82,6 +94,12 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     : (spaceName && spaceName !== "All Spaces" ? spaceName : (task.space?.name || "Workspace"));
   const taskListId = list?.id ? String(list.id) : (task.list?.id ? String(task.list.id) : "");
   const taskListName = list?.name || task.list?.name || (isConfidential ? "Personal List" : "Echo Meetings");
+  
+  const startMatch = description.match(/\*\*Start(?: Time)?:\*\*\s*(.*)/i);
+  const endMatch = description.match(/\*\*End(?: Time)?:\*\*\s*(.*)/i);
+  const startTime = startMatch?.[1]?.trim() && startMatch[1].trim() !== "—" ? startMatch[1].trim() : undefined;
+  const endTime = endMatch?.[1]?.trim() && endMatch[1].trim() !== "—" ? endMatch[1].trim() : undefined;
+
   const durMatch = description.match(/\*\*Duration:\*\*\s*(\d+)\s*mins?/i);
   const durationMinutes = durMatch ? parseInt(durMatch[1], 10) : undefined;
 
@@ -91,6 +109,8 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     title: match?.[2] || task.name || "Echo Meeting",
     date: match?.[1] || (task.date_created ? new Date(Number(task.date_created)).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
     meeting_type: "Internal",
+    start_time: startTime,
+    end_time: endTime,
     location: locMatch?.[1]?.trim() || "",
     attendees_prime: attendeesPrime.length > 0 ? attendeesPrime : ["Dave Policarpio"],
     attendees_external: attendeesExternal,
