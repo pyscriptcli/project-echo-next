@@ -167,6 +167,21 @@ function getMeetingDurationMinutes(m: ArchivedMeeting): number {
   return 30;
 }
 
+function formatDisplayTime(timeStr?: string): string {
+  if (!timeStr || timeStr.trim() === "" || timeStr === "—") return "—";
+  const trimmed = timeStr.trim();
+  if (/am|pm/i.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const mins = match[2];
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${mins} ${ampm}`;
+  }
+  return trimmed;
+}
+
 interface MeetingsViewProps {
   meetings: ArchivedMeeting[];
   selectedMeetingId: string | null;
@@ -637,18 +652,7 @@ export function MeetingsView({
                     <span className="text-[10px] text-gray-400 font-mono">
                       #{activeMeeting.meeting_id || activeMeeting.id}
                     </span>
-                    {activeMeeting.start_time && activeMeeting.end_time && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-700 border border-gray-200">
-                        {activeMeeting.start_time} - {activeMeeting.end_time}
-                      </span>
-                    )}
-                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-slate-100 text-[#003366] border border-slate-200 flex items-center gap-1">
-                      <Clock size={10} className="text-[#C9AB4C]" /> {getMeetingDurationMinutes(activeMeeting)}m
-                    </span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
-                      ₱{((getMeetingDurationMinutes(activeMeeting) / 60) * TOTAL_AI_PHP_PER_HOUR).toFixed(2)}
-                    </span>
-                    <button type="button" onClick={() => setShowArchiveDetails(true)} className="inline-flex h-6 w-6 items-center justify-center text-[#003366] hover:bg-[#003366]/5" title="Show archive details" aria-label="Show archive details">
+                    <button type="button" onClick={() => setShowArchiveDetails(true)} className="inline-flex h-6 w-6 items-center justify-center text-[#003366] hover:bg-[#003366]/5 rounded-none cursor-pointer" title="Show archive details" aria-label="Show archive details">
                       <Info size={14} />
                     </button>
                   </div>
@@ -716,7 +720,7 @@ export function MeetingsView({
                   </div>
                 )}
 
-                {/* In-Place Editable Details Grid */}
+                {/* Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                   {/* Title */}
                   <div className="lg:col-span-2">
@@ -765,68 +769,30 @@ export function MeetingsView({
                     </div>
                   </div>
 
-                  {/* Start Time */}
+                  {/* Start Time (Shown, not editable) */}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       Start Time
                     </label>
-                    <input
-                      type="time"
-                      value={activeMeeting.start_time || ""}
-                      onChange={(e) => {
-                        const newStart = e.target.value;
-                        let autoDuration = activeMeeting.duration_minutes;
-                        if (newStart && activeMeeting.end_time) {
-                          const [sh, sm] = newStart.split(":").map(Number);
-                          const [eh, em] = activeMeeting.end_time.split(":").map(Number);
-                          if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
-                            const diff = (eh * 60 + em) - (sh * 60 + sm);
-                            if (diff > 0) autoDuration = diff;
-                          }
-                        }
-                        setActiveMeeting({ 
-                          ...activeMeeting, 
-                          start_time: newStart,
-                          duration_minutes: autoDuration,
-                          duration_seconds: autoDuration ? autoDuration * 60 : undefined
-                        });
-                      }}
-                      className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
-                    />
+                    <div className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-700 font-medium flex items-center justify-between">
+                      <span>{formatDisplayTime(activeMeeting.start_time)}</span>
+                      <Clock size={13} className="text-gray-400" />
+                    </div>
                   </div>
 
-                  {/* End Time */}
+                  {/* End Time (Shown, not editable) */}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       End Time
                     </label>
-                    <input
-                      type="time"
-                      value={activeMeeting.end_time || ""}
-                      onChange={(e) => {
-                        const newEnd = e.target.value;
-                        let autoDuration = activeMeeting.duration_minutes;
-                        if (activeMeeting.start_time && newEnd) {
-                          const [sh, sm] = activeMeeting.start_time.split(":").map(Number);
-                          const [eh, em] = newEnd.split(":").map(Number);
-                          if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
-                            const diff = (eh * 60 + em) - (sh * 60 + sm);
-                            if (diff > 0) autoDuration = diff;
-                          }
-                        }
-                        setActiveMeeting({ 
-                          ...activeMeeting, 
-                          end_time: newEnd,
-                          duration_minutes: autoDuration,
-                          duration_seconds: autoDuration ? autoDuration * 60 : undefined
-                        });
-                      }}
-                      className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
-                    />
+                    <div className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-700 font-medium flex items-center justify-between">
+                      <span>{formatDisplayTime(activeMeeting.end_time)}</span>
+                      <Clock size={13} className="text-gray-400" />
+                    </div>
                   </div>
 
-                  {/* Venue */}
-                  <div>
+                  {/* Location / Venue */}
+                  <div className="lg:col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       Location / Venue
                     </label>
@@ -860,39 +826,14 @@ export function MeetingsView({
                     )}
                   </div>
 
-                  {/* Meeting Duration */}
+                  {/* Meeting Duration (Shown, not editable) */}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                       Meeting Duration
                     </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={activeMeeting.duration_minutes || (activeMeeting.duration_seconds ? Math.round(activeMeeting.duration_seconds / 60) : "")}
-                        onChange={(e) => {
-                          const mins = parseInt(e.target.value, 10);
-                          setActiveMeeting({
-                            ...activeMeeting,
-                            duration_minutes: isNaN(mins) ? undefined : mins,
-                            duration_seconds: isNaN(mins) ? undefined : mins * 60,
-                          });
-                        }}
-                        placeholder={String(getMeetingDurationMinutes(activeMeeting))}
-                        className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#C9AB4C]"
-                      />
-                      <span className="text-xs text-gray-500 shrink-0 font-medium">mins</span>
-                    </div>
-                  </div>
-
-                  {/* Meeting Cost Preview */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-                      Meeting Compute Cost
-                    </label>
-                    <div className="w-full bg-gray-50 border border-gray-200 rounded-none px-2.5 py-1.5 text-xs font-semibold text-[#003366] flex items-center justify-between">
-                      <span>₱{((getMeetingDurationMinutes(activeMeeting) / 60) * TOTAL_AI_PHP_PER_HOUR).toFixed(2)}</span>
-                      <span className="text-[10px] text-gray-400 font-normal">@ ₱2.53 / hr</span>
+                    <div className="w-full bg-[#FFFCFB] border border-gray-200 rounded-none px-2.5 py-1.5 text-xs text-gray-700 font-medium flex items-center justify-between">
+                      <span>{getMeetingDurationMinutes(activeMeeting)}</span>
+                      <span className="text-xs text-gray-400 font-medium">mins</span>
                     </div>
                   </div>
                 </div>
@@ -1192,12 +1133,17 @@ export function MeetingsView({
               <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">List</dt><dd className="mt-1 text-[#003366]">{activeMeeting.clickup_list_name || "Not recorded"}</dd></div>
               <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</dt><dd className="mt-1 text-[#003366]">{activeMeeting.archive_status || "Completed On Time"}</dd></div>
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Start Time</dt><dd className="mt-1 text-[#003366] font-medium">{activeMeeting.start_time || "—"}</dd></div>
-                <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">End Time</dt><dd className="mt-1 text-[#003366] font-medium">{activeMeeting.end_time || "—"}</dd></div>
+                <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Start Time</dt><dd className="mt-1 text-[#003366] font-medium">{formatDisplayTime(activeMeeting.start_time)}</dd></div>
+                <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">End Time</dt><dd className="mt-1 text-[#003366] font-medium">{formatDisplayTime(activeMeeting.end_time)}</dd></div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Meeting Duration</dt><dd className="mt-1 text-[#003366] font-medium">{getMeetingDurationMinutes(activeMeeting)} mins</dd></div>
-                <div><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Meeting Cost</dt><dd className="mt-1 text-base font-serif font-bold text-[#003366]">₱{((getMeetingDurationMinutes(activeMeeting) / 60) * TOTAL_AI_PHP_PER_HOUR).toFixed(2)}</dd></div>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Meeting Cost</dt>
+                  <dd className="mt-1 text-base font-serif font-bold text-[#003366]">
+                    ₱{((getMeetingDurationMinutes(activeMeeting) / 60) * TOTAL_AI_PHP_PER_HOUR).toFixed(2)}
+                  </dd>
+                </div>
               </div>
             </dl>
           </div>
