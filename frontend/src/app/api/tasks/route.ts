@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
       const discoveredLists: Array<{
         id: string;
         name: string;
+        spaceId?: string;
         spaceName: string;
         folderName?: string;
         teamName: string;
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
                 discoveredLists.push({
                   id: String(list.id),
                   name: list.name,
+                  spaceId: String(space.id),
                   spaceName: space.name,
                   teamName: team.name,
                 });
@@ -131,6 +133,7 @@ export async function GET(req: NextRequest) {
                     id: String(list.id),
                     name: list.name,
                     folderName: folder.name,
+                    spaceId: String(space.id),
                     spaceName: space.name,
                     teamName: team.name,
                   });
@@ -151,6 +154,37 @@ export async function GET(req: NextRequest) {
       });
 
       return NextResponse.json({ lists: discoveredLists, spaces: discoveredSpaces, count: discoveredLists.length });
+    }
+
+    if (action === "space-lists") {
+      const spaceId = searchParams.get("spaceId");
+      if (!spaceId) {
+        return NextResponse.json({ error: "spaceId is required" }, { status: 400 });
+      }
+      const [folderlessRes, foldersRes, spaceRes] = await Promise.all([
+        fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { headers: { Authorization: token }, cache: "no-store" }).catch(() => null),
+        fetch(`https://api.clickup.com/api/v2/space/${spaceId}/folder`, { headers: { Authorization: token }, cache: "no-store" }).catch(() => null),
+        fetch(`https://api.clickup.com/api/v2/space/${spaceId}`, { headers: { Authorization: token }, cache: "no-store" }).catch(() => null),
+      ]);
+      const spaceData = spaceRes?.ok ? await spaceRes.json().catch(() => ({})) : {};
+      const spaceName = spaceData.name || `Space ${spaceId}`;
+      const lists: Array<{ id: string; name: string; folderName?: string; spaceId: string; spaceName: string }> = [];
+
+      if (folderlessRes && folderlessRes.ok) {
+        const d = await folderlessRes.json().catch(() => ({}));
+        for (const l of d.lists || []) {
+          lists.push({ id: String(l.id), name: l.name, spaceId, spaceName });
+        }
+      }
+      if (foldersRes && foldersRes.ok) {
+        const d = await foldersRes.json().catch(() => ({}));
+        for (const f of d.folders || []) {
+          for (const l of f.lists || []) {
+            lists.push({ id: String(l.id), name: l.name, folderName: f.name, spaceId, spaceName });
+          }
+        }
+      }
+      return NextResponse.json({ lists, space: { id: spaceId, name: spaceName } });
     }
 
     // Default action: Fetch tasks from targetListId

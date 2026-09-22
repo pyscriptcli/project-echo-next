@@ -45,7 +45,7 @@ import { EmailMeetingModal } from "@/components/EmailMeetingModal";
 import { LoginView } from "@/components/LoginView";
 import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
-import { getLocalMeetings, saveLocalMeeting, deleteLocalMeeting, syncLocalMeetings } from "@/lib/meetingsData";
+import { mergeMeetings } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
 import { 
   Upload, 
@@ -461,21 +461,13 @@ export default function Home() {
     }
   };
 
-  // Load and sync archives across all spaces
+  // Load archives directly from ClickUp (SSOT) across all spaces + personal list
   useEffect(() => {
-    const local = getLocalMeetings();
-    if (local.length > 0) {
-      setArchivedMeetings(local);
-      if (!selectedMeetingId) {
-        setSelectedMeetingId(local[0].id);
-      }
-    }
-
-    fetchMeetings()
+    const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+    fetchMeetings(undefined, personalListId)
       .then((data) => {
         if (data.meetings && Array.isArray(data.meetings)) {
           setArchivedMeetings(data.meetings);
-          syncLocalMeetings(data.meetings);
           if (data.meetings.length > 0 && !selectedMeetingId) {
             setSelectedMeetingId(data.meetings[0].id);
           }
@@ -898,9 +890,14 @@ export default function Home() {
         archive_status: res.clickup?.archiveStatus,
         is_confidential: isConfidential,
       };
-      const updatedList = saveLocalMeeting(newRecord);
-      setArchivedMeetings(updatedList);
+      setArchivedMeetings((prev) => [newRecord, ...prev.filter((m) => m.id !== newMeetingId)]);
       setSelectedMeetingId(newMeetingId);
+      const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+      fetchMeetings(undefined, personalListId).then((data) => {
+        if (data.meetings && Array.isArray(data.meetings)) {
+          setArchivedMeetings(data.meetings);
+        }
+      }).catch(() => {});
       const target = res.clickup ? `\nWorkspace: ${res.clickup.workspace}\nDepartment: ${res.clickup.department}\nList: ${res.clickup.listName}\nTask: ${res.clickup.taskUrl || res.clickup.taskId}` : "";
       if (!options) {
         setShowFinalizeModal(false);
@@ -1164,10 +1161,10 @@ export default function Home() {
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
                 onSelectMeetingSpace={async (spaceId) => {
                   try {
-                    const data = await fetchMeetings(spaceId);
+                    const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+                    const data = await fetchMeetings(spaceId, personalListId);
                     const meetingsList = data.meetings || [];
                     setArchivedMeetings(meetingsList);
-                    syncLocalMeetings(meetingsList);
                     if (meetingsList.length > 0) {
                       setSelectedMeetingId(meetingsList[0].id);
                     } else {
@@ -1193,12 +1190,19 @@ export default function Home() {
                     const data = await response.json().catch(() => ({}));
                     throw new Error(data.error || "Unable to save changes to ClickUp.");
                   }
-                  const saved = saveLocalMeeting(updated);
-                  setArchivedMeetings(saved);
+                  setArchivedMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+                }}
+                onMoveMeeting={async (updated) => {
+                  setArchivedMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+                  const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+                  fetchMeetings(undefined, personalListId).then((data) => {
+                    if (data.meetings && Array.isArray(data.meetings)) {
+                      setArchivedMeetings(data.meetings);
+                    }
+                  }).catch(() => {});
                 }}
                 onDeleteMeeting={async (meetingId) => {
                   await deleteMeeting(meetingId);
-                  const updatedLocal = deleteLocalMeeting(meetingId);
                   setArchivedMeetings((prev) => {
                     const nextList = prev.filter((m) => m.id !== meetingId && m.meeting_id !== meetingId);
                     if (selectedMeetingId === meetingId) {

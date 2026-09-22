@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getTokenFromRequest, getWorkspaceApiToken } from "@/lib/auth";
+import { getTokenFromRequest, getWorkspaceApiToken, getUserFromRequest } from "@/lib/auth";
 import { parseDiscussionItems } from "@/lib/meetingArchive";
 
 function meetingDescription(meeting: any) {
@@ -64,6 +64,24 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     ? extMatch[1].split(",").map((s: string) => s.trim()).filter(Boolean)
     : [];
 
+  const tags = Array.isArray(task.tags)
+    ? task.tags.map((t: any) => (typeof t === "string" ? t : t.name || "").toLowerCase())
+    : [];
+
+  const isConfidential = Boolean(
+    list?.isPersonal ||
+    spaceId === "__personal__" ||
+    tags.includes("private") ||
+    tags.includes("confidential")
+  );
+
+  const taskSpaceId = spaceId && spaceId !== "__all__" ? String(spaceId) : (task.space?.id ? String(task.space.id) : "");
+  const taskSpaceName = isConfidential
+    ? "Personal List"
+    : (spaceName && spaceName !== "All Spaces" ? spaceName : (task.space?.name || "Workspace"));
+  const taskListId = list?.id ? String(list.id) : (task.list?.id ? String(task.list.id) : "");
+  const taskListName = list?.name || task.list?.name || (isConfidential ? "Personal List" : "Echo Meetings");
+
   return {
     id: String(task.id),
     meeting_id: String(task.id),
@@ -77,16 +95,125 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     items: parseDiscussionItems(section("Discussion Points", "Full Transcript")),
     transcript: section("Full Transcript"),
     created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(),
-    clickup_space_id: String(spaceId),
-    clickup_space_name: spaceName,
-    clickup_list_id: String(list.id),
-    clickup_list_name: list.name,
+    clickup_space_id: taskSpaceId,
+    clickup_space_name: taskSpaceName,
+    clickup_list_id: taskListId,
+    clickup_list_name: taskListName,
     clickup_task_url: task.url || `https://app.clickup.com/t/${task.id}`,
-    archive_status: task.status?.status || "completed ontime"
+    archive_status: task.status?.status || "completed ontime",
+    is_confidential: isConfidential,
   };
 }
 
-async function fetchMeetingsFromSpace(spaceId: string, token: string): Promise<any[]> {
+async function getPersonalListForUser(req: NextRequest): Promise<{ id: string; name: string } | null> {
+  const urlParam = req.nextUrl.searchParams.get("personalListId");
+  const headerParam = req.headers.get("x-personal-list-id");
+  if (urlParam) return { id: urlParam, name: "Personal List" };
+  if (headerParam) return { id: headerParam, name: "Personal List" };
+
+  const user = getUserFromRequest(req);
+  const email = user?.email?.toLowerCase().trim();
+  if (!email) return null;
+
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  if (!url || !key) return null;
+
+  try {
+    const supabase = createClient(url, key);
+    const { data: prefData } = await supabase
+      .from("echo_user_preferences")
+      .select("preferences")
+      .eq("email", email)
+      .maybeSingle();
+    if (prefData?.preferences?.personal_list_id) {
+      return {
+        id: prefData.preferences.personal_list_id,
+        name: prefData.preferences.personal_list_name || "Personal List"
+      };
+    }
+
+    const { data: globalData } = await supabase
+      .from("echo_forms_config")
+      .select("config")
+      .eq("id", "global")
+      .maybeSingle();
+    const userPrefs = globalData?.config?.userPreferences?.[email];
+    if (userPrefs?.personal_list_id) {
+      return {
+        id: userPrefs.personal_list_id,
+        name: userPrefs.personal_list_name || "Personal List"
+      };
+    }
+  } catch (e) {
+    // Non-blocking
+  }
+  return null;
+}
+
+async function fetchMeetingsFromPersonalList(personalList: { id: string; name: string }, token: string): Promise<any[]> {
+  const headers = { Authorization: token };
+  try {
+    const [listRes, tasksRes] = await Promise.all([
+      fetch(`https://api.clickup.com/api/v2/list/${personalList.id}`, { headers, cache: "no-store" }).catch(() => null),
+      fetch(`https://api.clickup.com/api/v2/list/${personalList.id}/task?include_closed=true&subtasks=true&include_markdown_description=true`, { headers, cache: "no-store" }).catch(() => null),
+    ]);
+    const listData = listRes?.ok ? await listRes.json().catch(() => ({})) : {};
+    const listName = listData.name || personalList.name || "Personal List";
+    const spaceName = listData.space?.name || "Personal List";
+    const spaceId = listData.space?.id ? String(listData.space.id) : "__personal__";
+
+    if (!tasksRes?.ok) return [];
+    const tasksData = await tasksRes.json();
+    const tasks = tasksData.tasks || [];
+
+    const meetingTasks = tasks.filter((t: any) => {
+      const tags = Array.isArray(t.tags) ? t.tags.map((tg: any) => (typeof tg === "string" ? tg : tg.name || "").toLowerCase()) : [];
+      if (tags.includes("meeting-archive") || tags.includes("echo") || tags.includes("private")) return true;
+      if (/^\d{4}-\d{2}-\d{2}\s+—\s+/.test(t.name || "")) return true;
+      const desc = t.description || "";
+      if (desc.includes("# Meeting Details") || desc.includes("# Executive Summary")) return true;
+      return false;
+    });
+
+    return meetingTasks.map((t: any) =>
+      parseMeetingTask(t, spaceId, spaceName, { id: personalList.id, name: listName, isPersonal: true })
+    );
+  } catch (err) {
+    console.warn("Failed to read tasks for personal list:", err);
+    return [];
+  }
+}
+
+async function fetchMeetingsFromWorkspace(teamId: string, token: string, spaceId?: string | null): Promise<any[]> {
+  const headers = { Authorization: token };
+  const params = new URLSearchParams({
+    include_closed: "true",
+    subtasks: "true",
+    include_markdown_description: "true",
+  });
+  params.append("tags[]", "meeting-archive");
+  if (spaceId && spaceId !== "__all__") {
+    params.append("space_ids[]", spaceId);
+  }
+
+  try {
+    const res = await fetch(`https://api.clickup.com/api/v2/team/${teamId}/task?${params.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const tasks = data.tasks || [];
+      return tasks.map((t: any) => parseMeetingTask(t, t.space?.id || spaceId || "", t.space?.name || "Workspace", t.list || {}));
+    }
+  } catch (err) {
+    console.warn("Tag-based workspace task query failed:", err);
+  }
+  return [];
+}
+
+async function fetchMeetingsFromSpaceLegacy(spaceId: string, token: string): Promise<any[]> {
   const headers = { Authorization: token };
   
   const [spaceRes, listsRes, foldersRes] = await Promise.all([
@@ -120,22 +247,19 @@ async function fetchMeetingsFromSpace(spaceId: string, token: string): Promise<a
     }
   }
 
-  if (targetLists.length === 0) {
-    return [];
-  }
+  if (targetLists.length === 0) return [];
 
   const allTasksArrays = await Promise.all(
     targetLists.map(async (list) => {
       try {
         const tasksRes = await fetch(
-          `https://api.clickup.com/api/v2/list/${list.id}/task?include_closed=true&subtasks=true`,
+          `https://api.clickup.com/api/v2/list/${list.id}/task?include_closed=true&subtasks=true&include_markdown_description=true`,
           { headers, cache: "no-store" }
         );
         if (!tasksRes.ok) return [];
         const tasksData = await tasksRes.json();
         return (tasksData.tasks || []).map((t: any) => parseMeetingTask(t, spaceId, spaceName, list));
       } catch (e) {
-        console.warn(`Failed to read tasks for list ${list.id} in space ${spaceId}:`, e);
         return [];
       }
     })
@@ -149,18 +273,58 @@ export async function GET(req: NextRequest) {
     const token = getTokenFromRequest(req) || getWorkspaceApiToken();
     const searchParams = new URL(req.url).searchParams;
     const spaceId = searchParams.get("spaceId");
+    const isPersonalOnly = spaceId === "__personal__";
     const isAll = searchParams.get("all") === "true" || !spaceId || spaceId === "__all__";
+    const personalList = await getPersonalListForUser(req);
 
     if (token) {
-      if (!isAll && spaceId) {
-        const meetings = await fetchMeetingsFromSpace(spaceId, token);
+      // 1. User specifically requests Personal List meetings
+      if (isPersonalOnly) {
+        if (!personalList) {
+          return NextResponse.json({
+            status: "success",
+            meetings: [],
+            count: 0,
+            notice: "No personal ClickUp list configured"
+          });
+        }
+        const personalMeetings = await fetchMeetingsFromPersonalList(personalList, token);
+        personalMeetings.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         return NextResponse.json({
           status: "success",
-          meetings,
-          count: meetings.length
+          meetings: personalMeetings,
+          count: personalMeetings.length
         });
       }
 
+      // 2. Specific Space selected
+      if (!isAll && spaceId) {
+        const [tagMeetings, legacyMeetings] = await Promise.all([
+          // Check teams for tag-based query filtered by space_id
+          (async () => {
+            const teamsRes = await fetch("https://api.clickup.com/api/v2/team", { headers: { Authorization: token }, cache: "no-store" }).catch(() => null);
+            if (!teamsRes?.ok) return [];
+            const teamsData = await teamsRes.json().catch(() => ({}));
+            const results = await Promise.all(
+              (teamsData.teams || []).map((team: any) => fetchMeetingsFromWorkspace(team.id, token, spaceId))
+            );
+            return results.flat();
+          })(),
+          fetchMeetingsFromSpaceLegacy(spaceId, token),
+        ]);
+
+        const combined = [...tagMeetings, ...legacyMeetings];
+        const unique = Array.from(new Map(combined.map((m: any) => [m.id, m])).values());
+        unique.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+        return NextResponse.json({
+          status: "success",
+          meetings: unique,
+          count: unique.length
+        });
+      }
+
+      // 3. All meetings: Discover workspace meetings via tag + legacy lists + Personal List
       try {
         const teamsRes = await fetch("https://api.clickup.com/api/v2/team", {
           headers: { Authorization: token },
@@ -169,32 +333,43 @@ export async function GET(req: NextRequest) {
 
         if (teamsRes.ok) {
           const teamsData = await teamsRes.json();
-          const spaceIds: string[] = [];
+          const teams = teamsData.teams || [];
 
-          for (const team of teamsData.teams || []) {
-            const spacesRes = await fetch(`https://api.clickup.com/api/v2/team/${team.id}/space`, {
-              headers: { Authorization: token },
-              cache: "no-store"
-            }).catch(() => null);
-
-            if (spacesRes?.ok) {
-              const spacesData = await spacesRes.json().catch(() => ({}));
-              for (const s of spacesData.spaces || []) {
-                spaceIds.push(String(s.id));
+          // Parallel query: Tag-based workspace search + Personal list tasks + Space legacy fallback
+          const [teamTasksArrays, personalMeetings, legacyMeetingsArray] = await Promise.all([
+            Promise.all(teams.map((team: any) => fetchMeetingsFromWorkspace(team.id, token))),
+            personalList ? fetchMeetingsFromPersonalList(personalList, token) : Promise.resolve([]),
+            // Legacy space discovery fallback to ensure no historic untagged meetings are missed
+            (async () => {
+              const spaceIds: string[] = [];
+              for (const team of teams) {
+                const spacesRes = await fetch(`https://api.clickup.com/api/v2/team/${team.id}/space`, {
+                  headers: { Authorization: token },
+                  cache: "no-store"
+                }).catch(() => null);
+                if (spacesRes?.ok) {
+                  const sData = await spacesRes.json().catch(() => ({}));
+                  for (const s of sData.spaces || []) spaceIds.push(String(s.id));
+                }
               }
-            }
-          }
+              const spaceResults = await Promise.all(
+                spaceIds.map((sId) => fetchMeetingsFromSpaceLegacy(sId, token))
+              );
+              return spaceResults.flat();
+            })()
+          ]);
 
-          const spaceResults = await Promise.all(
-            spaceIds.map((sId) => fetchMeetingsFromSpace(sId, token))
-          );
+          const allMeetings = [
+            ...teamTasksArrays.flat(),
+            ...personalMeetings,
+            ...legacyMeetingsArray
+          ];
 
-          const mergedMeetings = spaceResults.flat();
-          mergedMeetings.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
+          // Deduplicate by meeting ID
           const uniqueMeetings = Array.from(
-            new Map(mergedMeetings.map((m: any) => [m.id, m])).values()
+            new Map(allMeetings.map((m: any) => [m.id, m])).values()
           );
+          uniqueMeetings.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
           return NextResponse.json({
             status: "success",
@@ -204,39 +379,6 @@ export async function GET(req: NextRequest) {
         }
       } catch (clickUpAllErr) {
         console.warn("ClickUp all-space discovery encountered an issue:", clickUpAllErr);
-      }
-    }
-
-    const url = process.env.SUPABASE_URL || "";
-    const key = process.env.SUPABASE_KEY || "";
-
-    if (url && key) {
-      const supabase = createClient(url, key);
-      const { data, error } = await supabase
-        .from("meeting_archives")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data && data.length > 0) {
-        const formatted = data.map((d: any) => ({
-          id: d.meeting_id || d.id,
-          meeting_id: d.meeting_id || d.id,
-          title: d.client_name || "Executive Meeting",
-          date: d.meeting_date || new Date().toISOString().split("T")[0],
-          meeting_type: d.meeting_type || "Internal",
-          location: d.location || "",
-          attendees_prime: d.attendees_prime || ["Dave Policarpio"],
-          attendees_external: d.attendees_external || [],
-          summary: d.summary_md || "",
-          items: Array.isArray(d.table_items) ? d.table_items : [],
-          transcript: d.transcript_md || "",
-          created_at: d.created_at || new Date().toISOString()
-        }));
-
-        return NextResponse.json({
-          status: "success",
-          meetings: formatted
-        });
       }
     }
 

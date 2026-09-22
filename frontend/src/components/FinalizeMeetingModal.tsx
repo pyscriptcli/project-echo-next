@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Mail
 } from "lucide-react";
+import { fetchSpaceLists } from "@/lib/api";
 
 export const VENUE_OPTIONS = [
   "GreatWork Mega Tower 32F - Secret Room",
@@ -98,6 +99,49 @@ export function FinalizeMeetingModal({
     listName?: string;
     isConfidential?: boolean;
   } | null>(null);
+
+  // Dynamic lists per space state
+  const [spaceLists, setSpaceLists] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedTeamListId, setSelectedTeamListId] = useState<string>("");
+  const [loadingSpaceLists, setLoadingSpaceLists] = useState<boolean>(false);
+
+  // When selectedSpaceId changes, load lists in that space and select preferred list
+  useEffect(() => {
+    if (!selectedSpaceId) {
+      setSpaceLists([]);
+      setSelectedTeamListId("");
+      return;
+    }
+    setLoadingSpaceLists(true);
+    fetchSpaceLists(selectedSpaceId)
+      .then((data) => {
+        const lists: Array<{ id: string; name: string }> = data.lists || [];
+        setSpaceLists(lists);
+        const cachedListId = typeof window !== "undefined"
+          ? localStorage.getItem(`project_echo_space_list_${selectedSpaceId}`) || ""
+          : "";
+        const matchCached = lists.find((l) => l.id === cachedListId);
+        if (matchCached) {
+          setSelectedTeamListId(matchCached.id);
+        } else {
+          const echoList = lists.find((l) => /echo meetings|echo meeting|meeting archive/i.test(l.name));
+          setSelectedTeamListId(echoList ? echoList.id : (lists[0]?.id || ""));
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch space lists:", err);
+        setSpaceLists([]);
+        setSelectedTeamListId("");
+      })
+      .finally(() => setLoadingSpaceLists(false));
+  }, [selectedSpaceId]);
+
+  const handleSelectTeamList = (listId: string) => {
+    setSelectedTeamListId(listId);
+    if (typeof window !== "undefined" && selectedSpaceId) {
+      localStorage.setItem(`project_echo_space_list_${selectedSpaceId}`, listId);
+    }
+  };
 
   // Load preferences from localStorage + Supabase on open
   useEffect(() => {
@@ -226,7 +270,10 @@ export function FinalizeMeetingModal({
       }
     } else {
       if (!selectedSpaceId) return;
-      const result: any = await onArchiveClickUp(selectedSpaceId, { isConfidential: false });
+      const result: any = await onArchiveClickUp(selectedSpaceId, {
+        listId: selectedTeamListId || undefined,
+        isConfidential: false,
+      });
       if (result && result.clickup?.taskUrl) {
         setSaveSuccess({
           taskUrl: result.clickup.taskUrl,
@@ -639,6 +686,46 @@ export function FinalizeMeetingModal({
                         })
                       )}
                     </div>
+
+                    {selectedSpaceId && (
+                      <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-[#003366] uppercase tracking-wider">
+                            Select Destination List
+                          </label>
+                          {loadingSpaceLists && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                              <Loader2 size={11} className="animate-spin text-[#C9A84C]" /> Loading lists…
+                            </span>
+                          )}
+                        </div>
+                        {spaceLists.length > 0 ? (
+                          <div className="relative">
+                            <select
+                              value={selectedTeamListId}
+                              onChange={(e) => handleSelectTeamList(e.target.value)}
+                              className="w-full bg-[#FFFCFB] border border-slate-300 text-xs px-3 py-2 text-slate-800 rounded-none focus:outline-none focus:border-[#C9AB4C]"
+                            >
+                              {spaceLists.map((l) => (
+                                <option key={l.id} value={l.id}>
+                                  {l.name}
+                                </option>
+                              ))}
+                              {!spaceLists.some((l) => /echo meetings|echo meeting/i.test(l.name)) && (
+                                <option value="">+ Create new "Echo Meetings" list in this space</option>
+                              )}
+                            </select>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Your selected list is saved as default for this space. You can change it anytime.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-500 py-1">
+                            {loadingSpaceLists ? "Retrieving lists..." : 'Defaulting to "Echo Meetings" in this space.'}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex justify-end pt-2">
                       <button

@@ -24,12 +24,14 @@ import {
   CheckSquare,
   Info,
   ExternalLink,
-  Lock
+  Lock,
+  FolderInput
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
 import { EmailMeetingModal } from "./EmailMeetingModal";
+import { MoveMeetingModal } from "./MoveMeetingModal";
 import { formatEchoDate } from "@/lib/dateUtils";
 
 const VENUE_OPTIONS = [
@@ -148,6 +150,7 @@ interface MeetingsViewProps {
   onSelectMeeting: (id: string) => void;
   onUpdateMeeting: (meeting: ArchivedMeeting, previousMeeting?: ArchivedMeeting) => Promise<void>;
   onDeleteMeeting?: (meetingId: string) => Promise<void>;
+  onMoveMeeting?: (updatedMeeting: ArchivedMeeting) => Promise<void> | void;
   onNewMinutes: () => void;
   onNavigateToTasks?: (taskId: string) => void;
   onSelectMeetingSpace?: (spaceId: string) => void;
@@ -161,6 +164,7 @@ export function MeetingsView({
   onSelectMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
+  onMoveMeeting,
   onNewMinutes,
   onNavigateToTasks,
   onSelectMeetingSpace,
@@ -172,12 +176,18 @@ export function MeetingsView({
   const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External">("All");
   const [meetingSpaces, setMeetingSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
   const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("__all__");
+  const [personalListId, setPersonalListId] = useState<string>("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
 
   useEffect(() => {
+    const storedPId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || "" : "";
+    if (storedPId) {
+      setPersonalListId(storedPId);
+    }
     discoverClickUpLists().then((data) => {
       setMeetingSpaces(data.spaces || []);
       onSelectMeetingSpace?.("__all__");
@@ -247,7 +257,12 @@ export function MeetingsView({
     const matchesType = typeFilter === "All" || m.meeting_type === typeFilter;
     const matchesFrom = !fromDate || m.date >= fromDate;
     const matchesTo = !toDate || m.date <= toDate;
-    const matchesSpace = selectedMeetingSpace === "__all__" || !selectedMeetingSpace || m.clickup_space_id === selectedMeetingSpace;
+    const matchesSpace =
+      selectedMeetingSpace === "__all__" || !selectedMeetingSpace
+        ? true
+        : selectedMeetingSpace === "__personal__"
+        ? m.is_confidential === true || m.clickup_space_id === "__personal__" || (Boolean(personalListId) && m.clickup_list_id === personalListId)
+        : m.clickup_space_id === selectedMeetingSpace && !m.is_confidential;
     return matchesSearch && matchesType && matchesFrom && matchesTo && matchesSpace;
   });
 
@@ -419,6 +434,7 @@ export function MeetingsView({
               className="bg-[#FFFCFB] border border-gray-300 px-3 py-2 text-xs font-normal normal-case tracking-normal text-[#003366]"
             >
               <option value="__all__">All spaces</option>
+              <option value="__personal__">🔒 Personal List</option>
               {meetingSpaces.map((space) => (
                 <option key={space.id} value={space.id}>
                   {space.name} — {space.teamName}
@@ -605,6 +621,16 @@ export function MeetingsView({
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); setShowEmailModal(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5"><Send size={13} className="text-[#C9AB4C]" /> Email via Outlook</button>
                       </div>}
                     </div>}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowMoveModal(true)}
+                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none cursor-pointer"
+                      title="Move meeting archive to another ClickUp list"
+                    >
+                      <FolderInput size={13} className="text-[#C9AB4C]" />
+                      <span>Move</span>
+                    </button>
 
                     <button
                       type="button"
@@ -1094,6 +1120,24 @@ export function MeetingsView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Move Meeting Archive Modal */}
+      {activeMeeting && (
+        <MoveMeetingModal
+          isOpen={showMoveModal}
+          onClose={() => setShowMoveModal(false)}
+          meeting={activeMeeting}
+          spaces={meetingSpaces}
+          onMeetingMoved={async (updated) => {
+            setActiveMeeting(updated);
+            if (onMoveMeeting) {
+              await onMoveMeeting(updated);
+            } else {
+              await onUpdateMeeting(updated);
+            }
+          }}
+        />
       )}
 
       {/* Quick Add Task to ClickUp Modal */}

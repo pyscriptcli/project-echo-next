@@ -305,14 +305,57 @@ export async function saveMeeting(metadata: any, items: any[], other_discussions
   return res.json();
 }
 
-export async function fetchMeetings(spaceId?: string) {
-  const url = spaceId && spaceId !== "__all__"
+export async function fetchMeetings(spaceId?: string, personalListId?: string) {
+  const headers = getClickUpHeaders();
+  if (personalListId) {
+    headers["x-personal-list-id"] = personalListId;
+  }
+  let url = spaceId && spaceId !== "__all__"
     ? `/api/meetings?spaceId=${encodeURIComponent(spaceId)}`
     : "/api/meetings?all=true";
-  const res = await fetch(url, { cache: "no-store" });
+  if (personalListId) {
+    url += `&personalListId=${encodeURIComponent(personalListId)}`;
+  }
+  const res = await fetch(url, { headers, cache: "no-store" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "Failed to load meetings.");
+  }
+  return res.json();
+}
+
+export async function moveMeetingArchive(payload: {
+  meetingId: string;
+  destinationListId: string;
+  sourceListId?: string;
+  isConfidential?: boolean;
+  destinationSpaceId?: string;
+  destinationSpaceName?: string;
+  destinationListName?: string;
+}) {
+  const headers = getClickUpHeaders();
+  headers["Content-Type"] = "application/json";
+  const res = await fetch("/api/meetings/move", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to relocate meeting archive.");
+  }
+  return res.json();
+}
+
+export async function fetchSpaceLists(spaceId: string) {
+  const headers = getClickUpHeaders();
+  const res = await fetch(`/api/tasks?action=space-lists&spaceId=${encodeURIComponent(spaceId)}`, {
+    headers,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to fetch lists for space.");
   }
   return res.json();
 }
