@@ -415,31 +415,33 @@ export function StudioPanel({
         <div className={`flex-1 min-h-0 overflow-hidden flex ${isFullscreen ? "flex-col lg:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full lg:w-[320px] xl:w-[360px] 2xl:w-[380px] lg:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-3 md:p-3.5 flex flex-col gap-2.5 shrink-0 bg-[#F3F6FA]`}>
-            {/* Header with live status badge */}
-            <div className="border-b border-slate-200 pb-2 flex items-center justify-between shrink-0">
+          <div className={`${isFullscreen ? "w-full lg:w-1/3 lg:flex-1 min-w-0 lg:border-r border-[#D9E1EA]" : "w-full border-b border-[#D9E1EA]"} h-full min-h-0 flex flex-col bg-[#F3F6FA]`}>
+            {/* Header with live status badge matching Col 2 & 3 */}
+            <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between min-h-[68px]">
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-[#003366]">Echo Meeting</h3>
-                <p className="text-[10px] text-slate-500">Live capture & details</p>
+                <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Recording controls & details.</p>
               </div>
               <div>
                 {isRecordingActive ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 px-2 py-0.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 px-2.5 py-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
                     {recorder.status === "paused" ? "Paused" : "Live"}
                   </span>
                 ) : isStopped ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1">
                     Ready
                   </span>
                 ) : (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1">
                     Standby
                   </span>
                 )}
               </div>
             </div>
+
+            {/* Scrollable Column 1 Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
 
             {/* Idle state: Compact Capture & Recording Controls */}
             {recorder.status === "idle" && (
@@ -647,30 +649,17 @@ export function StudioPanel({
               </div>
             )}
 
-            {false && isFullscreen && (
-              <div className="mt-1 border-t border-slate-200 pt-5 flex flex-col min-h-0 flex-1">
-                <div className="flex items-end justify-between gap-3 mb-3">
-                  <div><h3 className="text-sm font-semibold text-[#003366]">Live notes</h3><p className="text-[11px] text-slate-500 mt-0.5">Your words stay natural; Echo keeps the exact time.</p></div>
-                  <span className="text-[10px] text-slate-400">{notes.length} {notes.length === 1 ? "note" : "notes"}</span>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                  {notes.length === 0 && <div className="border border-dashed border-slate-300 bg-white/60 p-5 text-center"><p className="text-sm font-medium text-slate-600">Capture the moments that matter</p><p className="text-xs text-slate-400 mt-1">Add a decision, follow-up, question, or observation.</p></div>}
-                  {notes.map((note) => <div key={note.id} className="group flex items-start gap-3 border border-slate-200 bg-white px-3.5 py-3 shadow-sm"><span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-1">{note.timestamp}</span><span className="text-sm text-slate-700 flex-1 leading-relaxed pt-0.5">{note.text}</span><button type="button" onClick={() => removeNote(note.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500" aria-label="Remove note"><X size={13} /></button></div>)}
-                  <div ref={notesEndRef} />
-                </div>
-                {(isRecordingActive || isStopped) && <form onSubmit={(event) => { event.preventDefault(); addNote(); }} className="mt-3 flex items-end gap-2 border border-slate-300 bg-white p-1.5 focus-within:border-[#C9A84C]"><span className="mb-1 text-[11px] font-mono text-[#003366] font-semibold border-r border-slate-200 px-2">[{formatTime(recorder.elapsedSeconds)}]</span><textarea rows={3} value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder="Write a decision, follow-up, or thought…" className="min-h-20 min-w-0 flex-1 resize-y bg-transparent px-1 py-2 text-xs outline-none" /><button type="submit" disabled={!noteInput.trim()} className="mb-1 h-8 w-8 bg-[#003366] text-white disabled:opacity-30 flex items-center justify-center" aria-label="Add note"><Plus size={15} /></button></form>}
-              </div>
-            )}
+            </div>
           </div>
 
           {isFullscreen && (
-            <div className="w-full lg:flex-1 h-full min-h-0 lg:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
-              <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between">
+            <div className="w-full lg:w-1/3 lg:flex-1 min-w-0 h-full min-h-0 lg:border-r border-[#D9E1EA] bg-[#FFFCFB] flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between min-h-[68px]">
                 <div>
                   <h3 className="text-lg font-semibold tracking-tight text-[#003366]">User notes</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Decisions, follow-ups, questions, and key moments.</p>
                 </div>
-                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1">
                   {notes.length} {notes.length === 1 ? "note" : "notes"}
                 </span>
               </div>
@@ -810,22 +799,50 @@ export function StudioPanel({
           )}
 
           {/* ── Right / Bottom: Ask Echo ─────────────────────── */}
-          <div className={`${isFullscreen ? "w-full lg:flex-1 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
-            <div className="px-5 pt-3.5 pb-3 shrink-0 bg-white border-b border-slate-200">
-              <div className="flex items-end justify-between gap-4">
+          <div className={`${isFullscreen ? "w-full lg:w-1/3 lg:flex-1 min-w-0 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
+            <div className="px-5 py-3.5 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between min-h-[68px]">
+              <div className="flex items-center gap-3">
                 <div>
-                  {canAskEcho ? <div className="flex items-center gap-3"><h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>{(isFullscreen || workspaceTab === "echo") && <button type="button" onClick={resetEchoConversation} title="Reset conversation" aria-label="Reset conversation" className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C]"><RotateCcw size={12} /> Reset</button>}</div> : <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Transcript</h3>}
-                  <p className="text-[11px] text-slate-500 mt-0.5">{isFullscreen ? "Review previous meetings while this one is being captured." : "Capture context now or revisit what happened before."}</p>
+                  {canAskEcho ? (
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>
+                      {(isFullscreen || workspaceTab === "echo") && (
+                        <button
+                          type="button"
+                          onClick={resetEchoConversation}
+                          title="Reset conversation"
+                          aria-label="Reset conversation"
+                          className="inline-flex items-center gap-1 border border-[#003366]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#003366] hover:border-[#C9A84C] cursor-pointer"
+                        >
+                          <RotateCcw size={11} /> Reset
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Transcript</h3>
+                  )}
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {isFullscreen
+                      ? "Review previous meetings while this one is being captured."
+                      : "Capture context now or revisit what happened before."}
+                  </p>
                 </div>
-                {canAskEcho && !isFullscreen && <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
+              </div>
+              {canAskEcho && !isFullscreen && (
+                <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
-                </div>}
-                {isFullscreen && canAskEcho && <div className="flex gap-1" role="tablist" aria-label="Echo workspace"><button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Ask Echo</button><button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400"}`}>Transcript</button></div>}
-              </div>
+                </div>
+              )}
+              {isFullscreen && canAskEcho && (
+                <div className="flex gap-1 shrink-0" role="tablist" aria-label="Echo workspace">
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Ask Echo</button>
+                  <button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Transcript</button>
+                </div>
+              )}
             </div>
 
-            {isFullscreen && (!canAskEcho || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-5"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Echo is transcribing…" : liveTranscript.completedBatches > 0 ? `Echo is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Echo is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Echo processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
+            {isFullscreen && (!canAskEcho || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-4 space-y-3"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Echo is transcribing…" : liveTranscript.completedBatches > 0 ? `Echo is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Echo is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Echo processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
                 {notes.length === 0 && (
                   <div className="mx-auto mt-6 max-w-xs text-center">
