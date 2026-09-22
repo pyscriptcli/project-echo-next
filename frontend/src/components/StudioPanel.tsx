@@ -415,180 +415,220 @@ export function StudioPanel({
         <div className={`flex-1 min-h-0 overflow-hidden flex ${isFullscreen ? "flex-col lg:flex-row" : "flex-col"} bg-[#F3F6FA]`}>
 
           {/* ── Left / Top: Recording Controls ────────────────────────── */}
-          <div className={`${isFullscreen ? "w-full lg:w-[320px] xl:w-[370px] 2xl:w-[400px] lg:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-4 md:p-5 flex flex-col gap-4 shrink-0 bg-[#F3F6FA]`}>
-            <div className="border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Recording status and meeting details</p>
-            </div>
-            {recorder.status === "idle" && (
-              <div className="border border-[#D9E1EA] bg-white px-4 py-3 rounded-lg text-sm leading-relaxed text-slate-600 shadow-sm">
-                <strong className="text-[#003366]">Recording mode</strong>
-                <p className="text-xs mt-1">Choose how Echo should capture the conversation.</p>
-                <div className="grid grid-cols-2 gap-2 mt-2.5">
-                  <button type="button" onClick={() => setCaptureMode("meeting_link")} className={`px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${captureMode === "meeting_link" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Meeting link</button>
-                  <button type="button" onClick={() => setCaptureMode("device")} className={`px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${captureMode === "device" ? "bg-[#003366] text-white border-[#003366]" : "bg-white text-[#003366] border-slate-200 hover:border-[#003366]"}`}>Record on this device</button>
-                </div>
-              </div>
-            )}
-
-            {recorder.status === "idle" && captureMode === "meeting_link" && (
-              <div className="border border-[#C9D8E8] bg-white px-4 py-4 rounded-lg shadow-sm">
-                <p className="text-xs font-semibold tracking-tight text-[#003366]">Join with Echo.ai</p>
-                <p className="text-xs text-gray-500 mt-1">Paste a Zoom, Google Meet, or Teams link and Echo.ai will join for you.</p>
-                <div className="flex gap-2 mt-2">
-                  <input value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="Paste a meeting link" className="min-w-0 flex-1 border border-slate-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-[#C9A84C]" />
-                  <button type="button" onClick={sendEchoBot} disabled={isSendingBot || !meetingLink.trim()} className="btn-primary !py-2 !px-4 !text-xs rounded-md">{isSendingBot ? "Starting…" : "Start meeting"}</button>
-                </div>
-                {botStatus && <p className="text-[11px] text-[#003366] mt-2" role="status">{botStatus}</p>}
-              </div>
-            )}
-
-            {/* Mic Selector */}
-            {recorder.status === "idle" && captureMode === "device" && (
+          {/* ── Left / Top: Recording Controls ────────────────────────── */}
+          <div className={`${isFullscreen ? "w-full lg:w-[320px] xl:w-[360px] 2xl:w-[380px] lg:border-r border-[#D9E1EA]" : ""} h-full min-h-0 overflow-y-auto p-3 md:p-3.5 flex flex-col gap-2.5 shrink-0 bg-[#F3F6FA]`}>
+            {/* Header with live status badge */}
+            <div className="border-b border-slate-200 pb-2 flex items-center justify-between shrink-0">
               <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1.5">
-                  Microphone
-                </label>
-                <div className="relative">
-                  <select
-                    value={recorder.selectedDeviceId || ""}
-                    onChange={(e) => recorder.selectDevice(e.target.value)}
-                    className="w-full border border-slate-200 bg-white text-sm text-[#181D1E] px-3 py-2.5 pr-8 appearance-none rounded-md focus:outline-none focus:border-[#C9A84C]"
+                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-[#003366]">Echo Meeting</h3>
+                <p className="text-[10px] text-slate-500">Live capture & details</p>
+              </div>
+              <div>
+                {isRecordingActive ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 px-2 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                    {recorder.status === "paused" ? "Paused" : "Live"}
+                  </span>
+                ) : isStopped ? (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+                    Ready
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5">
+                    Standby
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Idle state: Compact Capture & Recording Controls */}
+            {recorder.status === "idle" && (
+              <div className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white p-3 shadow-2xs space-y-2.5">
+                {/* Segmented Mode Switch */}
+                <div className="grid grid-cols-2 gap-1 bg-slate-100 p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setCaptureMode("device")}
+                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer ${
+                      captureMode === "device"
+                        ? "bg-[#003366] text-white shadow-2xs"
+                        : "text-slate-600 hover:text-[#003366]"
+                    }`}
                   >
-                    <option value="">System Default</option>
-                    {recorder.availableDevices.map((device) => (
-                      <option key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    This Device
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaptureMode("meeting_link")}
+                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer ${
+                      captureMode === "meeting_link"
+                        ? "bg-[#003366] text-white shadow-2xs"
+                        : "text-slate-600 hover:text-[#003366]"
+                    }`}
+                  >
+                    Meeting Link
+                  </button>
                 </div>
+
+                {/* Device Mode Controls */}
+                {captureMode === "device" && (
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Microphone Source
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={recorder.selectedDeviceId || ""}
+                          onChange={(e) => recorder.selectDevice(e.target.value)}
+                          className="w-full border border-slate-200 bg-[#FFFCFB] text-xs text-slate-800 px-2.5 py-1.5 pr-7 appearance-none outline-none focus:border-[#C9A84C]"
+                        >
+                          <option value="">System Default</option>
+                          {recorder.availableDevices.map((device) => (
+                            <option key={device.deviceId} value={device.deviceId}>
+                              {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={!canRecord}
+                      onClick={() => void recorder.start()}
+                      className="w-full py-2.5 px-3 bg-[#003366] text-white hover:bg-[#002244] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-[#C9A84C] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                    >
+                      <Mic size={15} className="text-[#C9A84C]" />
+                      <span>{canRecord ? "Start Recording" : "Recording Disabled"}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Meeting Link Mode Controls */}
+                {captureMode === "meeting_link" && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-500">Paste Zoom, Teams, or Google Meet link for Echo.ai to join.</p>
+                    <div className="flex gap-1.5">
+                      <input
+                        value={meetingLink}
+                        onChange={(event) => setMeetingLink(event.target.value)}
+                        placeholder="Paste meeting link..."
+                        className="min-w-0 flex-1 border border-slate-200 bg-[#FFFCFB] px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-[#C9A84C]"
+                      />
+                      <button
+                        type="button"
+                        onClick={sendEchoBot}
+                        disabled={isSendingBot || !meetingLink.trim()}
+                        className="bg-[#003366] text-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider hover:bg-[#002244] transition-colors border border-[#C9A84C] disabled:opacity-40 shrink-0 cursor-pointer"
+                      >
+                        {isSendingBot ? "Joining…" : "Join"}
+                      </button>
+                    </div>
+                    {botStatus && <p className="text-[11px] text-[#003366] font-medium" role="status">{botStatus}</p>}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Recording Control Button */}
-            <div className="flex flex-col items-center gap-3">
-              {recorder.status === "idle" && captureMode === "device" && (
-                <div className="flex flex-col items-center gap-2"><button type="button" disabled={!canRecord} onClick={() => void recorder.start()} className="w-24 h-24 flex items-center justify-center rounded-full border-4 border-[#003366] bg-white text-[#003366] hover:bg-[#003366]/5 hover:scale-[1.02] transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-40"><Mic size={40} /></button><span className="text-xs font-semibold text-[#003366]">{canRecord ? "Start meeting" : "Recording disabled"}</span></div>
-              )}
-
-              {recorder.status === "recording" && (
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={recorder.pause}
-                    className="w-14 h-14 flex items-center justify-center border-2 border-amber-500 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all"
-                    title="Pause recording"
-                  >
-                    <Pause size={24} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={recorder.stop}
-                    className="w-14 h-14 flex items-center justify-center border-2 border-red-500 bg-red-50 text-red-500 hover:bg-red-100 transition-all animate-pulse"
-                    title="Stop recording"
-                  >
-                    <Square size={24} className="fill-current" />
-                  </button>
-                </div>
-              )}
-
-              {recorder.status === "paused" && (
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={recorder.resume}
-                    className="w-14 h-14 flex items-center justify-center border-2 border-green-500 bg-green-50 text-green-600 hover:bg-green-100 transition-all"
-                    title="Resume recording"
-                  >
-                    <Play size={24} className="fill-current" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={recorder.stop}
-                    className="w-14 h-14 flex items-center justify-center border-2 border-red-500 bg-red-50 text-red-500 hover:bg-red-100 transition-all"
-                    title="Stop recording"
-                  >
-                    <Square size={24} className="fill-current" />
-                  </button>
-                </div>
-              )}
-
-              {isStopped && (
-                <div className="w-full flex flex-col items-center gap-3">
-                  <div className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 text-center w-full">
-                    ✓ Recording complete — {formatTime(recorder.elapsedSeconds)}
-                  </div>
-                  <div className="flex gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={handleSendToNotetaker}
-                      disabled={isFinalizing}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#0c0c0e] text-white font-semibold py-2.5 px-4 border border-[#C9A84C] text-xs hover:bg-[#1a1a1e] transition-colors"
-                    >
-                      <Send size={13} />
-                      {isFinalizing ? "Finishing…" : "Send to Notetaker"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveRecording}
-                      className="inline-flex items-center justify-center gap-1.5 bg-[#FFFCFB] text-[#003366] font-semibold py-2.5 px-3 border border-[#003366]/30 text-xs hover:border-[#C9A84C] transition-colors"
-                    >
-                      <Download size={13} />
-                      Save recording
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDiscard}
-                      className="inline-flex items-center justify-center gap-1 bg-transparent text-gray-600 font-semibold py-2.5 px-3 border border-gray-300 text-xs hover:text-red-600 hover:border-red-300 transition-colors"
-                    >
-                      <Trash2 size={13} />
-                      Discard
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {(isRecordingActive || isStopped) && <div className="space-y-3 border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white px-5 py-4 shadow-sm rounded-sm">
-            {/* Timer */}
+            {/* Active Recording Controls */}
             {isRecordingActive && (
-              <div className="text-center">
-                <span className={`text-2xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
-                  {formatTime(recorder.elapsedSeconds)}
-                </span>
-                <p className={`text-[11px] font-semibold tracking-wide mt-1 ${recorder.status === "paused" ? "text-amber-600" : "text-red-500"}`}>
-                  {recorder.status === "paused" ? "Paused" : "Recording"}
+              <div className="border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white p-3 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`text-xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
+                      {formatTime(recorder.elapsedSeconds)}
+                    </span>
+                    <span className={`ml-2 text-[10px] font-bold uppercase tracking-wider ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
+                      {recorder.status === "paused" ? "Paused" : "Recording"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {recorder.status === "recording" ? (
+                      <button
+                        type="button"
+                        onClick={recorder.pause}
+                        className="h-7 px-2.5 border border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Pause recording"
+                      >
+                        <Pause size={12} /> Pause
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={recorder.resume}
+                        className="h-7 px-2.5 border border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Resume recording"
+                      >
+                        <Play size={12} className="fill-current" /> Resume
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={recorder.stop}
+                      className="h-7 px-3 border border-red-500 bg-red-600 text-white hover:bg-red-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Stop recording"
+                    >
+                      <Square size={11} className="fill-current" /> Stop
+                    </button>
+                  </div>
+                </div>
+
+                {recorder.status === "recording" && (
+                  <div>
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Mic Input</span>
+                      {visualizer.isClipping && <span className="text-[9px] font-bold text-red-600 uppercase">Clipping</span>}
+                    </div>
+                    <VolumeMeter level={visualizer.volumeLevel} isClipping={visualizer.isClipping} />
+                  </div>
+                )}
+
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  {liveTranscript.status === "waiting" ? "Audio will be finalized when stopped." : liveTranscript.status === "processing" ? "Transcribing live segments…" : liveTranscript.status === "ready" ? "Ready for Notetaker" : liveTranscript.completedBatches > 0 ? `Context ready through ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Recording live audio & building context"}
                 </p>
               </div>
             )}
 
-            {(isRecordingActive || isStopped) && (
-              <div className="text-center text-xs text-[#003366]/70">
-                {liveTranscript.status === "waiting" ? "Some audio will be finished when you send it." : liveTranscript.status === "processing" ? "Understanding the latest part…" : liveTranscript.status === "ready" ? "Ready for Notetaker" : liveTranscript.completedBatches > 0 ? `Meeting context ready through ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Recording and building meeting context"}
+            {/* Stopped Recording Controls */}
+            {isStopped && (
+              <div className="border border-slate-200 border-t-2 border-t-emerald-600 bg-white p-3 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1">
+                  <span>✓ Recording Complete</span>
+                  <span className="font-mono">{formatTime(recorder.elapsedSeconds)}</span>
+                </div>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSendToNotetaker}
+                    disabled={isFinalizing}
+                    className="w-full h-8 flex items-center justify-center gap-1.5 bg-[#003366] text-white hover:bg-[#002244] font-bold text-xs uppercase tracking-wider border border-[#C9A84C] transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    <Send size={12} />
+                    {isFinalizing ? "Finishing…" : "Send to Notetaker"}
+                  </button>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleSaveRecording}
+                      className="h-7 inline-flex items-center justify-center gap-1 bg-white text-[#003366] font-semibold py-1 px-2 border border-slate-300 text-[11px] hover:border-[#003366] transition-colors cursor-pointer"
+                    >
+                      <Download size={11} /> Save File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDiscard}
+                      className="h-7 inline-flex items-center justify-center gap-1 bg-white text-slate-600 font-semibold py-1 px-2 border border-slate-300 text-[11px] hover:text-red-600 hover:border-red-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={11} /> Discard
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
-
-            {/* Volume Meter */}
-            {isRecordingActive && recorder.status === "recording" && (
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                  Mic Level
-                </label>
-                <VolumeMeter level={visualizer.volumeLevel} isClipping={visualizer.isClipping} />
-              </div>
-            )}
-            </div>}
 
             {meetingDetails}
-
-            {/* Status text for idle */}
-            {recorder.status === "idle" && (
-              <p className="text-xs text-gray-500 text-center">
-                Click the mic to start. Echo will check that meeting audio is included before recording.
-              </p>
-            )}
 
             {/* Error display */}
             {recorder.error && (
