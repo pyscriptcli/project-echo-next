@@ -379,6 +379,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [pastedText, setPastedText] = useState("");
   const [additionalMeetingNotes, setAdditionalMeetingNotes] = useState("");
+  const [recordedDurationSeconds, setRecordedDurationSeconds] = useState<number | null>(null);
 
   // Navigation Shell & View State
   const [currentView, setCurrentView] = useState<NavView>("dashboard");
@@ -652,6 +653,9 @@ export default function Home() {
       setTranscript(preparedTranscript || res.transcript || "");
       if (res.telemetry) {
         setAudioTelemetry(res.telemetry);
+        if (res.telemetry.originalDurationSec > 0) {
+          setRecordedDurationSeconds(Math.round(res.telemetry.originalDurationSec));
+        }
       }
       if (res.metadata) {
         setMetadata((prev: any) => ({
@@ -699,6 +703,9 @@ export default function Home() {
 
   const handleSendToNotetaker = (file: File, notes: StudioNote[], preparedTranscript?: string) => {
     setSelectedFile(file);
+    if (studioRecordingState.elapsedSeconds > 0) {
+      setRecordedDurationSeconds(studioRecordingState.elapsedSeconds);
+    }
     if (notes && notes.length > 0) {
       setAdditionalMeetingNotes(notes.map((n) => `${n.timestamp} ${n.text}`).join("\n"));
     }
@@ -852,14 +859,29 @@ export default function Home() {
     setIsLoading(true);
     setLoadingText(isConfidential ? "Saving meeting to Private list in ClickUp..." : "Saving meeting to ClickUp...");
     try {
+      const effectiveMeta = getEffectiveMetadata();
+      const calcDurationSeconds = recordedDurationSeconds || (audioTelemetry?.originalDurationSec ? Math.round(audioTelemetry.originalDurationSec) : undefined);
+      let fallbackMinutes: number | undefined;
+      if (effectiveMeta.start_time && effectiveMeta.end_time) {
+        const [sh, sm] = effectiveMeta.start_time.split(":").map(Number);
+        const [eh, em] = effectiveMeta.end_time.split(":").map(Number);
+        if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+          const diff = (eh * 60 + em) - (sh * 60 + sm);
+          if (diff > 0) fallbackMinutes = diff;
+        }
+      }
+      const finalDurationMinutes = calcDurationSeconds ? Math.max(1, Math.round(calcDurationSeconds / 60)) : fallbackMinutes;
+      const finalDurationSeconds = calcDurationSeconds || (finalDurationMinutes ? finalDurationMinutes * 60 : undefined);
+
       const payloadMeta = {
-        ...getEffectiveMetadata(),
+        ...effectiveMeta,
+        ...(finalDurationMinutes ? { duration_minutes: finalDurationMinutes } : {}),
+        ...(finalDurationSeconds ? { duration_seconds: finalDurationSeconds } : {}),
         ...(spaceToUse ? { space_id: spaceToUse } : {}),
         ...(targetListId ? { list_id: targetListId } : {}),
         is_confidential: isConfidential,
       };
       const res = await saveMeeting(payloadMeta, momItems, otherDiscussions, transcript);
-      const effectiveMeta = getEffectiveMetadata();
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
       const newRecord: ArchivedMeeting = {
         id: newMeetingId,
@@ -867,6 +889,8 @@ export default function Home() {
         title: effectiveMeta.client_name || "Executive Meeting",
         date: effectiveMeta.date || new Date().toISOString().split("T")[0],
         meeting_type: (effectiveMeta.meeting_type as any) || "Internal",
+        duration_minutes: finalDurationMinutes,
+        duration_seconds: finalDurationSeconds,
         location: effectiveMeta.location || "",
         attendees_prime: primeAttendees,
         attendees_external: externalAttendees,

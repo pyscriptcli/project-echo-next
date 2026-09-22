@@ -39,4 +39,6 @@ export interface ArchivedMeeting {
   clickup_task_url?: string;
   archive_status?: string;
   is_confidential?: boolean;
+  duration_seconds?: number;
+  duration_minutes?: number;
 }

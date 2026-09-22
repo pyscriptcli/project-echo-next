@@ -9,6 +9,7 @@ function meetingDescription(meeting: any) {
     `**Meeting:** ${meeting.title || "Executive Meeting"}`,
     `**Date:** ${meeting.date || ""}`,
     `**Type:** ${meeting.meeting_type || ""}`,
+    `**Duration:** ${meeting.duration_minutes ? `${meeting.duration_minutes} mins` : meeting.duration_seconds ? `${Math.round(meeting.duration_seconds / 60)} mins` : "—"}`,
     `**Location:** ${meeting.location || ""}`,
     `**Team attendees:** ${(meeting.attendees_prime || []).join(", ") || "—"}`,
     `**External attendees:** ${(meeting.attendees_external || []).join(", ") || "—"}`,
@@ -81,6 +82,8 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     : (spaceName && spaceName !== "All Spaces" ? spaceName : (task.space?.name || "Workspace"));
   const taskListId = list?.id ? String(list.id) : (task.list?.id ? String(task.list.id) : "");
   const taskListName = list?.name || task.list?.name || (isConfidential ? "Personal List" : "Echo Meetings");
+  const durMatch = description.match(/\*\*Duration:\*\*\s*(\d+)\s*mins?/i);
+  const durationMinutes = durMatch ? parseInt(durMatch[1], 10) : undefined;
 
   return {
     id: String(task.id),
@@ -102,6 +105,8 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     clickup_task_url: task.url || `https://app.clickup.com/t/${task.id}`,
     archive_status: task.status?.status || "completed ontime",
     is_confidential: isConfidential,
+    duration_minutes: durationMinutes,
+    duration_seconds: durationMinutes ? durationMinutes * 60 : undefined,
   };
 }
 

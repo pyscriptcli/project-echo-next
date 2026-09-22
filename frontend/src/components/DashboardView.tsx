@@ -11,7 +11,8 @@ import {
   ArrowRight, 
   CheckCircle2, 
   Plus,
-  Lock
+  Lock,
+  Clock
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -80,6 +81,28 @@ function DatePickerInput({
   );
 }
 
+function getMeetingDurationMinutes(m: ArchivedMeeting): number {
+  if (typeof m.duration_minutes === "number" && m.duration_minutes > 0) return m.duration_minutes;
+  if (typeof m.duration_seconds === "number" && m.duration_seconds > 0) return Math.max(1, Math.round(m.duration_seconds / 60));
+  // Estimate from start and end time if present
+  const sm = (m as any).start_time;
+  const em = (m as any).end_time;
+  if (sm && em) {
+    const [sh, smin] = sm.split(":").map(Number);
+    const [eh, emin] = em.split(":").map(Number);
+    if (!isNaN(sh) && !isNaN(smin) && !isNaN(eh) && !isNaN(emin)) {
+      const diff = (eh * 60 + emin) - (sh * 60 + smin);
+      if (diff > 0) return diff;
+    }
+  }
+  // Estimate from transcript word count (~130 wpm)
+  if (m.transcript && m.transcript.trim().length > 0) {
+    const words = m.transcript.trim().split(/\s+/).length;
+    return Math.max(5, Math.round(words / 130));
+  }
+  return 30; // fallback reasonable default
+}
+
 export function DashboardView({
   meetings,
   onOpenMeeting,
@@ -113,6 +136,12 @@ export function DashboardView({
   const teamMeetings = filteredMeetings.filter((m) => m.meeting_type === "Team").length;
   const internalMeetings = filteredMeetings.filter((m) => m.meeting_type === "Internal").length;
   const externalMeetings = filteredMeetings.filter((m) => m.meeting_type === "External").length;
+
+  const totalMinutes = filteredMeetings.reduce((acc, m) => acc + getMeetingDurationMinutes(m), 0);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remMinutes = totalMinutes % 60;
+  const avgMinutes = totalMeetings > 0 ? Math.round(totalMinutes / totalMeetings) : 0;
+  const formattedMOMTime = totalHours > 0 ? `${totalHours}h ${remMinutes}m` : `${remMinutes}m`;
 
   const internalPct = totalMeetings > 0 ? Math.round((internalMeetings / totalMeetings) * 100) : 100;
   const externalPct = totalMeetings > 0 ? 100 - internalPct : 0;
@@ -220,8 +249,8 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* 4 Stat Metric Cards (Sharp edgy geometry) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 5 Stat Metric Cards (Sharp edgy geometry) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
         {/* TOTAL MEETINGS */}
         <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
@@ -232,6 +261,23 @@ export function DashboardView({
           </div>
           <div className="text-3xl font-serif font-bold text-[#003366]">{totalMeetings}</div>
           <div className="text-[11px] text-gray-400 mt-1">Recorded sessions</div>
+        </div>
+
+        {/* TOTAL MOM TIME */}
+        <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
+          <div className="flex items-center justify-between text-gray-400 mb-2">
+            <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
+              Total MOM Time
+            </span>
+            <Clock size={16} className="text-[#C9AB4C]" />
+          </div>
+          <div className="text-3xl font-serif font-bold text-[#003366]">{formattedMOMTime}</div>
+          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
+            <span>{totalMinutes.toLocaleString()} mins in-house</span>
+            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1 py-0.5">
+              Avg: {avgMinutes}m
+            </span>
+          </div>
         </div>
 
         {/* TEAM MEETINGS */}
