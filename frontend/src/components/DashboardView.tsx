@@ -4,15 +4,15 @@ import React, { useState } from "react";
 import { 
   Calendar as CalendarIcon, 
   Users, 
-  Briefcase, 
   Building2, 
   ChevronLeft, 
   ChevronRight, 
   ArrowRight, 
-  CheckCircle2, 
   Plus,
   Lock,
-  Clock
+  Clock,
+  PhilippinePeso,
+  Zap
 } from "lucide-react";
 import { ArchivedMeeting } from "@/types/meeting";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -133,18 +133,22 @@ export function DashboardView({
 
   // Metrics computation based on active date filter
   const totalMeetings = filteredMeetings.length;
-  const teamMeetings = filteredMeetings.filter((m) => m.meeting_type === "Team").length;
-  const internalMeetings = filteredMeetings.filter((m) => m.meeting_type === "Internal").length;
-  const externalMeetings = filteredMeetings.filter((m) => m.meeting_type === "External").length;
+
+  // AI Compute Cost rates (in PHP)
+  // Groq Whisper Large v3 Turbo: $0.04 / hr audio @ ~₱57/USD = ₱2.28 / hr
+  // DeepSeek Chat Summarization: ~$0.0044 / hr transcript & output @ ~₱57/USD = ₱0.25 / hr
+  const GROQ_WHISPER_TURBO_PHP_PER_HOUR = 2.28;
+  const DEEPSEEK_SUMMARY_PHP_PER_HOUR = 0.25;
+  const TOTAL_AI_PHP_PER_HOUR = GROQ_WHISPER_TURBO_PHP_PER_HOUR + DEEPSEEK_SUMMARY_PHP_PER_HOUR;
 
   const totalMinutes = filteredMeetings.reduce((acc, m) => acc + getMeetingDurationMinutes(m), 0);
   const totalHours = Math.floor(totalMinutes / 60);
   const remMinutes = totalMinutes % 60;
   const avgMinutes = totalMeetings > 0 ? Math.round(totalMinutes / totalMeetings) : 0;
-  const formattedMOMTime = totalHours > 0 ? `${totalHours}h ${remMinutes}m` : `${remMinutes}m`;
+  const formattedMeetingTime = totalHours > 0 ? `${totalHours}h ${remMinutes}m` : `${remMinutes}m`;
 
-  const internalPct = totalMeetings > 0 ? Math.round((internalMeetings / totalMeetings) * 100) : 100;
-  const externalPct = totalMeetings > 0 ? 100 - internalPct : 0;
+  const totalCostPhp = (totalMinutes / 60) * TOTAL_AI_PHP_PER_HOUR;
+  const avgCostPerMeeting = totalMeetings > 0 ? totalCostPhp / totalMeetings : 0;
 
   // Calendar logic
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -249,9 +253,9 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* 5 Stat Metric Cards (Sharp edgy geometry) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        {/* TOTAL MEETINGS */}
+      {/* 4 Stat Metric Cards (Sharp edgy geometry) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* CARD 1: TOTAL MEETINGS */}
         <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
             <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
@@ -263,15 +267,15 @@ export function DashboardView({
           <div className="text-[11px] text-gray-400 mt-1">Recorded sessions</div>
         </div>
 
-        {/* TOTAL MOM TIME */}
+        {/* CARD 2: TOTAL MEETING TIME */}
         <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
             <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
-              Total MOM Time
+              Total Meeting Time
             </span>
             <Clock size={16} className="text-[#C9AB4C]" />
           </div>
-          <div className="text-3xl font-serif font-bold text-[#003366]">{formattedMOMTime}</div>
+          <div className="text-3xl font-serif font-bold text-[#003366]">{formattedMeetingTime}</div>
           <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
             <span>{totalMinutes.toLocaleString()} mins in-house</span>
             <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1 py-0.5">
@@ -280,73 +284,42 @@ export function DashboardView({
           </div>
         </div>
 
-        {/* TEAM MEETINGS */}
+        {/* CARD 3: TOTAL MEETING COST */}
         <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
             <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
-              Team Meetings
+              Total Meeting Cost
             </span>
-            <Users size={16} className="text-[#C9AB4C]" />
+            <PhilippinePeso size={16} className="text-[#C9AB4C]" />
           </div>
-          <div className="text-3xl font-serif font-bold text-[#003366]">{teamMeetings}</div>
-          <div className="text-[11px] text-gray-400 mt-1">Internal departments</div>
+          <div className="text-3xl font-serif font-bold text-[#003366]">
+            ₱{totalCostPhp.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
+            <span>Groq Turbo + DeepSeek</span>
+            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1 py-0.5">
+              Avg: ₱{avgCostPerMeeting.toFixed(2)}
+            </span>
+          </div>
         </div>
 
-        {/* INTERNAL MEETINGS */}
+        {/* CARD 4: COST / HOUR */}
         <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
             <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
-              Internal Meetings
+              Cost / Hour
             </span>
-            <CheckCircle2 size={16} className="text-[#003366]" />
+            <Zap size={16} className="text-emerald-600" />
           </div>
-          <div className="text-3xl font-serif font-bold text-[#003366]">{internalMeetings}</div>
-          <div className="text-[11px] text-gray-400 mt-1">Executive leadership</div>
-        </div>
-
-        {/* EXTERNAL MEETINGS */}
-        <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
-          <div className="flex items-center justify-between text-gray-400 mb-2">
-            <span className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
-              External Meetings
+          <div className="text-3xl font-serif font-bold text-[#003366]">
+            ₱{TOTAL_AI_PHP_PER_HOUR.toFixed(2)} <span className="text-sm font-sans font-normal text-gray-500">/ hr</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
+            <span>₱2.28 STT + ₱0.25 LLM</span>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.5">
+              Groq + DeepSeek
             </span>
-            <Briefcase size={16} className="text-emerald-600" />
           </div>
-          <div className="text-3xl font-serif font-bold text-[#003366]">{externalMeetings}</div>
-          <div className="text-[11px] text-gray-400 mt-1">Clients & partners</div>
-        </div>
-      </div>
-
-      {/* Period Distribution Bar (Sharp edgy geometry) */}
-      <div className="bg-[#FFFCFB] border border-gray-200/90 p-5 rounded-none shadow-2xs">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold tracking-widest uppercase text-[#003366]">
-            Period Distribution
-          </span>
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-none bg-[#003366]"></span>
-              <span className="text-gray-600">Internal: {internalPct}.0%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-none bg-[#C9AB4C]"></span>
-              <span className="text-gray-600">External: {externalPct}.0%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="h-3 w-full bg-[#FFFCFB] rounded-none overflow-hidden flex">
-          <div 
-            style={{ width: `${internalPct}%` }} 
-            className="bg-[#003366] h-full transition-all duration-500" 
-            title={`Internal: ${internalPct}%`}
-          />
-          <div 
-            style={{ width: `${externalPct}%` }} 
-            className="bg-[#C9AB4C] h-full transition-all duration-500" 
-            title={`External: ${externalPct}%`}
-          />
         </div>
       </div>
 
