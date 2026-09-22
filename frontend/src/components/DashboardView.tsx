@@ -264,7 +264,6 @@ export function DashboardView({
             <Building2 size={16} className="text-[#003366]" />
           </div>
           <div className="text-3xl font-serif font-bold text-[#003366]">{totalMeetings}</div>
-          <div className="text-[11px] text-gray-400 mt-1">Recorded sessions</div>
         </div>
 
         {/* CARD 2: TOTAL MEETING TIME */}
@@ -276,10 +275,9 @@ export function DashboardView({
             <Clock size={16} className="text-[#C9AB4C]" />
           </div>
           <div className="text-3xl font-serif font-bold text-[#003366]">{formattedMeetingTime}</div>
-          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
-            <span>{totalMinutes.toLocaleString()} mins in-house</span>
-            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1 py-0.5">
-              Avg: {avgMinutes}m
+          <div className="mt-2">
+            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1.5 py-0.5">
+              Avg: {avgMinutes}m / meeting
             </span>
           </div>
         </div>
@@ -295,10 +293,9 @@ export function DashboardView({
           <div className="text-3xl font-serif font-bold text-[#003366]">
             ₱{totalCostPhp.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
-            <span>Groq Turbo + DeepSeek</span>
-            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1 py-0.5">
-              Avg: ₱{avgCostPerMeeting.toFixed(2)}
+          <div className="mt-2">
+            <span className="text-[10px] font-semibold text-[#003366] bg-gray-100 px-1.5 py-0.5">
+              Avg: ₱{avgCostPerMeeting.toFixed(2)} / meeting
             </span>
           </div>
         </div>
@@ -314,10 +311,9 @@ export function DashboardView({
           <div className="text-3xl font-serif font-bold text-[#003366]">
             ₱{TOTAL_AI_PHP_PER_HOUR.toFixed(2)} <span className="text-sm font-sans font-normal text-gray-500">/ hr</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
-            <span>₱2.28 STT + ₱0.25 LLM</span>
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.5">
-              Groq + DeepSeek
+          <div className="mt-2">
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5">
+              Blended AI rate
             </span>
           </div>
         </div>
@@ -370,6 +366,13 @@ export function DashboardView({
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                           <CalendarIcon size={12} className="text-gray-400" /> {formatEchoDate(meeting.date)}
+                        </span>
+                        {/* Duration & Cost Badges */}
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-none bg-slate-100 text-[#003366] border border-slate-200 flex items-center gap-1" title="Meeting Duration">
+                          <Clock size={10} className="text-[#C9AB4C]" /> {getMeetingDurationMinutes(meeting)}m
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-none bg-emerald-50 text-emerald-800 border border-emerald-200" title="Estimated AI Compute Cost">
+                          ₱{((getMeetingDurationMinutes(meeting) / 60) * TOTAL_AI_PHP_PER_HOUR).toFixed(2)}
                         </span>
                         {meeting.location && (
                           <span className="text-xs text-gray-500">

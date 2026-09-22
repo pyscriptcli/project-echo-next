@@ -16,8 +16,15 @@ import {
   Check,
   RotateCcw,
   Users,
-  Mail
-  ,BarChart3, Download, ChevronUp, ChevronDown
+  Mail,
+  BarChart3,
+  Download,
+  ChevronUp,
+  ChevronDown,
+  PhilippinePeso,
+  Zap,
+  Coins,
+  Clock
 } from "lucide-react";
 import FormsCreateView from "./FormsCreateView";
 import FormsTrackView from "./FormsTrackView";
@@ -156,6 +163,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const [aiUsage, setAiUsage] = useState<{ today: { requests: number; tokens: number }; month: { requests: number; tokens: number }; recentLimitHits: number; credentialConfigured: boolean } | null>(null);
   const [telemetryRange, setTelemetryRange] = useState(() => ({ start: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), end: new Date().toISOString().slice(0, 10) }));
   const [telemetry, setTelemetry] = useState<any>(null);
+  const [costCurrency, setCostCurrency] = useState<"PHP" | "USD">("PHP");
 
   // Page Access Governance state
   const [newPageUserEmail, setNewPageUserEmail] = useState("");
@@ -543,6 +551,155 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {[["Events", telemetry?.summary?.totalEvents || 0], ["Success", telemetry?.summary?.successfulEvents || 0], ["Failures", telemetry?.summary?.failedEvents || 0], ["Avg processing", `${telemetry?.summary?.averageProcessingMs || 0} ms`], ["Fallback rate", `${telemetry?.summary?.fallbackRate || 0}%`]].map(([label, value]) => <div key={String(label)} className="panel"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">{label}</div><div className="mt-1 text-xl text-[#003366]">{value}</div></div>)}
+        </div>
+
+        {/* AI Compute & Cost Intelligence Panel */}
+        <div className="panel space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-3">
+            <div>
+              <h3 className="flex items-center gap-2 text-base font-serif italic font-bold text-[#003366]">
+                <PhilippinePeso size={17} className="text-[#C9A84C]" /> AI Compute & Cost Intelligence
+              </h3>
+              <p className="mt-0.5 text-xs text-[#181D1E]/65">
+                Exact processing spend across Groq Whisper, OpenRouter failover, and DeepSeek MoM synthesis.
+              </p>
+            </div>
+            {/* Currency toggle */}
+            <div className="inline-flex rounded-none border border-[#003366]/30 bg-[#FFFCFB] p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setCostCurrency("PHP")}
+                className={`px-3 py-1 text-xs font-semibold transition-all ${
+                  costCurrency === "PHP" ? "bg-[#003366] text-white shadow-xs" : "text-[#003366] hover:bg-gray-100"
+                }`}
+              >
+                PHP (₱)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCostCurrency("USD")}
+                className={`px-3 py-1 text-xs font-semibold transition-all ${
+                  costCurrency === "USD" ? "bg-[#003366] text-white shadow-xs" : "text-[#003366] hover:bg-gray-100"
+                }`}
+              >
+                USD ($)
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Cost Breakdown Cards */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Total Spend */}
+            <div className="bg-[#FFFCFB] border border-[#003366]/20 p-4 rounded-none shadow-2xs">
+              <div className="flex items-center justify-between text-[#003366]/70 text-[10px] uppercase font-bold tracking-wider">
+                <span>Total AI Compute Spend</span>
+                <Coins size={14} className="text-[#C9A84C]" />
+              </div>
+              <div className="mt-2 text-2xl font-serif font-bold text-[#003366]">
+                {costCurrency === "PHP"
+                  ? `₱${(telemetry?.summary?.cost?.totalPhp || 0).toFixed(2)}`
+                  : `$${(telemetry?.summary?.cost?.totalUsd || 0).toFixed(4)}`}
+              </div>
+              <div className="mt-1 text-xs text-gray-500">
+                {telemetry?.summary?.totalAudioSeconds
+                  ? `${Math.round(telemetry.summary.totalAudioSeconds / 60)} mins audio processed`
+                  : "0 mins audio processed"}
+              </div>
+            </div>
+
+            {/* STT Primary (Groq Whisper Turbo) */}
+            <div className="bg-[#FFFCFB] border border-[#003366]/20 p-4 rounded-none shadow-2xs">
+              <div className="flex items-center justify-between text-[#003366]/70 text-[10px] uppercase font-bold tracking-wider">
+                <span>Primary STT (Groq Turbo)</span>
+                <Zap size={14} className="text-emerald-600" />
+              </div>
+              <div className="mt-2 text-2xl font-serif font-bold text-[#003366]">
+                {costCurrency === "PHP"
+                  ? `₱${(telemetry?.summary?.cost?.sttGroqPhp || 0).toFixed(2)}`
+                  : `$${(telemetry?.summary?.cost?.sttGroqUsd || 0).toFixed(4)}`}
+              </div>
+              <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                <span>Rate: {costCurrency === "PHP" ? "₱2.28/hr" : "$0.04/hr"}</span>
+                <span className="font-semibold text-emerald-700">{telemetry?.summary?.cost?.sttGroqMinutes || 0}m audio</span>
+              </div>
+            </div>
+
+            {/* STT Fallback (OpenRouter Whisper) */}
+            <div className="bg-[#FFFCFB] border border-[#003366]/20 p-4 rounded-none shadow-2xs">
+              <div className="flex items-center justify-between text-[#003366]/70 text-[10px] uppercase font-bold tracking-wider">
+                <span>STT Fallback (OpenRouter)</span>
+                <Clock size={14} className="text-amber-600" />
+              </div>
+              <div className="mt-2 text-2xl font-serif font-bold text-[#003366]">
+                {costCurrency === "PHP"
+                  ? `₱${(telemetry?.summary?.cost?.sttFallbackPhp || 0).toFixed(2)}`
+                  : `$${(telemetry?.summary?.cost?.sttFallbackUsd || 0).toFixed(4)}`}
+              </div>
+              <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                <span>Rate: {costCurrency === "PHP" ? "₱20.52/hr" : "$0.36/hr"}</span>
+                <span className="font-semibold text-amber-700">{telemetry?.summary?.cost?.sttFallbackMinutes || 0}m fallback</span>
+              </div>
+            </div>
+
+            {/* LLM MoM Synthesis (DeepSeek Chat) */}
+            <div className="bg-[#FFFCFB] border border-[#003366]/20 p-4 rounded-none shadow-2xs">
+              <div className="flex items-center justify-between text-[#003366]/70 text-[10px] uppercase font-bold tracking-wider">
+                <span>LLM MoM Synthesis</span>
+                <BarChart3 size={14} className="text-[#003366]" />
+              </div>
+              <div className="mt-2 text-2xl font-serif font-bold text-[#003366]">
+                {costCurrency === "PHP"
+                  ? `₱${(telemetry?.summary?.cost?.llmPhp || 0).toFixed(2)}`
+                  : `$${(telemetry?.summary?.cost?.llmUsd || 0).toFixed(4)}`}
+              </div>
+              <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                <span>Rate: {costCurrency === "PHP" ? "~₱0.25/hr" : "~$0.0044/mtg"}</span>
+                <span className="font-semibold text-[#003366]">{telemetry?.summary?.cost?.summarizeCount || 0} runs</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Rates & Model Ledger Table */}
+          <div className="overflow-x-auto border border-gray-200 mt-3">
+            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+              <thead className="bg-gray-50 font-bold uppercase tracking-wider text-[#003366]/70 text-[10px]">
+                <tr>
+                  <th className="px-3 py-2">Role</th>
+                  <th className="px-3 py-2">Model / Engine</th>
+                  <th className="px-3 py-2">Provider</th>
+                  <th className="px-3 py-2">Unit Rate (USD)</th>
+                  <th className="px-3 py-2">Effective Rate (PHP)</th>
+                  <th className="px-3 py-2">Billing Metric</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-[#FFFCFB]">
+                <tr>
+                  <td className="px-3 py-2 font-semibold text-[#003366]">Primary Transcription</td>
+                  <td className="px-3 py-2">Whisper Large v3 Turbo</td>
+                  <td className="px-3 py-2"><span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 font-semibold">Groq API</span></td>
+                  <td className="px-3 py-2 font-mono">$0.0400 / hr</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-[#003366]">₱2.28 / hr</td>
+                  <td className="px-3 py-2 text-gray-500">Audio stream duration</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-semibold text-[#003366]">MoM Summarization</td>
+                  <td className="px-3 py-2">DeepSeek Chat (V3)</td>
+                  <td className="px-3 py-2"><span className="bg-blue-50 text-[#003366] px-1.5 py-0.5 font-semibold">DeepSeek AI</span></td>
+                  <td className="px-3 py-2 font-mono">$0.27/M in · $1.10/M out</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-[#003366]">~₱0.25 / hr</td>
+                  <td className="px-3 py-2 text-gray-500">Tokens generated</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-semibold text-amber-800">Transcription Fallback</td>
+                  <td className="px-3 py-2">Whisper Large v3</td>
+                  <td className="px-3 py-2"><span className="bg-amber-50 text-amber-800 px-1.5 py-0.5 font-semibold">OpenRouter</span></td>
+                  <td className="px-3 py-2 font-mono">$0.3600 / hr</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-amber-800">₱20.52 / hr</td>
+                  <td className="px-3 py-2 text-gray-500">Only on Groq rate limits</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {[['Provider', telemetry?.summary?.byProvider], ['Source', telemetry?.summary?.bySource], ['Operation', telemetry?.summary?.byOperation]].map(([title, values]) => <div key={String(title)} className="panel"><h3 className="text-sm font-medium text-[#003366]">{title}</h3><div className="mt-3 space-y-2">{Object.entries((values || {}) as Record<string, number>).map(([key, value]) => <div key={key} className="flex justify-between border-b border-gray-100 pb-1 text-xs"><span>{key}</span><span className="font-semibold text-[#003366]">{value}</span></div>)}{!Object.keys((values || {}) as object).length && <p className="text-xs text-gray-400">No telemetry in this range.</p>}</div></div>)}
