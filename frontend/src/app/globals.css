@@ -38,6 +38,15 @@
     background: rgba(201, 168, 76, 0.75);
 }
 
+/* Hide scrollbar utility while maintaining scroll behavior */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @layer base {
   body {
     @apply bg-bg-primary text-text-primary font-sans antialiased;

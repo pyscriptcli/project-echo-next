@@ -440,12 +440,12 @@ export function StudioPanel({
               </div>
             </div>
 
-            {/* Scrollable Column 1 Body */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+            {/* Scrollable Column 1 Body (scrollbar hidden, scroll enabled) */}
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-2.5 space-y-2">
 
             {/* Idle state: Compact Capture & Recording Controls */}
             {recorder.status === "idle" && (
-              <div className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white p-3 shadow-2xs space-y-2.5">
+              <div className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white p-2.5 shadow-2xs space-y-2">
                 {/* Segmented Mode Switch */}
                 <div className="grid grid-cols-2 gap-1 bg-slate-100 p-0.5 border border-slate-200">
                   <button
@@ -474,7 +474,7 @@ export function StudioPanel({
 
                 {/* Device Mode Controls */}
                 {captureMode === "device" && (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     <div>
                       <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                         Microphone Source
@@ -536,7 +536,7 @@ export function StudioPanel({
 
             {/* Active Recording Controls */}
             {isRecordingActive && (
-              <div className="border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white p-3 shadow-2xs space-y-2.5">
+              <div className="border border-slate-200 border-t-2 border-t-[#C9A84C] bg-white p-2.5 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className={`text-xl font-mono font-bold tabular-nums ${recorder.status === "paused" ? "text-amber-600" : "text-red-600"}`}>
@@ -595,7 +595,7 @@ export function StudioPanel({
 
             {/* Stopped Recording Controls */}
             {isStopped && (
-              <div className="border border-slate-200 border-t-2 border-t-emerald-600 bg-white p-3 shadow-2xs space-y-2">
+              <div className="border border-slate-200 border-t-2 border-t-emerald-600 bg-white p-2.5 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1">
                   <span>✓ Recording Complete</span>
                   <span className="font-mono">{formatTime(recorder.elapsedSeconds)}</span>

@@ -1399,11 +1399,11 @@ export default function Home() {
                     onRecordingStop={handleRecordingStop}
                     meetingDetails={(
                       <section className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white shadow-2xs" aria-labelledby="meeting-information-heading">
-                        <div className="border-b border-slate-200 px-3 py-2 flex items-center justify-between">
+                        <div className="border-b border-slate-200 px-3 py-1.5 flex items-center justify-between">
                           <h3 id="meeting-information-heading" className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#003366]">Meeting Details</h3>
                           <span className="text-[9px] text-slate-400">Context for Minutes</span>
                         </div>
-                        <div className="space-y-2.5 p-3">
+                        <div className="space-y-2 p-2.5">
                           {/* Row 1: Meeting Name */}
                           <div>
                             <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
@@ -1458,7 +1458,7 @@ export default function Home() {
 
                           {/* Row 3: Meeting Type */}
                           <div>
-                            <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
                               Meeting Type
                             </label>
                             <div className="grid grid-cols-3 gap-1 w-full">
@@ -1483,7 +1483,7 @@ export default function Home() {
                           </div>
 
                           {/* Row 4: Time Start & Time End */}
-                          <div className="grid grid-cols-2 gap-2 bg-slate-50 border border-slate-200 p-1.5">
+                          <div className="grid grid-cols-2 gap-2 bg-slate-50 border border-slate-200 p-1">
                             <div>
                               <div className="flex items-center justify-between mb-0.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Start Time</label>
@@ -1602,11 +1602,11 @@ export default function Home() {
 
                           {/* Collapsible Routing & Ownership */}
                           <details className="group border border-slate-200 bg-slate-50/40">
-                            <summary className="cursor-pointer list-none px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-[#003366] flex items-center justify-between select-none hover:bg-slate-100/50 transition-colors">
+                            <summary className="cursor-pointer list-none px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#003366] flex items-center justify-between select-none hover:bg-slate-100/50 transition-colors">
                               <span>Routing and ownership</span>
                               <span className="text-[#C9A84C] group-open:rotate-45 transition-transform font-bold text-xs">+</span>
                             </summary>
-                            <div className="space-y-1.5 border-t border-slate-200 bg-white p-2.5">
+                            <div className="space-y-1.5 border-t border-slate-200 bg-white p-2">
                               <div className="grid grid-cols-2 gap-1.5">
                                 <input aria-label="Department" value={metadata.department || ""} onChange={(event) => setMetadata({ ...metadata, department: event.target.value })} placeholder="Department (e.g. CRD)" className="w-full min-w-0 border border-slate-200 px-2 py-1 text-xs outline-none focus:border-[#C9A84C]" />
                                 <input aria-label="ClickUp workspace" value={metadata.workspace || ""} onChange={(event) => setMetadata({ ...metadata, workspace: event.target.value })} placeholder="ClickUp workspace" className="w-full min-w-0 border border-slate-200 px-2 py-1 text-xs outline-none focus:border-[#C9A84C]" />
