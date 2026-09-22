@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, Download, Copy, Check } from "lucide-react";
+import { CheckCircle2, Download, Copy, Check, ExternalLink } from "lucide-react";
 import { SubmissionResponse } from "@/types/forms/rfp";
 import { downloadPdfBlob } from "@/lib/forms/pdfGenerator";
 
@@ -43,6 +43,8 @@ export function SubmissionModal({
     }
   };
 
+  const clickUpUrl = response.taskUrl || `https://app.clickup.com/t/${response.taskId}`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-xl bg-[#FFFCFB] rounded-none shadow-2xl border-2 border-[#003366] flex flex-col relative overflow-hidden">
@@ -76,12 +78,33 @@ export function SubmissionModal({
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 ClickUp Task ID
               </p>
-              <p className="font-bebas text-2xl text-[#003366] tracking-wider">
-                #{response.taskId}
-              </p>
+              <a
+                href={clickUpUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bebas text-2xl text-[#003366] hover:text-[#C9AB4C] tracking-wider inline-flex items-center gap-1.5 transition-colors group cursor-pointer"
+                title="Open task in ClickUp"
+              >
+                <span>Task #{response.taskId}</span>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-[#C9AB4C]" />
+              </a>
             </div>
 
-            {response.isMock && <div className="text-xs text-slate-500 italic bg-[#FFFCFB] px-3 py-1.5 border border-slate-200">Mock Task #{response.taskId}</div>}
+            {response.isMock ? (
+              <div className="text-xs text-slate-500 italic bg-[#FFFCFB] px-3 py-1.5 border border-slate-200">
+                Mock Task #{response.taskId}
+              </div>
+            ) : (
+              <a
+                href={clickUpUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#003366] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+              >
+                <span>Open in ClickUp</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
 
           {/* Workflow Next Steps */}

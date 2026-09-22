@@ -35,7 +35,7 @@ export interface TrackedRfp {
   dateCreated: string;
   updatedAt?: string;
   stageApprovedBy?: string;
-  attachments: Array<{ id: string; name: string; url: string; type?: string }>;
+  attachments: Array<{ id: string; name: string; url: string; type?: string; thumbnail?: string }>;
 }
 
 function parseTaskToTrackedRfp(task: any): TrackedRfp {
@@ -243,9 +243,10 @@ function parseTaskToTrackedRfp(task: any): TrackedRfp {
   const attachments = Array.isArray(task.attachments)
     ? task.attachments.map((att: any) => ({
         id: att.id,
-        name: att.name || "Attachment",
-        url: att.url,
-        type: att.mimetype || att.type,
+        name: att.title || att.name || "Attachment",
+        url: att.url_w_query || att.url || "",
+        type: att.mimetype || att.type || (att.extension ? `application/${att.extension}` : undefined),
+        thumbnail: att.thumbnail_large || att.thumbnail_medium || att.thumbnail_small,
       }))
     : [];
 

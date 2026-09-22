@@ -243,9 +243,16 @@ function TrackContent() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-200 pb-4">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-mono text-xs font-bold text-[#003366] bg-blue-50 px-2 py-0.5 border border-blue-200">
-                        #{req.taskId}
-                      </span>
+                      <a
+                        href={req.taskUrl || `https://app.clickup.com/t/${req.taskId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs font-bold text-[#003366] bg-blue-50 hover:bg-blue-100 hover:text-[#002244] px-2 py-0.5 border border-blue-200 inline-flex items-center gap-1 transition-colors group cursor-pointer"
+                        title="Open task in ClickUp"
+                      >
+                        <span>Task #{req.taskId}</span>
+                        <ExternalLink className="w-3 h-3 text-[#003366]/70 group-hover:text-[#003366]" />
+                      </a>
                       <span className="text-[11px] font-black uppercase tracking-wider px-2 py-0.5 bg-[#003366] text-[#C9AB4C]">
                         {req.formType ? req.formType.toUpperCase() : "RFP"}
                       </span>

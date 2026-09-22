@@ -29,5 +29,5 @@ export interface TrackedRfp {
   dateCreated: string;
   updatedAt?: string;
   stageApprovedBy?: string;
-  attachments: Array<{ id: string; name: string; url: string; type?: string }>;
+  attachments: Array<{ id: string; name: string; url: string; type?: string; thumbnail?: string }>;
 }
