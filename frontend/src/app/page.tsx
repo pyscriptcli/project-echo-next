@@ -1230,6 +1230,28 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5">
+                    {selectedFile && (selectedFile.type.startsWith("video/") || selectedFile.name.includes("echo-video")) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = URL.createObjectURL(selectedFile);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = selectedFile.name;
+                          document.body.appendChild(a);
+                          a.click();
+                          setTimeout(() => {
+                            URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                          }, 1000);
+                        }}
+                        className="btn-outline !px-3 !py-2 !text-[10px] flex items-center gap-1.5 border-emerald-600 text-emerald-800 hover:bg-emerald-50 cursor-pointer shadow-2xs font-semibold"
+                        title="Download the recorded meeting video file"
+                      >
+                        <Download size={12} className="text-emerald-700" />
+                        <span>Download Video</span>
+                      </button>
+                    )}
                     {stage === "Input" && (
                       <div className="flex items-center gap-2">
                         {selectedFile && <button type="button" onClick={() => handleUnifiedSourceSubmission()} disabled={isLoading} className="btn-outline !px-3 !py-2 !text-[10px]"><RotateCcw size={12} /> Re-process</button>}
@@ -1320,6 +1342,28 @@ export default function Home() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
+                            {(selectedFile.type.startsWith("video/") || selectedFile.name.includes("echo-video")) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const url = URL.createObjectURL(selectedFile);
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = selectedFile.name;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  setTimeout(() => {
+                                    URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+                                  }, 1000);
+                                }}
+                                className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer px-1.5 py-0.5 flex items-center gap-1"
+                                title="Download video file"
+                              >
+                                <Download size={12} /> Download
+                              </button>
+                            )}
                             <label htmlFor="unified-file-upload" className="text-[11px] font-bold text-[#003366] hover:underline cursor-pointer px-1.5 py-0.5">
                               Replace
                             </label>

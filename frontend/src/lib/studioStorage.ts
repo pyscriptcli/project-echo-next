@@ -112,6 +112,18 @@ export async function saveSessionMeta(session: StudioSession): Promise<void> {
   });
 }
 
+/** Retrieves session metadata by sessionId. */
+export async function getSessionMeta(sessionId: string): Promise<StudioSession | null> {
+  const db = await openStudioDb();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SESSIONS_STORE, "readonly");
+    const request = tx.objectStore(SESSIONS_STORE).get(sessionId);
+    request.onsuccess = () => resolve((request.result as StudioSession) || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 /**
  * Finds sessions that were left in 'active' status — these are interrupted
  * recordings from a crash or unexpected tab close.
@@ -153,8 +165,11 @@ export async function assembleRecording(sessionId: string): Promise<Blob> {
  */
 export async function exportSessionAsFile(sessionId: string): Promise<File> {
   const blob = await assembleRecording(sessionId);
-  const ext = blob.type.includes("webm") ? "webm" : "wav";
-  return new File([blob], `echo-recording-${sessionId}.${ext}`, { type: blob.type });
+  const session = await getSessionMeta(sessionId);
+  const isVideo = session?.mediaType === "video" || blob.type.startsWith("video/");
+  const ext = blob.type.includes("webm") ? "webm" : isVideo ? "webm" : "wav";
+  const prefix = isVideo ? "echo-video" : "echo-recording";
+  return new File([blob], `${prefix}-${sessionId}.${ext}`, { type: blob.type || (isVideo ? "video/webm" : "audio/webm") });
 }
 
 /**

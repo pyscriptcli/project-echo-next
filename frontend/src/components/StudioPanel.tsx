@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import {
+  AlertCircle,
   Check,
   ChevronDown,
   Clock,
@@ -19,6 +20,7 @@ import {
   Sparkles,
   Trash2,
   User,
+  Video,
   X,
 } from "lucide-react";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
@@ -446,91 +448,83 @@ export function StudioPanel({
             {/* Idle state: Compact Capture & Recording Controls */}
             {recorder.status === "idle" && (
               <div className="border border-[#D9E1EA] border-t-2 border-t-[#C9A84C] bg-white p-2.5 shadow-2xs space-y-2">
-                {/* Segmented Mode Switch */}
+                {/* Segmented Mode Switch: Audio Recording vs Video Recording */}
                 <div className="grid grid-cols-2 gap-1 bg-slate-100 p-0.5 border border-slate-200">
                   <button
                     type="button"
-                    onClick={() => setCaptureMode("device")}
-                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer ${
-                      captureMode === "device"
+                    onClick={() => recorder.setMediaType("audio")}
+                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      recorder.mediaType === "audio"
                         ? "bg-[#003366] text-white shadow-2xs"
                         : "text-slate-600 hover:text-[#003366]"
                     }`}
                   >
-                    This Device
+                    <Mic size={11} className={recorder.mediaType === "audio" ? "text-[#C9A84C]" : ""} />
+                    <span>Audio Recording</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCaptureMode("meeting_link")}
-                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer ${
-                      captureMode === "meeting_link"
+                    onClick={() => recorder.setMediaType("video")}
+                    className={`py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      recorder.mediaType === "video"
                         ? "bg-[#003366] text-white shadow-2xs"
                         : "text-slate-600 hover:text-[#003366]"
                     }`}
                   >
-                    Meeting Link
+                    <Video size={11} className={recorder.mediaType === "video" ? "text-[#C9A84C]" : ""} />
+                    <span>Video Recording</span>
                   </button>
                 </div>
 
                 {/* Device Mode Controls */}
-                {captureMode === "device" && (
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                        Microphone Source
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={recorder.selectedDeviceId || ""}
-                          onChange={(e) => recorder.selectDevice(e.target.value)}
-                          className="w-full border border-slate-200 bg-[#FFFCFB] text-xs text-slate-800 px-2.5 py-1.5 pr-7 appearance-none outline-none focus:border-[#C9A84C]"
-                        >
-                          <option value="">System Default</option>
-                          {recorder.availableDevices.map((device) => (
-                            <option key={device.deviceId} value={device.deviceId}>
-                              {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <p className="text-[10px] text-slate-500">
+                    {recorder.mediaType === "video"
+                      ? "Records your screen video along with meeting tab/system audio and microphone."
+                      : "Records meeting tab/system audio and your microphone (audio-only file)."}
+                  </p>
 
-                    <button
-                      type="button"
-                      disabled={!canRecord}
-                      onClick={() => void recorder.start()}
-                      className="w-full py-2.5 px-3 bg-[#003366] text-white hover:bg-[#002244] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-[#C9A84C] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
-                    >
-                      <Mic size={15} className="text-[#C9A84C]" />
-                      <span>{canRecord ? "Start Recording" : "Recording Disabled"}</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Meeting Link Mode Controls */}
-                {captureMode === "meeting_link" && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-slate-500">Paste Zoom, Teams, or Google Meet link for Echo.ai to join.</p>
-                    <div className="flex gap-1.5">
-                      <input
-                        value={meetingLink}
-                        onChange={(event) => setMeetingLink(event.target.value)}
-                        placeholder="Paste meeting link..."
-                        className="min-w-0 flex-1 border border-slate-200 bg-[#FFFCFB] px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-[#C9A84C]"
-                      />
-                      <button
-                        type="button"
-                        onClick={sendEchoBot}
-                        disabled={isSendingBot || !meetingLink.trim()}
-                        className="bg-[#003366] text-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider hover:bg-[#002244] transition-colors border border-[#C9A84C] disabled:opacity-40 shrink-0 cursor-pointer"
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      Microphone Source
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={recorder.selectedDeviceId || ""}
+                        onChange={(e) => recorder.selectDevice(e.target.value)}
+                        className="w-full border border-slate-200 bg-[#FFFCFB] text-xs text-slate-800 px-2.5 py-1.5 pr-7 appearance-none outline-none focus:border-[#C9A84C]"
                       >
-                        {isSendingBot ? "Joining…" : "Join"}
-                      </button>
+                        <option value="">System Default</option>
+                        {recorder.availableDevices.map((device) => (
+                          <option key={device.deviceId} value={device.deviceId}>
+                            {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
-                    {botStatus && <p className="text-[11px] text-[#003366] font-medium" role="status">{botStatus}</p>}
                   </div>
-                )}
+
+                  <button
+                    type="button"
+                    disabled={!canRecord}
+                    onClick={() => void recorder.start()}
+                    className="w-full py-2.5 px-3 bg-[#003366] text-white hover:bg-[#002244] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-[#C9A84C] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                  >
+                    {recorder.mediaType === "video" ? (
+                      <Video size={15} className="text-[#C9A84C]" />
+                    ) : (
+                      <Mic size={15} className="text-[#C9A84C]" />
+                    )}
+                    <span>
+                      {canRecord
+                        ? recorder.mediaType === "video"
+                          ? "Start Screen Recording"
+                          : "Start Audio Recording"
+                        : "Recording Disabled"}
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -597,7 +591,7 @@ export function StudioPanel({
             {isStopped && (
               <div className="border border-slate-200 border-t-2 border-t-emerald-600 bg-white p-2.5 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1">
-                  <span>✓ Recording Complete</span>
+                  <span>✓ {recorder.recordedFile?.type.startsWith("video/") || recorder.mediaType === "video" ? "Screen Recording Complete" : "Recording Complete"}</span>
                   <span className="font-mono">{formatTime(recorder.elapsedSeconds)}</span>
                 </div>
                 <div className="space-y-1.5">
@@ -616,7 +610,7 @@ export function StudioPanel({
                       onClick={handleSaveRecording}
                       className="h-7 inline-flex items-center justify-center gap-1 bg-white text-[#003366] font-semibold py-1 px-2 border border-slate-300 text-[11px] hover:border-[#003366] transition-colors cursor-pointer"
                     >
-                      <Download size={11} /> Save File
+                      <Download size={11} /> {recorder.recordedFile?.type.startsWith("video/") || recorder.mediaType === "video" ? "Save Video" : "Save Audio"}
                     </button>
                     <button
                       type="button"
@@ -639,12 +633,42 @@ export function StudioPanel({
               </div>
             )}
 
-            {recorder.captureIssue && (
+            {/* Screen Share Ended Alert */}
+            {recorder.captureIssue === "screen_share_ended" && (
+              <div role="alert" className="border border-amber-300 border-l-4 border-l-[#C9A84C] bg-amber-50 p-3 text-xs text-slate-700 shadow-2xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-[#003366]">
+                  <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                  <span>Screen sharing was stopped</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-normal">
+                  Your screen capture track ended. You can finish and assemble the recording now, or continue capturing audio with your microphone.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={recorder.stop}
+                    className="bg-[#003366] text-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider hover:bg-[#002244] transition-colors cursor-pointer"
+                  >
+                    Finish Recording
+                  </button>
+                  <button
+                    type="button"
+                    onClick={recorder.dismissCaptureIssue}
+                    className="bg-white border border-slate-300 text-slate-700 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider hover:border-[#003366] transition-colors cursor-pointer"
+                  >
+                    Continue on Mic
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Missing Shared Audio or Cancelled Alert */}
+            {recorder.captureIssue && recorder.captureIssue !== "screen_share_ended" && (
               <div role="alert" className="border border-amber-300 border-l-4 border-l-[#C9A84C] bg-amber-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
-                <p className="mt-1 text-xs leading-relaxed">Select the meeting tab and enable “Share tab audio” in the browser window. Recording has not started.</p>
+                <p className="mt-1 text-xs leading-relaxed">Select the meeting tab/window and make sure to check “Share audio” in the browser prompt. Recording has not started.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white">Share tab audio</button>
+                  <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white cursor-pointer">Try Again</button>
                 </div>
               </div>
             )}

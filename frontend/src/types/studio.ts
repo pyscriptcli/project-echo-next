@@ -12,6 +12,7 @@ export interface StudioNote {
 }
 
 export type RecordingSourceMode = "in_person" | "online_meeting";
+export type RecordingMediaType = "audio" | "video";
 
 /** Persisted recording session metadata stored in IndexedDB. */
 export interface StudioSession {
@@ -24,6 +25,8 @@ export interface StudioSession {
   deviceLabel: string;
   /** Recording mode: in-person (mic only) or online meeting (mixed tab/screen audio + mic). */
   sourceMode?: RecordingSourceMode;
+  /** Recording media type: audio only or screen video + audio. */
+  mediaType?: RecordingMediaType;
   /** Timestamped notes captured during the session. */
   notes: StudioNote[];
   /** Current session lifecycle state. */
