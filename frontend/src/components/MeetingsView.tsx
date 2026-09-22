@@ -422,7 +422,7 @@ export function MeetingsView({
             Structured records • In-Place Editing • Instant Re-Export
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2.5 text-xs">
+        <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
           {/* Space Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Space</span>
@@ -433,7 +433,7 @@ export function MeetingsView({
                 setSelectedMeetingSpace(spaceId);
                 onSelectMeetingSpace?.(spaceId);
               }}
-              className="h-8 border border-gray-200 bg-white px-2.5 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
+              className="border border-gray-200 bg-white py-1 px-2.5 min-w-[150px] max-w-[260px] text-xs font-normal normal-case tracking-normal text-left text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             >
               <option value="__all__">All spaces</option>
               <option value="__personal__">Personal List</option>
@@ -452,7 +452,7 @@ export function MeetingsView({
               type="date"
               value={fromDate}
               onChange={(event) => setFromDate(event.target.value)}
-              className="h-8 border border-gray-200 bg-white px-2 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
+              className="border border-gray-200 bg-white py-1 px-2 text-xs font-normal normal-case tracking-normal text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             />
           </div>
 
@@ -462,7 +462,7 @@ export function MeetingsView({
               type="date"
               value={toDate}
               onChange={(event) => setToDate(event.target.value)}
-              className="h-8 border border-gray-200 bg-white px-2 text-xs text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
+              className="border border-gray-200 bg-white py-1 px-2 text-xs font-normal normal-case tracking-normal text-[#003366] hover:border-gray-300 focus:outline-none focus:border-[#C9AB4C] transition-colors cursor-pointer"
             />
           </div>
 
@@ -475,7 +475,7 @@ export function MeetingsView({
                 setSelectedMeetingSpace("__all__");
                 onSelectMeetingSpace?.("__all__");
               }}
-              className="h-8 px-2 text-[11px] font-medium text-gray-400 hover:text-[#003366] transition-colors cursor-pointer"
+              className="px-2 py-1 text-[11px] font-medium text-gray-400 hover:text-[#003366] transition-colors cursor-pointer"
               title="Reset all filters"
             >
               Reset
