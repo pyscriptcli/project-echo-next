@@ -132,10 +132,50 @@ export function taskOwner(task: RawClickUpTask, byId: Map<string, RawClickUpTask
   return { id: "unassigned", name: "Unassigned", email: "", initials: "?", profilePicture: null };
 }
 
+export async function fetchClickUp(
+  url: string,
+  options: RequestInit = {},
+  maxRetries = 4,
+): Promise<Response> {
+  let attempt = 0;
+  while (attempt <= maxRetries) {
+    const response = await fetch(url, options);
+    if (response.status === 429) {
+      attempt++;
+      if (attempt > maxRetries) {
+        return response;
+      }
+      const retryAfter = response.headers.get("Retry-After");
+      const resetHeader = response.headers.get("X-RateLimit-Reset");
+      let delayMs = 1500 * attempt;
+      if (retryAfter) {
+        const parsed = Number(retryAfter);
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          delayMs = Math.min(parsed * 1000 + 500, 30000);
+        }
+      } else if (resetHeader) {
+        const resetSec = Number(resetHeader);
+        if (!Number.isNaN(resetSec) && resetSec > 0) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const diff = resetSec > nowSec ? resetSec - nowSec : resetSec;
+          if (diff > 0 && diff <= 30) {
+            delayMs = diff * 1000 + 500;
+          }
+        }
+      }
+      console.warn(`ClickUp rate limit reached (429). Retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      continue;
+    }
+    return response;
+  }
+  return fetch(url, options);
+}
+
 export async function fetchAllTasks(token: string) {
   const all: RawClickUpTask[] = [];
   for (let page = 0; page < 20; page += 1) {
-    const response = await fetch(
+    const response = await fetchClickUp(
       `https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}/task?include_closed=true&subtasks=true&page=${page}`,
       { headers: { Authorization: token }, cache: "no-store" },
     );
@@ -184,7 +224,7 @@ export function categoryPayload(value: unknown): Categories {
 }
 
 export async function categoryFields(token: string) {
-  const response = await fetch(`https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}/field`, {
+  const response = await fetchClickUp(`https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}/field`, {
     headers: { Authorization: token }, cache: "no-store",
   });
   if (!response.ok) throw new Error("Unable to read the Daily Log fields from ClickUp.");
@@ -202,7 +242,7 @@ export async function categoryFields(token: string) {
 export async function writeCategories(token: string, taskId: string, categories: Categories) {
   const fields = await categoryFields(token);
   await Promise.all((Object.keys(fields) as CategoryKey[]).map(async (key) => {
-    const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/field/${fields[key]}`, {
+    const response = await fetchClickUp(`https://api.clickup.com/api/v2/task/${taskId}/field/${fields[key]}`, {
       method: "POST",
       headers: clickUpHeaders(token),
       body: JSON.stringify({ value: categories[key] }),
@@ -212,7 +252,7 @@ export async function writeCategories(token: string, taskId: string, categories:
 }
 
 export async function createTask(token: string, payload: Record<string, unknown>) {
-  const response = await fetch(`https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}/task`, {
+  const response = await fetchClickUp(`https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}/task`, {
     method: "POST", headers: clickUpHeaders(token), body: JSON.stringify(payload),
   });
   if (!response.ok) {

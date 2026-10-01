@@ -10,12 +10,15 @@ import {
   taskOwner,
 } from "@/lib/notebookClickup";
 
+export const maxDuration = 60;
+
 interface GenerateMonthRequest {
   month: string; // "YYYY-MM"
   member: {
     id: string;
     name: string;
   };
+  limit?: number;
 }
 
 function getWeekdaysInMonth(monthStr: string): string[] {
@@ -94,10 +97,13 @@ export async function POST(req: NextRequest) {
 
     // Missing weekdays to create
     const missingDates = targetWeekdays.filter((date) => !existingDates.has(date));
+    const batchLimit = body.limit && body.limit > 0 ? body.limit : missingDates.length;
+    const toProcess = missingDates.slice(0, batchLimit);
 
-    // Create subtasks sequentially to ensure reliability and respect ClickUp rate limits
+    // Create subtasks sequentially with pacing to avoid ClickUp rate limits
     const createdTasks: Array<{ id: string; name?: string; date: string }> = [];
-    for (const date of missingDates) {
+    for (let i = 0; i < toProcess.length; i++) {
+      const date = toProcess[i];
       const [year, mNum, day] = date.split("-").map(Number);
       const startOfDayUtc = Date.UTC(year, mNum - 1, day, 9, 0, 0);
       const endOfDayUtc = Date.UTC(year, mNum - 1, day, 18, 0, 0);
@@ -111,7 +117,14 @@ export async function POST(req: NextRequest) {
       });
 
       createdTasks.push({ id: String(created.id), name: created.name, date });
+
+      // Add a 600ms pacing delay between task creations if there are more tasks in this batch
+      if (i < toProcess.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
     }
+
+    const remainingCount = missingDates.length - toProcess.length;
 
     return NextResponse.json({
       success: true,
@@ -120,8 +133,9 @@ export async function POST(req: NextRequest) {
       parentTaskId: parent.id,
       parentTaskName: parent.name,
       totalWeekdays: targetWeekdays.length,
-      existingCount: existingDates.size,
+      existingCount: existingDates.size + createdTasks.length,
       createdCount: createdTasks.length,
+      remainingCount,
       createdTasks,
     });
   } catch (error) {

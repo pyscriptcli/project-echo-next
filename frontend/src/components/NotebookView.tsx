@@ -155,6 +155,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
   const [error, setError] = useState("");
   const [targetGenMonth, setTargetGenMonth] = useState(() => today.slice(0, 7));
   const [generatingMonth, setGeneratingMonth] = useState(false);
+  const [generatingProgress, setGeneratingProgress] = useState("");
   const [generateFeedback, setGenerateFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -381,28 +382,47 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
     if (!member || generatingMonth) return;
     setGeneratingMonth(true);
     setGenerateFeedback(null);
+    setGeneratingProgress("Preparing ClickUp tasks…");
+    let totalCreated = 0;
+    let iterations = 0;
+    const maxIterations = 15;
     try {
-      const response = await fetch("/api/notebook/generate-month", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          month: targetGenMonth,
-          member: { id: member.id, name: member.name },
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate monthly tasks.");
+      while (iterations < maxIterations) {
+        iterations++;
+        const response = await fetch("/api/notebook/generate-month", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            month: targetGenMonth,
+            member: { id: member.id, name: member.name },
+            limit: 5,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to generate monthly tasks.");
+        }
+        totalCreated += data.createdCount || 0;
+        const remaining = data.remainingCount ?? 0;
+
+        if (remaining > 0 && data.createdCount > 0) {
+          setGeneratingProgress(`Created ${totalCreated} tasks… (${remaining} remaining)`);
+          // Brief pause between batches
+          await new Promise((r) => setTimeout(r, 600));
+        } else {
+          break;
+        }
       }
-      if (data.createdCount === 0) {
+
+      if (totalCreated === 0) {
         setGenerateFeedback({
           type: "success",
-          text: `All ${data.totalWeekdays} weekday tasks already exist in ClickUp for ${monthStats.monthName}.`,
+          text: `All weekday tasks already exist in ClickUp for ${monthStats.monthName}.`,
         });
       } else {
         setGenerateFeedback({
           type: "success",
-          text: `Created ${data.createdCount} weekday placeholder task${data.createdCount === 1 ? "" : "s"} for ${monthStats.monthName}!`,
+          text: `Successfully created ${totalCreated} weekday placeholder task${totalCreated === 1 ? "" : "s"} for ${monthStats.monthName}!`,
         });
       }
       await loadNotebook();
@@ -413,6 +433,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
       });
     } finally {
       setGeneratingMonth(false);
+      setGeneratingProgress("");
     }
   };
 
@@ -648,8 +669,8 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   >
                     {generatingMonth ? (
                       <>
-                        <Loader2 size={14} className="animate-spin" />
-                        Generating ClickUp Tasks…
+                        <Loader2 size={14} className="animate-spin shrink-0" />
+                        <span className="truncate">{generatingProgress || "Generating ClickUp Tasks…"}</span>
                       </>
                     ) : (
                       <>
