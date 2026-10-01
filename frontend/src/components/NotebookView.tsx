@@ -5,6 +5,8 @@ import {
   AlertCircle,
   BarChart3,
   CalendarDays,
+  CalendarPlus,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -151,6 +153,13 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
   const [payload, setPayload] = useState<NotebookPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [targetGenMonth, setTargetGenMonth] = useState(() => today.slice(0, 7));
+  const [generatingMonth, setGeneratingMonth] = useState(false);
+  const [generateFeedback, setGenerateFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    setTargetGenMonth(selectedDate.slice(0, 7));
+  }, [selectedDate]);
 
   const loadNotebook = async () => {
     setLoading(true);
@@ -314,6 +323,96 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
       setError(deleteError instanceof Error ? deleteError.message : "Unable to delete the daily log.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const availableMonths = useMemo(() => {
+    const list: Array<{ value: string; label: string }> = [];
+    const base = new Date();
+    for (let i = -6; i <= 2; i++) {
+      const d = new Date(base.getFullYear(), base.getMonth() + i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      list.push({ value: val, label });
+    }
+    if (targetGenMonth && !list.some((item) => item.value === targetGenMonth)) {
+      const [y, m] = targetGenMonth.split("-").map(Number);
+      if (y && m) {
+        const d = new Date(y, m - 1, 1);
+        list.push({
+          value: targetGenMonth,
+          label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        });
+        list.sort((a, b) => a.value.localeCompare(b.value));
+      }
+    }
+    return list;
+  }, [targetGenMonth]);
+
+  const monthStats = useMemo(() => {
+    if (!targetGenMonth || !member) return { totalWeekdays: 0, existingCount: 0, missingCount: 0, monthName: "" };
+    const [year, month] = targetGenMonth.split("-").map(Number);
+    if (!year || !month) return { totalWeekdays: 0, existingCount: 0, missingCount: 0, monthName: "" };
+
+    const totalDays = new Date(year, month, 0).getDate();
+    let weekdays = 0;
+    const weekdaySet = new Set<string>();
+    for (let d = 1; d <= totalDays; d++) {
+      const dateObj = new Date(year, month - 1, d, 12, 0, 0);
+      const dayOfWeek = dateObj.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        weekdays++;
+        weekdaySet.add(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+      }
+    }
+
+    const memberMonthEntries = entries.filter(
+      (e) => e.member.id === member.id && weekdaySet.has(e.date),
+    );
+    const existingDates = new Set(memberMonthEntries.map((e) => e.date));
+    const existingCount = existingDates.size;
+    const missingCount = Math.max(0, weekdays - existingCount);
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+    return { totalWeekdays: weekdays, existingCount, missingCount, monthName };
+  }, [targetGenMonth, member, entries]);
+
+  const handleGenerateMonthTasks = async () => {
+    if (!member || generatingMonth) return;
+    setGeneratingMonth(true);
+    setGenerateFeedback(null);
+    try {
+      const response = await fetch("/api/notebook/generate-month", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: targetGenMonth,
+          member: { id: member.id, name: member.name },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate monthly tasks.");
+      }
+      if (data.createdCount === 0) {
+        setGenerateFeedback({
+          type: "success",
+          text: `All ${data.totalWeekdays} weekday tasks already exist in ClickUp for ${monthStats.monthName}.`,
+        });
+      } else {
+        setGenerateFeedback({
+          type: "success",
+          text: `Created ${data.createdCount} weekday placeholder task${data.createdCount === 1 ? "" : "s"} for ${monthStats.monthName}!`,
+        });
+      }
+      await loadNotebook();
+    } catch (genErr) {
+      setGenerateFeedback({
+        type: "error",
+        text: genErr instanceof Error ? genErr.message : "Unable to generate tasks.",
+      });
+    } finally {
+      setGeneratingMonth(false);
     }
   };
 
@@ -481,6 +580,87 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                     Open daily log <ExternalLink size={14} />
                   </a>
                 ) : <p className="text-xs text-gray-400 mt-4">Save an entry to create this date in ClickUp.</p>}
+              </div>
+              <div className="bg-[#FFFCFB] border border-gray-200 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg flex items-center gap-2">
+                    <CalendarPlus size={17} className="text-[#C9AB4C]" /> Month Placeholders
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#003366] bg-[#003366]/5 px-2 py-0.5 border border-[#003366]/15">
+                    ClickUp
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                  Generate placeholder daily tasks in ClickUp for all weekdays of a month under {member?.name || "the member"}&apos;s parent task.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      Target Month
+                    </label>
+                    <select
+                      value={targetGenMonth}
+                      onChange={(e) => {
+                        setTargetGenMonth(e.target.value);
+                        setGenerateFeedback(null);
+                      }}
+                      disabled={generatingMonth}
+                      className="w-full h-9 bg-white border border-gray-300 px-2.5 text-xs text-[#1b1d1e] focus:outline-none focus:border-[#C9AB4C]"
+                    >
+                      {availableMonths.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs py-1.5 px-2 bg-gray-50 border border-gray-200">
+                    <span className="text-gray-600">Existing weekdays:</span>
+                    <span className="font-semibold text-[#003366]">
+                      {monthStats.existingCount} / {monthStats.totalWeekdays} tasks
+                    </span>
+                  </div>
+
+                  {generateFeedback && (
+                    <div
+                      className={`text-xs p-2.5 border flex items-start gap-1.5 ${
+                        generateFeedback.type === "success"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-red-50 border-red-200 text-red-800"
+                      }`}
+                    >
+                      {generateFeedback.type === "success" ? (
+                        <CheckCircle2 size={14} className="shrink-0 mt-0.5 text-emerald-600" />
+                      ) : (
+                        <AlertCircle size={14} className="shrink-0 mt-0.5 text-red-600" />
+                      )}
+                      <span>{generateFeedback.text}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateMonthTasks}
+                    disabled={generatingMonth || !member}
+                    className="w-full h-10 bg-[#003366] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#002244] disabled:opacity-50 transition-colors shadow-xs"
+                  >
+                    {generatingMonth ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Generating ClickUp Tasks…
+                      </>
+                    ) : (
+                      <>
+                        <CalendarPlus size={14} />
+                        {monthStats.missingCount > 0
+                          ? `Generate ${monthStats.missingCount} Missing Tasks`
+                          : `Sync ${monthStats.monthName} Tasks`}
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="bg-[#1b1d1e] border border-[#C9AB4C]/50 p-5 text-white">
                 <div className="text-xs uppercase tracking-widest text-[#C9AB4C] font-bold">Daily completeness</div>
