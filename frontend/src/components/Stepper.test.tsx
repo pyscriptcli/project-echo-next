@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { Stepper } from "./Stepper";
@@ -44,5 +44,31 @@ describe("Stepper component", () => {
 
     fireEvent.click(saveBtn);
     expect(onSaveExport).toHaveBeenCalledOnce();
+  });
+
+  it("renders Discover Topics button beside Upload button and fires callback", () => {
+    const onUpload = vi.fn();
+    const onDiscoverTopics = vi.fn();
+    render(
+      <Stepper
+        currentStage="Review"
+        onStageChange={vi.fn()}
+        isReviewAllowed={true}
+        onUpload={onUpload}
+        canUpload={true}
+        onDiscoverTopics={onDiscoverTopics}
+        discoveredTopicsCount={5}
+      />
+    );
+
+    const uploadBtn = screen.getByRole("button", { name: /upload/i });
+    expect(uploadBtn).toBeDefined();
+
+    const discoverBtn = screen.getByRole("button", { name: /discover topics/i });
+    expect(discoverBtn).toBeDefined();
+    expect(screen.getByText("5")).toBeDefined();
+
+    fireEvent.click(discoverBtn);
+    expect(onDiscoverTopics).toHaveBeenCalledOnce();
   });
 });

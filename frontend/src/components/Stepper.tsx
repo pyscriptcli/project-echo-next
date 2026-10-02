@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import React from "react";
-import { Download, Expand, FileCheck2, Lock, Mic2, Upload } from "lucide-react";
+import { Download, Expand, FileCheck2, Lock, Mic2, Upload, Sparkles } from "lucide-react";
 
 export type Stage = "Input" | "Review";
 
@@ -14,6 +14,8 @@ interface StepperProps {
   isFullscreen?: boolean;
   onSaveExport?: () => void;
   canUpload?: boolean;
+  onDiscoverTopics?: () => void;
+  discoveredTopicsCount?: number;
 }
 
 export function Stepper({ 
@@ -25,6 +27,8 @@ export function Stepper({
   isFullscreen = false,
   onSaveExport,
   canUpload = true,
+  onDiscoverTopics,
+  discoveredTopicsCount,
 }: StepperProps) {
   const stages: { name: Stage; label: string; allowed: boolean }[] = [
     { name: "Input", label: "Meeting Workspace", allowed: true },
@@ -72,6 +76,22 @@ export function Stepper({
           >
             <Upload size={13} />
             <span className="hidden sm:inline">Upload</span>
+          </button>
+        )}
+        {onDiscoverTopics && (
+          <button
+            type="button"
+            onClick={onDiscoverTopics}
+            className="inline-flex items-center gap-1.5 border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#003366] hover:border-[#C9A84C] transition-colors"
+            title="Discover and search topics in transcript"
+          >
+            <Sparkles size={13} className="text-[#C9A84C]" />
+            <span className="hidden sm:inline">Discover Topics</span>
+            {discoveredTopicsCount !== undefined && discoveredTopicsCount > 0 && (
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-bold bg-[#C9A84C]/20 text-[#8c7329] border border-[#C9A84C]/40">
+                {discoveredTopicsCount}
+              </span>
+            )}
           </button>
         )}
         {onToggleFullscreen && (
