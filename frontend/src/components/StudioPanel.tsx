@@ -22,9 +22,11 @@ import {
   User,
   Video,
   X,
+  Monitor,
+  AlertTriangle,
 } from "lucide-react";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
-import { useStudioRecorder } from "@/hooks/useStudioRecorder";
+import type { UseStudioRecorderReturn } from "@/hooks/useStudioRecorder";
 import { useLiveTranscription } from "@/hooks/useLiveTranscription";
 import { useAudioVisualizer } from "@/hooks/useAudioVisualizer";
 import { clearSession } from "@/lib/studioStorage";
@@ -50,6 +52,7 @@ interface StudioPanelProps {
   onRecordingStop?: (endTime: string) => void;
   askEchoEnabled?: boolean;
   allowedFeatures?: string[];
+  recorder: UseStudioRecorderReturn;
 }
 
 interface EchoMessage {
@@ -95,7 +98,7 @@ function VolumeMeter({ level, isClipping }: { level: number; isClipping: boolean
 
 /**
  * Recording Studio side panel with three display modes (panel, fullscreen, minimized).
- * Uses useStudioRecorder for crash-resilient recording and useAudioVisualizer
+ * Uses elevated useStudioRecorder for crash-resilient recording and useAudioVisualizer
  * for live mic feedback.
  */
 export function StudioPanel({
@@ -111,8 +114,8 @@ export function StudioPanel({
   onRecordingStop,
   askEchoEnabled = true,
   allowedFeatures,
+  recorder,
 }: StudioPanelProps) {
-  const recorder = useStudioRecorder();
   const liveTranscript = useLiveTranscription(recorder.audioStream);
   const visualizer = useAudioVisualizer(recorder.audioStream);
 
@@ -571,6 +574,35 @@ export function StudioPanel({
                   </div>
                 </div>
 
+                {/* Active Screen & Audio Status Details */}
+                {recorder.screenInfo && (
+                  <div className="bg-[#001E3C] text-white p-2 border-l-2 border-[#C9A84C] text-[11px] space-y-0.5">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Monitor size={12} className="text-[#C9A84C] shrink-0" />
+                      <span className="truncate">Recording: {recorder.screenInfo.screenName}</span>
+                    </div>
+                    <div className="text-[10px] text-[#C9A84C] font-medium flex items-center justify-between">
+                      <span>{recorder.screenInfo.audioStatusLabel}</span>
+                      <span className="text-[9px] text-slate-300">Auto-saving to Documents/Echo Meetings</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Silence / Dead Mic Warning */}
+                {recorder.isSilenceDetected && (
+                  <div className="bg-amber-50 border border-amber-300 p-2 text-amber-800 text-[11px] flex items-center gap-1.5">
+                    <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                    <span>No audio detected from microphone. Check if your mic is muted.</span>
+                  </div>
+                )}
+
+                {recorder.hasOtherTabRecording && (
+                  <div className="bg-blue-50 border border-blue-200 p-2 text-blue-800 text-[11px] flex items-center gap-1.5">
+                    <AlertCircle size={13} className="text-blue-600 shrink-0" />
+                    <span>Notice: Another Echo tab is currently recording.</span>
+                  </div>
+                )}
+
                 {recorder.status === "recording" && (
                   <div>
                     <div className="flex justify-between items-center mb-0.5">
@@ -594,6 +626,13 @@ export function StudioPanel({
                   <span>✓ {recorder.recordedFile?.type.startsWith("video/") || recorder.mediaType === "video" ? "Screen Recording Complete" : "Recording Complete"}</span>
                   <span className="font-mono">{formatTime(recorder.elapsedSeconds)}</span>
                 </div>
+
+                {recorder.localSavedPath && (
+                  <div className="text-[10px] text-emerald-700 bg-emerald-50/80 border border-emerald-200 p-1.5 truncate">
+                    Saved to Documents/Echo Meetings: <span className="font-mono">{recorder.localSavedPath.split(/[/\\]/).pop()}</span>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <button
                     type="button"

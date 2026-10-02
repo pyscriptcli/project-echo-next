@@ -220,3 +220,59 @@ export async function downloadSession(sessionId: string): Promise<void> {
     document.body.removeChild(a);
   }, 1000);
 }
+
+/**
+ * Saves a recording blob directly to the user's local "Documents/Echo Meetings"
+ * folder via the Next.js local save API route.
+ * Supports "completed", "checkpoint", and "interrupted" saves.
+ */
+export async function saveToLocalDocuments(
+  sessionId: string,
+  blob: Blob,
+  status: "completed" | "interrupted" | "checkpoint" = "completed",
+  mediaType: "audio" | "video" = "audio",
+  customFileName?: string
+): Promise<{ success: boolean; filePath?: string; fileName?: string }> {
+  try {
+    const formData = new FormData();
+    const ext = mediaType === "video" || blob.type.startsWith("video/") ? "webm" : "webm";
+    const file = new File([blob], customFileName || `${sessionId}.${ext}`, { type: blob.type || "audio/webm" });
+    formData.append("file", file);
+    formData.append("sessionId", sessionId);
+    formData.append("status", status);
+    formData.append("mediaType", mediaType);
+    if (customFileName) formData.append("fileName", customFileName);
+
+    const res = await fetch("/api/recordings/save-local", {
+      method: "POST",
+      body: formData,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, filePath: data.filePath, fileName: data.fileName };
+    }
+    return { success: false };
+  } catch (err) {
+    console.warn("[StudioStorage] Failed to auto-save to local Documents:", err);
+    return { success: false };
+  }
+}
+
+/**
+ * Requests browser persistent storage quota so IndexedDB data is never evicted.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
+    try {
+      const isPersisted = await navigator.storage.persisted();
+      if (!isPersisted) {
+        return await navigator.storage.persist();
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+

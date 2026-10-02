@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { Stepper, Stage } from "@/components/Stepper";
 import { StudioPanel } from "@/components/StudioPanel";
 import { StudioRecoveryBanner } from "@/components/StudioRecoveryBanner";
+import { FloatingRecordingPill } from "@/components/FloatingRecordingPill";
+import { useStudioRecorder } from "@/hooks/useStudioRecorder";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
 import { 
   processSource, 
@@ -241,17 +243,12 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  const [studioRecordingState, setStudioRecordingState] = useState({ active: false, paused: false, elapsedSeconds: 0 });
-  useEffect(() => {
-    const handleRecordingState = (event: Event) => {
-      const detail = (event as CustomEvent<{ active?: boolean; paused?: boolean; elapsedSeconds?: number }>).detail;
-      setStudioRecordingState({ active: !!detail.active, paused: !!detail.paused, elapsedSeconds: detail.elapsedSeconds || 0 });
-    };
-    window.addEventListener("echo-recording-state", handleRecordingState);
-    return () => window.removeEventListener("echo-recording-state", handleRecordingState);
-  }, []);
+  const studioRecorder = useStudioRecorder();
 
   const handleSignOut = async () => {
+    if (studioRecorder.status === "recording" || studioRecorder.status === "paused") {
+      studioRecorder.stop();
+    }
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (err) {
@@ -703,8 +700,8 @@ export default function Home() {
 
   const handleSendToNotetaker = (file: File, notes: StudioNote[], preparedTranscript?: string) => {
     setSelectedFile(file);
-    if (studioRecordingState.elapsedSeconds > 0) {
-      setRecordedDurationSeconds(studioRecordingState.elapsedSeconds);
+    if (studioRecorder.elapsedSeconds > 0) {
+      setRecordedDurationSeconds(studioRecorder.elapsedSeconds);
     }
     if (notes && notes.length > 0) {
       setAdditionalMeetingNotes(notes.map((n) => `${n.timestamp} ${n.text}`).join("\n"));
@@ -1092,12 +1089,14 @@ export default function Home() {
           allowedFeatures={allowedFeatures}
           canRecord={allowedFeatures.includes("notetaker-record")}
           studioRecording={{
-            active: studioRecordingState.active,
-            isMinimized: isStudioOpen && studioMode === "minimized" && studioRecordingState.active,
-            elapsedSeconds: studioRecordingState.elapsedSeconds,
-            isPaused: studioRecordingState.paused,
+            active: studioRecorder.status === "recording" || studioRecorder.status === "paused",
+            isMinimized: isStudioOpen && studioMode === "minimized" && (studioRecorder.status === "recording" || studioRecorder.status === "paused"),
+            elapsedSeconds: studioRecorder.elapsedSeconds,
+            isPaused: studioRecorder.status === "paused",
             onRestore: () => {
               setCurrentView("minutes");
+              setStage("Input");
+              setSourceTab("record");
               setIsStudioOpen(true);
               setStudioMode("fullscreen");
             },
@@ -1105,7 +1104,14 @@ export default function Home() {
         />
 
         {/* Studio Recovery Banner for crash resilience */}
-        <StudioRecoveryBanner />
+        <StudioRecoveryBanner
+          onProcessSession={(file) => {
+            setSelectedFile(file);
+            setCurrentView("minutes");
+            setStage("Input");
+            handleUnifiedSourceSubmission(file);
+          }}
+        />
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
         <main className={`flex-1 min-h-0 ${isMeetingWorkspace ? "h-full overflow-hidden flex flex-col p-0" : currentView === "minutes" ? "overflow-y-auto p-0" : "overflow-y-auto px-4 py-5 md:px-8"}`}>
@@ -1460,6 +1466,7 @@ export default function Home() {
                   <StudioPanel
                     isOpen
                     embedded
+                    recorder={studioRecorder}
                     askEchoEnabled={askEchoEnabled}
                     allowedFeatures={allowedFeatures}
                     mode="fullscreen"
@@ -2271,6 +2278,21 @@ export default function Home() {
         }}
       />}
 
+      {/* Floating Minimized Recording Pill when navigating outside the active studio workspace */}
+      {!(currentView === "minutes" && stage === "Input" && sourceTab === "record") && (
+        <FloatingRecordingPill
+          recorder={studioRecorder}
+          onExpand={() => {
+            setCurrentView("minutes");
+            setStage("Input");
+            setSourceTab("record");
+            setIsStudioOpen(true);
+            setStudioMode("fullscreen");
+          }}
+        />
+      )}
+
     </div>
   );
 }
+

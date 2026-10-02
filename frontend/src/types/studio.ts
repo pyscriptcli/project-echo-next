@@ -14,6 +14,24 @@ export interface StudioNote {
 export type RecordingSourceMode = "in_person" | "online_meeting";
 export type RecordingMediaType = "audio" | "video";
 
+/** Metadata for active screen / window / tab capture and audio tracks */
+export interface ScreenCaptureInfo {
+  /** Screen label, e.g. "Entire Screen (Monitor 1)" or "Window: Google Meet" */
+  screenName: string;
+  /** Browser display surface type */
+  displaySurface: "monitor" | "window" | "browser" | "unknown";
+  /** Whether system / tab audio is actively captured */
+  hasSystemAudio: boolean;
+  /** Whether microphone audio is actively captured */
+  hasMicAudio: boolean;
+  /** User-friendly audio status string */
+  audioStatusLabel:
+    | "With System Audio + Mic"
+    | "With System Audio (No Mic)"
+    | "Mic Only (Without System Audio)"
+    | "No Audio Detected";
+}
+
 /** Persisted recording session metadata stored in IndexedDB. */
 export interface StudioSession {
   sessionId: string;
@@ -27,6 +45,12 @@ export interface StudioSession {
   sourceMode?: RecordingSourceMode;
   /** Recording media type: audio only or screen video + audio. */
   mediaType?: RecordingMediaType;
+  /** Active screen capture details if recording screen or tab */
+  screenInfo?: ScreenCaptureInfo | null;
+  /** Last active heartbeat timestamp for crash detection */
+  lastHeartbeat?: string;
+  /** Local disk file path in Documents/Echo Meetings if saved */
+  localFilePath?: string;
   /** Timestamped notes captured during the session. */
   notes: StudioNote[];
   /** Current session lifecycle state. */
@@ -35,3 +59,4 @@ export interface StudioSession {
 
 /** Display mode for the studio panel. */
 export type StudioDisplayMode = 'panel' | 'fullscreen' | 'minimized';
+
