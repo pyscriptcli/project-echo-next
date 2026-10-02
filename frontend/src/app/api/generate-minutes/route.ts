@@ -34,8 +34,13 @@ Output strict JSON only, matching this schema:
   ],
   "recommended_missed_points": [
     {
-      "topic": "Important topic not yet captured",
-      "quote": "Context quote"
+      "topic_title": "Important topic not yet captured",
+      "discussion_point": "Detailed explanation of discussions, conclusions, and arguments",
+      "evidence_quote": "Direct quote from source text or transcript e.g. [00:00] ...",
+      "action_plan": "Actionable next step, or 'None'",
+      "indicative_delivery_date": "Target delivery date or 'TBD'",
+      "person_in_charge": "Full name of owner, or 'Unassigned'",
+      "confidence": "High"
     }
   ],
   "other_discussions": "Comprehensive summary of announcements, non-action items, peripheral topics, and general context."

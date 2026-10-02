@@ -49,6 +49,7 @@ import FormsPortal from "@/components/forms/FormsPortal";
 import { ArchivedMeeting } from "@/types/meeting";
 import { mergeMeetings } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
+import type { DiscoveredTopicItem } from "@/app/api/discover-topics/route";
 import { 
   Upload, 
   X, 
@@ -79,7 +80,10 @@ import {
   Clock,
   ListOrdered,
   RotateCcw,
-  Lock
+  Lock,
+  Search,
+  Zap,
+  Tag
 } from "lucide-react";
 
 const VENUE_OPTIONS = [
@@ -262,9 +266,11 @@ export default function Home() {
   const [stage, setStage] = useState<Stage>("Input");
   const notetakerRef = useRef<HTMLDivElement>(null);
   const [isNotetakerFullscreen, setIsNotetakerFullscreen] = useState(false);
-  const [missedTopics, setMissedTopics] = useState<Array<{ topic: string; quote: string; confidence?: string }>>([]);
+  const [missedTopics, setMissedTopics] = useState<DiscoveredTopicItem[]>([]);
   const [topicQuery, setTopicQuery] = useState("");
   const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
+  const [autoDiscoverEnabled, setAutoDiscoverEnabled] = useState(true);
+  const [hasAutoDiscovered, setHasAutoDiscovered] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<StudioDisplayMode>("panel");
   const [isLoading, setIsLoading] = useState(false);
@@ -683,7 +689,20 @@ export default function Home() {
           ...item,
         }))
       );
-      setMissedTopics(Array.isArray(momRes.recommended_missed_points) ? momRes.recommended_missed_points.map((item: any) => ({ topic: item.topic || "Untitled topic", quote: item.quote || "", confidence: item.confidence })) : []);
+      setMissedTopics(
+        Array.isArray(momRes.recommended_missed_points)
+          ? momRes.recommended_missed_points.map((item: any) => ({
+              topic_title: String(item.topic_title || item.topic || "Untitled Topic").trim(),
+              discussion_point: String(item.discussion_point || "Review and refine discussion details from meeting transcript.").trim(),
+              evidence_quote: String(item.evidence_quote || item.quote || "").trim(),
+              action_plan: String(item.action_plan || "None").trim(),
+              indicative_delivery_date: String(item.indicative_delivery_date || item.target_date || "TBD").trim(),
+              person_in_charge: String(item.person_in_charge || item.pic || "Unassigned").trim(),
+              confidence: item.confidence || "High",
+            }))
+          : []
+      );
+      setHasAutoDiscovered(false);
       setOtherDiscussions(momRes.other_discussions || "");
       setStage("Review");
     } catch (err: any) {
@@ -769,37 +788,86 @@ export default function Home() {
     setMomItems(newItems);
   };
 
-  const addMissedTopic = () => {
-    const suggestion = missedTopics[0];
+  const addMissedTopic = (index: number = 0) => {
+    const suggestion = missedTopics[index];
     if (!suggestion) return;
     setMomItems([
       ...momItems,
       {
-        topic_title: suggestion.topic,
-        discussion_point: "Review this topic and complete the discussion details.",
-        evidence_quote: suggestion.quote,
-        action_plan: "None",
-        indicative_delivery_date: "TBD",
-        person_in_charge: "Unassigned"
+        id: `dp_${Date.now()}_${momItems.length}`,
+        topic_title: suggestion.topic_title,
+        discussion_point: suggestion.discussion_point || "Review and complete the discussion details.",
+        evidence_quote: suggestion.evidence_quote || "",
+        action_plan: suggestion.action_plan || "None",
+        indicative_delivery_date: suggestion.indicative_delivery_date || "TBD",
+        person_in_charge: suggestion.person_in_charge || "Unassigned"
       }
     ]);
-    setMissedTopics((topics) => topics.slice(1));
+    setMissedTopics((topics) => topics.filter((_, i) => i !== index));
   };
 
-  const discoverTopics = async () => {
+  const addAllMissedTopics = () => {
+    if (!missedTopics.length) return;
+    const newItems = missedTopics.map((suggestion, idx) => ({
+      id: `dp_${Date.now()}_${momItems.length + idx}`,
+      topic_title: suggestion.topic_title,
+      discussion_point: suggestion.discussion_point || "Review and complete the discussion details.",
+      evidence_quote: suggestion.evidence_quote || "",
+      action_plan: suggestion.action_plan || "None",
+      indicative_delivery_date: suggestion.indicative_delivery_date || "TBD",
+      person_in_charge: suggestion.person_in_charge || "Unassigned"
+    }));
+    setMomItems([...momItems, ...newItems]);
+    setMissedTopics([]);
+  };
+
+  const dismissMissedTopic = (index: number) => {
+    setMissedTopics((topics) => topics.filter((_, i) => i !== index));
+  };
+
+  const discoverTopics = async (queryOverride?: string) => {
     if (!transcript || isDiscoveringTopics) return;
     setIsDiscoveringTopics(true);
+    const activeQuery = queryOverride !== undefined ? queryOverride : topicQuery;
     try {
-      const response = await fetch("/api/discover-topics", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": getStoredApiKey() || "" }, body: JSON.stringify({ transcript, query: topicQuery, existingTopics: momItems.map((item) => item.topic_title) }) });
+      const response = await fetch("/api/discover-topics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": getStoredApiKey() || ""
+        },
+        body: JSON.stringify({
+          transcript,
+          query: activeQuery,
+          existingTopics: momItems.map((item) => item.topic_title)
+        })
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to discover topics.");
-      setMissedTopics(data.topics || []);
+      const incomingList: DiscoveredTopicItem[] = data.topics || [];
+      if (activeQuery?.trim() && missedTopics.length > 0) {
+        const existingSet = new Set(missedTopics.map((t) => t.topic_title.toLowerCase().trim()));
+        const uniqueIncoming = incomingList.filter((t) => !existingSet.has(t.topic_title.toLowerCase().trim()));
+        setMissedTopics([...uniqueIncoming, ...missedTopics]);
+      } else {
+        setMissedTopics(incomingList);
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Unable to discover topics.");
     } finally {
       setIsDiscoveringTopics(false);
     }
   };
+
+  // Auto-discover uncaptured topics upon entering Review stage if enabled
+  useEffect(() => {
+    if (stage === "Review" && autoDiscoverEnabled && !hasAutoDiscovered && transcript?.trim() && !isDiscoveringTopics) {
+      if (missedTopics.length === 0) {
+        setHasAutoDiscovered(true);
+        discoverTopics("");
+      }
+    }
+  }, [stage, autoDiscoverEnabled, hasAutoDiscovered, transcript, missedTopics.length, isDiscoveringTopics]);
 
   // Export handlers with effective metadata
   const handleExportWord = async () => {
@@ -1932,31 +2000,215 @@ export default function Home() {
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
 
-            {/* Dynamic missed-topic suggestions */}
-            <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 p-3.5 shadow-2xs rounded-none">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-1.5 h-10 bg-[#c9ab4c] shrink-0"></div>
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#003366]">Potential Missed Topics</span>
-                    <span className="text-[9px] bg-[#c9ab4c]/15 text-[#8c7329] font-bold px-1.5 py-0.5">AI Suggestion</span>
+            {/* ENHANCED DISCOVER & SEARCH TOPICS SECTION */}
+            <div className="bg-[#FFFCFB] border border-[#c9ab4c]/40 shadow-2xs rounded-none overflow-hidden">
+              
+              {/* Header: Title, Auto-Discover Toggle, Add All Button */}
+              <div className="px-4 py-3 bg-[#003366]/5 border-b border-[#c9ab4c]/20 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-6 bg-[#c9ab4c]"></div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#003366]">
+                      Discover Topics
+                    </span>
+                    <span className="ml-2 text-[10px] font-semibold text-gray-500">
+                      {isDiscoveringTopics ? (
+                        <span className="text-[#c9ab4c] font-bold inline-flex items-center gap-1">
+                          <Loader2 size={10} className="animate-spin" /> Scanning transcript...
+                        </span>
+                      ) : (
+                        `(${missedTopics.length} suggested topic${missedTopics.length === 1 ? "" : "s"})`
+                      )}
+                    </span>
                   </div>
-                  {missedTopics.length ? <><p className="text-xs font-bold text-[#003366]">{missedTopics[0].topic}</p><p className="text-[11px] text-gray-500 italic mt-0.5">{missedTopics[0].quote || "Echo found a topic worth reviewing."}</p></> : <p className="text-[11px] text-gray-500">No additional topics found yet. Ask Echo to look for a specific kind of topic.</p>}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  {/* Auto-Discover Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setAutoDiscoverEnabled(!autoDiscoverEnabled)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-colors border ${
+                      autoDiscoverEnabled
+                        ? "bg-[#003366]/10 text-[#003366] border-[#003366]/30 font-semibold"
+                        : "bg-gray-100 text-gray-500 border-gray-200"
+                    }`}
+                    title={autoDiscoverEnabled ? "Auto-discover is active when reviewing new transcripts" : "Auto-discover is paused"}
+                  >
+                    <Zap size={11} className={autoDiscoverEnabled ? "text-[#c9ab4c] fill-[#c9ab4c]" : "text-gray-400"} />
+                    Auto-Discover: <span className="font-bold">{autoDiscoverEnabled ? "ON" : "OFF"}</span>
+                  </button>
+
+                  {/* Add All to Matrix */}
+                  {missedTopics.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={addAllMissedTopics}
+                      className="btn-primary !py-1 !px-3 !text-[11px] rounded-none shadow-2xs inline-flex items-center gap-1"
+                    >
+                      <Plus size={12} /> Add All ({missedTopics.length}) to Matrix
+                    </button>
+                  )}
                 </div>
               </div>
-              <button
-                type="button" 
-                onClick={addMissedTopic} 
-                disabled={!missedTopics.length}
-                className="btn-outline !py-1.5 !px-3.5 !text-xs shrink-0 flex items-center justify-center gap-1.5 rounded-none shadow-2xs"
-              >
-                <Plus size={13} /> Add to Discussion Matrix
-              </button>
+
+              {/* Search Topic Input Bar */}
+              <div className="p-3.5 border-b border-gray-100 bg-[#FFFCFB]">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!isDiscoveringTopics && transcript) {
+                      discoverTopics(topicQuery);
+                    }
+                  }}
+                  className="flex flex-col sm:flex-row gap-2"
+                >
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      value={topicQuery}
+                      onChange={(e) => setTopicQuery(e.target.value)}
+                      placeholder="Search or discover topic in transcript (e.g., 'reclamation', 'service agreement', 'penalties')..."
+                      className="w-full pl-9 pr-8 py-2 text-xs bg-[#FFFCFB] border border-gray-200 focus:outline-none focus:border-[#003366] transition-colors rounded-none placeholder:text-gray-400"
+                    />
+                    {topicQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setTopicQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      type="submit"
+                      disabled={isDiscoveringTopics || !transcript}
+                      className="btn-primary !py-1.5 !px-4 !text-xs rounded-none inline-flex items-center justify-center gap-1.5"
+                    >
+                      {isDiscoveringTopics ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+                      {topicQuery.trim() ? "Search Topic" : "Discover Topics"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => discoverTopics("")}
+                      disabled={isDiscoveringTopics || !transcript}
+                      className="btn-outline !py-1.5 !px-3.5 !text-xs rounded-none inline-flex items-center justify-center gap-1.5 text-gray-600 hover:text-[#003366]"
+                      title="Scan transcript for general uncaptured topics"
+                    >
+                      <Sparkles size={13} className="text-[#c9ab4c]" />
+                      Auto-Discover
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-[#c9ab4c]/20">
-                <input value={topicQuery} onChange={(event) => setTopicQuery(event.target.value)} placeholder="Ask for a topic, e.g. risks or budget" className="flex-1 border border-gray-200 px-3 py-1.5 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#003366]" />
-                <button type="button" onClick={discoverTopics} disabled={isDiscoveringTopics || !transcript} className="btn-primary !py-1.5 !px-3.5 !text-xs rounded-none">{isDiscoveringTopics ? "Looking…" : "Discover topics"}</button>
+
+              {/* Discovered Topic Cards List */}
+              <div className="p-3.5 space-y-3 max-h-[460px] overflow-y-auto">
+                {missedTopics.length === 0 ? (
+                  <div className="text-center py-6 px-4 bg-[#FFFCFB] border border-dashed border-gray-200">
+                    <Sparkles size={20} className="mx-auto text-[#c9ab4c] mb-2 opacity-80" />
+                    <p className="text-xs font-semibold text-gray-700">No uncaptured topics currently flagged.</p>
+                    <p className="text-[11px] text-gray-500 mt-1 max-w-md mx-auto">
+                      Echo continuously monitors the transcript. Type a keyword into <strong>Search Topic</strong> above or click <strong>Auto-Discover</strong> to extract missing discussion points.
+                    </p>
+                  </div>
+                ) : (
+                  missedTopics.map((topic, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 bg-white border border-gray-200 shadow-2xs hover:border-[#003366]/40 transition-all rounded-none"
+                    >
+                      {/* Topic Title & Actions Header */}
+                      <div className="flex items-start justify-between gap-3 pb-2 border-b border-gray-100">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-[family-name:--font-bebas] text-lg text-[#c9ab4c] tracking-wider select-none">
+                            #{String(idx + 1).padStart(2, "0")}
+                          </span>
+                          <h4 className="text-xs font-bold text-[#003366]">
+                            {topic.topic_title}
+                          </h4>
+                          {topic.confidence && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wider ${
+                              topic.confidence === "High" 
+                                ? "bg-[#c9ab4c]/15 text-[#8c7329]" 
+                                : "bg-blue-50 text-blue-700"
+                            }`}>
+                              {topic.confidence} Confidence
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => addMissedTopic(idx)}
+                            className="btn-outline !py-1 !px-2.5 !text-[11px] rounded-none shadow-2xs inline-flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white"
+                            title="Add this topic into the Discussion Matrix"
+                          >
+                            <Plus size={11} /> Add to Matrix
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => dismissMissedTopic(idx)}
+                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-gray-100 transition-colors"
+                            title="Dismiss suggestion"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Evidence Quote */}
+                      {topic.evidence_quote && (
+                        <div className="mt-2.5 pl-2.5 border-l-2 border-[#c9ab4c]/60 py-0.5">
+                          <p className="text-[11px] text-gray-600 italic">
+                            "{topic.evidence_quote}"
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Discussion Point Summary */}
+                      {topic.discussion_point && (
+                        <div className="mt-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                            Discussion Point
+                          </span>
+                          <p className="text-xs text-gray-700 leading-relaxed">
+                            {topic.discussion_point}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Metadata Chips: Action, Date, PIC */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2 border-t border-gray-100 text-[11px]">
+                        <span className="inline-flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 border border-gray-200">
+                          <strong className="text-gray-500 font-semibold">Action:</strong> 
+                          <span className={topic.action_plan && topic.action_plan !== "None" ? "text-[#003366] font-medium" : "text-gray-400"}>
+                            {topic.action_plan || "None"}
+                          </span>
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 border border-gray-200">
+                          <Calendar size={11} className="text-[#c9ab4c]" />
+                          <strong className="text-gray-500 font-semibold">Target:</strong> 
+                          <span className={topic.indicative_delivery_date && topic.indicative_delivery_date !== "TBD" ? "text-gray-800 font-medium" : "text-gray-400"}>
+                            {topic.indicative_delivery_date || "TBD"}
+                          </span>
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 border border-gray-200">
+                          <UserCheck size={11} className="text-[#003366]" />
+                          <strong className="text-gray-500 font-semibold">PIC:</strong> 
+                          <span className={topic.person_in_charge && topic.person_in_charge !== "Unassigned" ? "text-[#003366] font-medium" : "text-gray-400"}>
+                            {topic.person_in_charge || "Unassigned"}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
