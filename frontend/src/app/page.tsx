@@ -2004,51 +2004,6 @@ export default function Home() {
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
 
-            {/* TOPIC INTELLIGENCE BAR (OPENS DISCOVER & SEARCH TOPICS MODAL) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FFFCFB] border border-[#c9ab4c]/40 px-4 py-2.5 shadow-2xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-1.5 h-6 bg-[#c9ab4c]"></div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#003366]">
-                      Topic Intelligence & Discovery
-                    </span>
-                    {missedTopics.length > 0 && (
-                      <span className="text-[10px] bg-[#c9ab4c]/15 text-[#8c7329] font-bold px-2 py-0.5">
-                        {missedTopics.length} {missedTopics.length === 1 ? "Topic" : "Topics"} Suggested
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    {missedTopics.length > 0 
-                      ? "Uncaptured discussion points found in the transcript are ready for review."
-                      : "Search specific topics or scan the transcript for missing action items and decisions."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {missedTopics.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={addAllMissedTopics}
-                    className="btn-outline !py-1.5 !px-3 !text-xs rounded-none shadow-2xs inline-flex items-center gap-1.5 text-[#003366]"
-                    title="Add all suggested topics into the matrix at once"
-                  >
-                    <Plus size={12} /> Add All ({missedTopics.length})
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowDiscoverTopicsModal(true)}
-                  className="btn-primary !py-1.5 !px-4 !text-xs rounded-none shadow-2xs inline-flex items-center gap-1.5"
-                >
-                  <Sparkles size={13} className="text-[#c9ab4c]" />
-                  <span>Discover Topics ({missedTopics.length})</span>
-                </button>
-              </div>
-            </div>
-
             {/* EXECUTIVE MINUTES MATRIX */}
             <div className="border border-[#003366]/20 bg-[#FFFCFB] shadow-2xs overflow-hidden rounded-none">
               
