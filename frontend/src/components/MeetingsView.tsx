@@ -294,27 +294,104 @@ export function MeetingsView({
   const matchedRecording = React.useMemo(() => {
     if (!activeMeeting || localRecordingFiles.length === 0) return null;
     const meetingDate = activeMeeting.date?.trim();
-    // Look for file containing date or title tokens
-    const match = localRecordingFiles.find((f) => {
+    const titleTokens = (activeMeeting.title || "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((tok) => tok.length >= 3 && !["meeting", "echo", "prime", "the", "and", "internal"].includes(tok));
+
+    // 1. Exact or date match + token match
+    let match = localRecordingFiles.find((f) => {
       const lower = f.name.toLowerCase();
-      if (meetingDate && lower.includes(meetingDate)) return true;
-      const titleClean = activeMeeting.title.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const fileClean = lower.replace(/[^a-z0-9]/g, "");
-      if (titleClean && titleClean.length > 4 && fileClean.includes(titleClean.slice(0, 10))) return true;
+      if (meetingDate && lower.includes(meetingDate)) {
+        if (titleTokens.length > 0 && titleTokens.some((t) => lower.includes(t))) return true;
+        return true;
+      }
       return false;
     });
+
+    // 2. Token match on title
+    if (!match && titleTokens.length > 0) {
+      match = localRecordingFiles.find((f) => {
+        const lower = f.name.toLowerCase();
+        return titleTokens.some((t) => lower.includes(t));
+      });
+    }
+
+    // 3. Normalized string match
+    if (!match) {
+      const titleClean = activeMeeting.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+      match = localRecordingFiles.find((f) => {
+        const fileClean = f.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (titleClean && titleClean.length > 4 && fileClean.includes(titleClean.slice(0, 10))) return true;
+        return false;
+      });
+    }
+
     return match || null;
   }, [activeMeeting, localRecordingFiles]);
 
+  const recordingType = React.useMemo<"video" | "audio">(() => {
+    if (activeMeeting?.recording_type === "video") return "video";
+    if (activeMeeting?.recording_type === "audio") return "audio";
+    if (matchedRecording) {
+      const lower = matchedRecording.name.toLowerCase();
+      if (lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".mkv") || lower.includes("video") || lower.includes("screen")) {
+        return "video";
+      }
+      return "audio";
+    }
+    const combined = `${activeMeeting?.title || ""} ${activeMeeting?.location || ""} ${activeMeeting?.summary || ""}`.toLowerCase();
+    if (combined.includes("screen recording") || combined.includes("video") || combined.includes("zoom") || combined.includes("meet")) {
+      return "video";
+    }
+    return "audio";
+  }, [activeMeeting, matchedRecording]);
+
+  const recordingFormat = React.useMemo<string>(() => {
+    if (matchedRecording) {
+      const parts = matchedRecording.name.split(".");
+      if (parts.length > 1) return parts[parts.length - 1].toLowerCase();
+    }
+    if (activeMeeting?.recording_format) return activeMeeting.recording_format;
+    return recordingType === "video" ? "webm" : "mp3";
+  }, [matchedRecording, activeMeeting, recordingType]);
+
+  const handleExportRecording = () => {
+    if (matchedRecording) {
+      const downloadUrl = `/api/recordings/download?fileName=${encodeURIComponent(matchedRecording.name)}`;
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = matchedRecording.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return;
+    }
+
+    if (localRecordingFiles.length > 0) {
+      const fallback = localRecordingFiles.find((f) => {
+        const lower = f.name.toLowerCase();
+        return recordingType === "video"
+          ? (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.includes("video"))
+          : (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".webm"));
+      });
+      if (fallback) {
+        const downloadUrl = `/api/recordings/download?fileName=${encodeURIComponent(fallback.name)}`;
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fallback.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
+    }
+
+    alert(`No local ${recordingType === "video" ? "video" : "audio"} recording found in Documents/Echo Meetings for this meeting.`);
+  };
+
   const handleDownloadMatchedRecording = () => {
-    if (!matchedRecording) return;
-    const downloadUrl = `/api/recordings/download?fileName=${encodeURIComponent(matchedRecording.name)}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = matchedRecording.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    handleExportRecording();
   };
 
   // Quick Add ClickUp Task state
@@ -824,21 +901,19 @@ export function MeetingsView({
                         <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Export</div>
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportWord(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><FileText size={13} className="text-[#C9AB4C]" /> Word (.docx)</button>
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportPdf(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><Download size={13} className="text-[#C9AB4C]" /> PDF (.pdf)</button>
-                        {matchedRecording && (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => { setShowShareMenu(false); handleDownloadMatchedRecording(); }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"
-                          >
-                            {matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? (
-                              <Video size={13} className="text-[#C9AB4C]" />
-                            ) : (
-                              <Mic size={13} className="text-[#C9AB4C]" />
-                            )}
-                            <span>{matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? "Export Video" : "Export Audio"}</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setShowShareMenu(false); handleExportRecording(); }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"
+                        >
+                          {recordingType === "video" ? (
+                            <Video size={13} className="text-[#C9AB4C]" />
+                          ) : (
+                            <Mic size={13} className="text-[#C9AB4C]" />
+                          )}
+                          <span>{recordingType === "video" ? `Export Video (.${recordingFormat})` : `Export Audio (.${recordingFormat})`}</span>
+                        </button>
                       </div>}
                     </div>}
 

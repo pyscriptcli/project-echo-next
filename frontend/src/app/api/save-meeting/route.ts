@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
       `**Owner:** ${meeting_details.prepared_by || meeting_details.owner || "Unassigned"}`,
       `**Department:** ${meeting_details.department || meeting_details.workspace || "Unassigned"}`,
       `**Location:** ${meeting_details.location || ""}`,
+      ...(meeting_details.recording_type ? [`**Recording Type:** ${meeting_details.recording_type}`] : []),
+      ...(meeting_details.recording_format ? [`**Recording Format:** ${meeting_details.recording_format}`] : []),
       ...(teamAtt ? [`**Team Attendees:** ${teamAtt}`] : []),
       ...(extAtt ? [`**External Attendees:** ${extAtt}`] : []),
       `\n# Executive Summary\n${other_discussions || ""}`,

@@ -13,6 +13,8 @@ function meetingDescription(meeting: any) {
     `**End Time:** ${meeting.end_time || "—"}`,
     `**Duration:** ${meeting.duration_minutes ? `${meeting.duration_minutes} mins` : meeting.duration_seconds ? `${Math.round(meeting.duration_seconds / 60)} mins` : "—"}`,
     `**Location:** ${meeting.location || ""}`,
+    ...(meeting.recording_type ? [`**Recording Type:** ${meeting.recording_type}`] : []),
+    ...(meeting.recording_format ? [`**Recording Format:** ${meeting.recording_format}`] : []),
     `**Team attendees:** ${(meeting.attendees_prime || []).join(", ") || "—"}`,
     `**External attendees:** ${(meeting.attendees_external || []).join(", ") || "—"}`,
     "\n# Executive Summary",
@@ -105,6 +107,14 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
   const durMatch = description.match(/\*\*Duration:\*\*\s*(\d+)\s*mins?/i);
   const durationMinutes = durMatch ? parseInt(durMatch[1], 10) : undefined;
 
+  const recTypeMatch = description.match(/\*\*Recording Type:\*\*\s*(.*)/i);
+  const recFormatMatch = description.match(/\*\*Recording Format:\*\*\s*(.*)/i);
+  const parsedRecType = recTypeMatch?.[1]?.trim().toLowerCase();
+  const recordingType = (parsedRecType === "video" || parsedRecType === "audio")
+    ? (parsedRecType as "audio" | "video")
+    : (description.toLowerCase().includes("video recording") || description.toLowerCase().includes("screen recording") ? "video" : undefined);
+  const recordingFormat = recFormatMatch?.[1]?.trim().toLowerCase();
+
   const hasNotesSection = /# Meeting Notes\r?\n/.test(description);
   const summary = hasNotesSection
     ? section("Executive Summary", "Meeting Notes")
@@ -124,6 +134,8 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     attendees_external: attendeesExternal,
     summary,
     meeting_notes: meetingNotes,
+    recording_type: recordingType,
+    recording_format: recordingFormat,
     items: parseDiscussionItems(section("Discussion Points", "Full Transcript")),
     transcript: section("Full Transcript"),
     created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(),

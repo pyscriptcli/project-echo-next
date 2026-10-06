@@ -38,6 +38,9 @@ export interface ArchivedMeeting {
   items: DiscussionItem[];
   transcript?: string;
   meeting_notes?: string;
+  recording_type?: "audio" | "video";
+  recording_format?: string;
+  recording_url?: string;
   created_at?: string;
   clickup_space_id?: string;
   clickup_space_name?: string;

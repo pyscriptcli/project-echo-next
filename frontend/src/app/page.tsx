@@ -968,8 +968,13 @@ export default function Home() {
       const finalDurationMinutes = calcDurationSeconds ? Math.max(1, Math.round(calcDurationSeconds / 60)) : fallbackMinutes;
       const finalDurationSeconds = calcDurationSeconds || (finalDurationMinutes ? finalDurationMinutes * 60 : undefined);
 
+      const recType = (selectedFile?.type.startsWith("video/") || studioRecorder.mediaType === "video") ? "video" : "audio";
+      const recFormat = selectedFile ? selectedFile.name.split(".").pop() : (studioRecorder.mediaType === "video" ? "webm" : "mp3");
+
       const payloadMeta = {
         ...effectiveMeta,
+        recording_type: recType,
+        recording_format: recFormat,
         ...(finalDurationMinutes ? { duration_minutes: finalDurationMinutes } : {}),
         ...(finalDurationSeconds ? { duration_seconds: finalDurationSeconds } : {}),
         ...(spaceToUse ? { space_id: spaceToUse } : {}),
@@ -983,6 +988,8 @@ export default function Home() {
         meeting_id: newMeetingId,
         title: effectiveMeta.client_name || "Executive Meeting",
         date: effectiveMeta.date || new Date().toISOString().split("T")[0],
+        recording_type: recType,
+        recording_format: recFormat,
         meeting_type: (effectiveMeta.meeting_type as any) || "Internal",
         duration_minutes: finalDurationMinutes,
         duration_seconds: finalDurationSeconds,
