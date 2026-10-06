@@ -1112,7 +1112,7 @@ export function MeetingsView({
                       : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  Discussion Points & Action Items ({activeMeeting.items.length})
+                  Discussion Points
                 </button>
                 <button
                   type="button"
@@ -1134,7 +1134,7 @@ export function MeetingsView({
                       : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  Transcript (Full raw Transcript)
+                  Transcript
                 </button>
               </div>
 
@@ -1184,10 +1184,10 @@ export function MeetingsView({
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <div>
                       <h3 className="font-serif font-bold text-lg text-[#003366] italic">
-                        User Notes & Decisions
+                        Meeting Notes
                       </h3>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        Decisions, follow-ups, and key moments linked to the meeting timestamp.
+                        Notes captured in the workspace during the meeting session.
                       </p>
                     </div>
                   </div>
@@ -1198,15 +1198,15 @@ export function MeetingsView({
                     const lines = rawNotes.split("\n").map((l) => l.trim()).filter(Boolean);
                     if (lines.length === 0) {
                       return (
-                        <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center">
-                          <MessageCircle size={20} className="mx-auto text-[#003366]" />
-                          <p className="mt-2 text-sm font-medium text-slate-600">No meeting notes recorded yet</p>
+                        <div className="border border-dashed border-slate-300 bg-white/60 p-8 text-center">
+                          <MessageCircle size={22} className="mx-auto text-[#003366]" />
+                          <p className="mt-2 text-sm font-medium text-slate-600">No meeting notes recorded</p>
                           <p className="mt-1 text-xs text-slate-400">Notes captured in the workspace stay linked to the meeting time.</p>
                         </div>
                       );
                     }
                     return (
-                      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                      <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
                         {lines.map((line, idx) => {
                           const match = line.match(/^(\[\d{2}:\d{2}(?::\d{2})?\])\s*(.*)$/);
                           const timestamp = match ? match[1] : null;
@@ -1231,19 +1231,6 @@ export function MeetingsView({
                       </div>
                     );
                   })()}
-
-                  <div className="pt-2 border-t border-gray-100">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                      Edit Raw Notes / Add Timestamped Observations
-                    </label>
-                    <AutoResizeTextarea
-                      value={activeMeeting.meeting_notes || ""}
-                      onChange={(e) => setActiveMeeting({ ...activeMeeting, meeting_notes: e.target.value })}
-                      placeholder="[00:00:00] Enter decision, follow-up, or meeting note..."
-                      className="w-full text-xs font-mono text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[120px]"
-                      rows={4}
-                    />
-                  </div>
                 </div>
               ) : (
                 /* Discussion Points Matrix Tab */

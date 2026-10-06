@@ -2046,7 +2046,7 @@ export default function Home() {
                     : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Discussion Points & Action Items ({momItems.length})
+                Discussion Points
               </button>
               <button
                 type="button"
@@ -2068,7 +2068,7 @@ export default function Home() {
                     : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Transcript (Full raw Transcript)
+                Transcript
               </button>
             </div>
 
@@ -2118,9 +2118,9 @@ export default function Home() {
               <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                   <div>
-                    <h3 className="text-lg font-serif text-[#003366] italic">User Notes & Key Moments</h3>
+                    <h3 className="text-lg font-serif text-[#003366] italic">Meeting Notes</h3>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Decisions, follow-ups, and notes captured in the meeting workspace, linked to timestamps and attached to the transcript.
+                      Notes captured in the workspace during the meeting session.
                     </p>
                   </div>
                 </div>
@@ -2131,15 +2131,15 @@ export default function Home() {
                   const lines = rawNotes.split("\n").map((l) => l.trim()).filter(Boolean);
                   if (lines.length === 0) {
                     return (
-                      <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center">
-                        <MessageCircle size={20} className="mx-auto text-[#003366]" />
-                        <p className="mt-2 text-sm font-medium text-slate-600">Capture the moments that matter</p>
-                        <p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time and are fed into the AI transcript.</p>
+                      <div className="border border-dashed border-slate-300 bg-white/60 p-8 text-center">
+                        <MessageCircle size={22} className="mx-auto text-[#003366]" />
+                        <p className="mt-2 text-sm font-medium text-slate-600">No meeting notes recorded</p>
+                        <p className="mt-1 text-xs text-slate-400">Notes captured in the workspace stay linked to the meeting time.</p>
                       </div>
                     );
                   }
                   return (
-                    <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
                       {lines.map((line, idx) => {
                         const match = line.match(/^(\[\d{2}:\d{2}(?::\d{2})?\])\s*(.*)$/);
                         const timestamp = match ? match[1] : null;
@@ -2164,18 +2164,6 @@ export default function Home() {
                     </div>
                   );
                 })()}
-
-                <div className="pt-2 border-t border-gray-100">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-                    Edit or Add Timestamped Notes
-                  </label>
-                  <textarea
-                    className="w-full border border-gray-200 p-3.5 text-xs font-mono bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed min-h-[140px] shadow-2xs rounded-none"
-                    value={additionalMeetingNotes}
-                    onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
-                    placeholder="[00:00:00] Write a decision, follow-up, or note..."
-                  />
-                </div>
               </div>
             ) : (
               <>
