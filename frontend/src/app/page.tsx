@@ -7,6 +7,7 @@ import { StudioRecoveryBanner } from "@/components/StudioRecoveryBanner";
 import { FloatingRecordingPill } from "@/components/FloatingRecordingPill";
 import { useStudioRecorder } from "@/hooks/useStudioRecorder";
 import type { StudioNote, StudioDisplayMode } from "@/types/studio";
+import { clearSession } from "@/lib/studioStorage";
 import { 
   processSource, 
   generateMinutes, 
@@ -735,6 +736,10 @@ export default function Home() {
     if (studioRecorder.elapsedSeconds > 0) {
       setRecordedDurationSeconds(studioRecorder.elapsedSeconds);
     }
+    const currentSessionId = studioRecorder.sessionId;
+    if (currentSessionId) {
+      clearSession(currentSessionId).catch(() => {});
+    }
     const notesText = notes && notes.length > 0
       ? notes.map((n) => `${n.timestamp} ${n.text}`).join("\n")
       : "";
@@ -1213,6 +1218,8 @@ export default function Home() {
 
         {/* Studio Recovery Banner for crash resilience */}
         <StudioRecoveryBanner
+          activeSessionId={studioRecorder.sessionId}
+          isRecording={studioRecorder.status === "recording" || studioRecorder.status === "paused"}
           onProcessSession={(file) => {
             setSelectedFile(file);
             setCurrentView("minutes");

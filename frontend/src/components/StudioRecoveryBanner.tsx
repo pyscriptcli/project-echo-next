@@ -7,6 +7,10 @@ import { getInterruptedSessions, downloadSession, clearSession, exportSessionAsF
 
 interface StudioRecoveryBannerProps {
   onProcessSession?: (file: File) => void;
+  /** Session ID of an actively running recording session to exclude. */
+  activeSessionId?: string | null;
+  /** True when recording is actively ongoing. */
+  isRecording?: boolean;
 }
 
 /**
@@ -14,14 +18,25 @@ interface StudioRecoveryBannerProps {
  * is found in IndexedDB or Documents/Echo Meetings (e.g., after a browser crash or battery cut).
  * Offers 1-click Notetaker processing, download, or discard.
  */
-export function StudioRecoveryBanner({ onProcessSession }: StudioRecoveryBannerProps) {
+export function StudioRecoveryBanner({
+  onProcessSession,
+  activeSessionId,
+  isRecording = false,
+}: StudioRecoveryBannerProps) {
   const [sessions, setSessions] = useState<StudioSession[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
 
   const loadSessions = () => {
-    getInterruptedSessions()
-      .then(setSessions)
+    getInterruptedSessions(activeSessionId)
+      .then((records) => {
+        // Double filter out active session or if actively recording
+        const filtered = records.filter((s) => {
+          if (activeSessionId && s.sessionId === activeSessionId) return false;
+          return true;
+        });
+        setSessions(filtered);
+      })
       .catch(() => {});
   };
 
@@ -30,9 +45,13 @@ export function StudioRecoveryBanner({ onProcessSession }: StudioRecoveryBannerP
     const handleCheckInterrupted = () => loadSessions();
     window.addEventListener("focus", handleCheckInterrupted);
     return () => window.removeEventListener("focus", handleCheckInterrupted);
-  }, []);
+  }, [activeSessionId, isRecording]);
 
-  if (sessions.length === 0) return null;
+  // If the user is actively recording in this tab, do not distract them with an interrupted banner
+  // for the current ongoing session
+  const visibleSessions = sessions.filter((s) => !activeSessionId || s.sessionId !== activeSessionId);
+
+  if (visibleSessions.length === 0) return null;
 
   const handleProcess = async (sessionId: string) => {
     setProcessing(sessionId);
@@ -89,7 +108,7 @@ export function StudioRecoveryBanner({ onProcessSession }: StudioRecoveryBannerP
 
   return (
     <aside aria-label="Interrupted recording recovery notifications" className="space-y-0">
-      {sessions.map((session) => (
+      {visibleSessions.map((session) => (
         <div
           key={session.sessionId}
           className="bg-amber-50 border-b border-amber-300 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xs"

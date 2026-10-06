@@ -127,8 +127,13 @@ export async function getSessionMeta(sessionId: string): Promise<StudioSession |
 /**
  * Finds sessions that were left in 'active' status — these are interrupted
  * recordings from a crash or unexpected tab close.
+ *
+ * Excludes:
+ *  - The currently active recording session (if provided)
+ *  - Sessions actively heartbeating within the last 15 seconds (ongoing in another tab or currently recording)
+ *  - Sessions explicitly marked completed
  */
-export async function getInterruptedSessions(): Promise<StudioSession[]> {
+export async function getInterruptedSessions(excludeSessionId?: string | null): Promise<StudioSession[]> {
   const db = await openStudioDb();
 
   return new Promise((resolve, reject) => {
@@ -136,7 +141,26 @@ export async function getInterruptedSessions(): Promise<StudioSession[]> {
     const request = tx.objectStore(SESSIONS_STORE).getAll();
     request.onsuccess = () => {
       const all = request.result as StudioSession[];
-      resolve(all.filter((s) => s.status === "active"));
+      const now = Date.now();
+      const filtered = all.filter((s) => {
+        // Exclude explicitly completed sessions
+        if (s.status === "completed") return false;
+        // Exclude currently active session id
+        if (excludeSessionId && s.sessionId === excludeSessionId) return false;
+        // If status is active, check heartbeat freshness to ensure it's not currently ongoing
+        if (s.status === "active") {
+          if (s.lastHeartbeat) {
+            const lastBeat = new Date(s.lastHeartbeat).getTime();
+            // If the session had a heartbeat within the last 15 seconds, it's ongoing, not interrupted
+            if (now - lastBeat < 15_000) {
+              return false;
+            }
+          }
+          return true;
+        }
+        return s.status === "interrupted";
+      });
+      resolve(filtered);
     };
     request.onerror = () => reject(request.error);
   });
