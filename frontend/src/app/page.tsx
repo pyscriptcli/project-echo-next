@@ -1360,6 +1360,15 @@ export default function Home() {
                   setCurrentView("minutes");
                   setStage("Input");
                 }}
+                onProcessInterrupted={(file, notes) => {
+                  setSelectedFile(file);
+                  if (notes) {
+                    setAdditionalMeetingNotes(notes);
+                  }
+                  setCurrentView("minutes");
+                  setStage("Input");
+                  handleUnifiedSourceSubmission(file, undefined, notes);
+                }}
               />
             )}
 

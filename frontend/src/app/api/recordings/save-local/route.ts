@@ -120,3 +120,30 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const fileName = req.nextUrl.searchParams.get("fileName");
+    if (!fileName) {
+      return NextResponse.json({ error: "fileName parameter is required" }, { status: 400 });
+    }
+
+    const safeBaseName = path.basename(fileName);
+    const echoDir = getEchoMeetingsDir();
+    const filePath = path.join(echoDir, safeBaseName);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return NextResponse.json({ success: true, fileName: safeBaseName });
+    }
+
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  } catch (error: any) {
+    console.error("[Local Save API] Failed to delete recording file:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete file" },
+      { status: 500 }
+    );
+  }
+}
+

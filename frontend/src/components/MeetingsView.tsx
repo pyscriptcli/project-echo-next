@@ -31,9 +31,13 @@ import {
   Video,
   MessageCircle,
   Copy,
-  Check
+  Check,
+  AlertTriangle,
+  Archive
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
+import type { StudioSession } from "@/types/studio";
+import { getInterruptedSessions, downloadSession, clearSession, exportSessionAsFile } from "@/lib/studioStorage";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists, getStoredApiKey } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
 import { EmailMeetingModal } from "./EmailMeetingModal";
@@ -197,6 +201,7 @@ interface MeetingsViewProps {
   onDeleteMeeting?: (meetingId: string) => Promise<void>;
   onMoveMeeting?: (updatedMeeting: ArchivedMeeting) => Promise<void> | void;
   onNewMinutes: () => void;
+  onProcessInterrupted?: (file: File, notes?: string) => void;
   onNavigateToTasks?: (taskId: string) => void;
   onSelectMeetingSpace?: (spaceId: string) => void;
   userEmail?: string;
@@ -211,6 +216,7 @@ export function MeetingsView({
   onDeleteMeeting,
   onMoveMeeting,
   onNewMinutes,
+  onProcessInterrupted,
   onNavigateToTasks,
   onSelectMeetingSpace,
   userEmail,
@@ -218,7 +224,7 @@ export function MeetingsView({
 }: MeetingsViewProps) {
   // Search & Filter state
   const [searchFilter, setSearchFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External">("All");
+  const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External" | "Archives">("All");
   const [meetingSpaces, setMeetingSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
   const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("__all__");
   const [personalListId, setPersonalListId] = useState<string>("");
@@ -227,6 +233,9 @@ export function MeetingsView({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [interruptedSessions, setInterruptedSessions] = useState<StudioSession[]>([]);
+  const [selectedInterruptedId, setSelectedInterruptedId] = useState<string | null>(null);
+  const [isProcessingInterrupted, setIsProcessingInterrupted] = useState<string | null>(null);
 
   useEffect(() => {
     const storedPId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || "" : "";
@@ -279,7 +288,7 @@ export function MeetingsView({
   const [localRecordingFiles, setLocalRecordingFiles] = useState<Array<{ name: string; size: number; path: string }>>([]);
 
   // Fetch local recordings from Echo Meetings folder
-  useEffect(() => {
+  const refreshLocalRecordings = React.useCallback(() => {
     fetch("/api/recordings/save-local")
       .then((res) => res.json())
       .then((data) => {
@@ -289,6 +298,30 @@ export function MeetingsView({
       })
       .catch(() => {});
   }, []);
+
+  const refreshInterruptedSessions = React.useCallback(() => {
+    getInterruptedSessions()
+      .then((records) => {
+        setInterruptedSessions(records);
+        if (records.length > 0 && !selectedInterruptedId) {
+          setSelectedInterruptedId(records[0].sessionId);
+        }
+      })
+      .catch(() => {});
+    refreshLocalRecordings();
+  }, [selectedInterruptedId, refreshLocalRecordings]);
+
+  useEffect(() => {
+    refreshLocalRecordings();
+    refreshInterruptedSessions();
+  }, [refreshLocalRecordings, refreshInterruptedSessions]);
+
+  // When switching to Archives pill, ensure interrupted records are refreshed
+  useEffect(() => {
+    if (typeFilter === "Archives") {
+      refreshInterruptedSessions();
+    }
+  }, [typeFilter, refreshInterruptedSessions]);
 
   // Determine matched local audio or video recording for the active meeting
   const matchedRecording = React.useMemo(() => {
@@ -394,6 +427,100 @@ export function MeetingsView({
     handleExportRecording();
   };
 
+  // Handlers for Interrupted Meetings / Archives
+  const handleProcessInterruptedSession = async (session: StudioSession) => {
+    setIsProcessingInterrupted(session.sessionId);
+    try {
+      const file = await exportSessionAsFile(session.sessionId);
+      const notesFormatted = session.notes && session.notes.length > 0
+        ? session.notes.map((n) => `[${n.timestamp}] ${n.text}`).join("\n")
+        : "";
+      await clearSession(session.sessionId);
+      refreshInterruptedSessions();
+      if (onProcessInterrupted) {
+        onProcessInterrupted(file, notesFormatted);
+      }
+    } catch (err) {
+      console.error("[MeetingsView] Processing interrupted session failed:", err);
+      alert("Failed to assemble and process interrupted recording.");
+    } finally {
+      setIsProcessingInterrupted(null);
+    }
+  };
+
+  const handleDownloadInterruptedSession = async (sessionId: string) => {
+    try {
+      await downloadSession(sessionId);
+    } catch (err) {
+      console.error("[MeetingsView] Download interrupted session failed:", err);
+      alert("Failed to download interrupted session.");
+    }
+  };
+
+  const handleDiscardInterruptedSession = async (sessionId: string) => {
+    if (!confirm("Are you sure you want to discard this interrupted meeting recording? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      await clearSession(sessionId);
+      refreshInterruptedSessions();
+      if (selectedInterruptedId === sessionId) {
+        setSelectedInterruptedId(null);
+      }
+    } catch (err) {
+      console.error("[MeetingsView] Discard interrupted session failed:", err);
+      alert("Failed to discard session.");
+    }
+  };
+
+  const handleProcessLocalInterruptedFile = async (fileName: string) => {
+    setIsProcessingInterrupted(fileName);
+    try {
+      const res = await fetch(`/api/recordings/download?fileName=${encodeURIComponent(fileName)}`);
+      if (!res.ok) throw new Error("Failed to fetch recording file");
+      const blob = await res.blob();
+      const ext = fileName.endsWith(".mp4") ? "mp4" : "webm";
+      const file = new File([blob], fileName, { type: blob.type || (ext === "mp4" ? "video/mp4" : "video/webm") });
+      if (onProcessInterrupted) {
+        onProcessInterrupted(file);
+      }
+    } catch (err) {
+      console.error("[MeetingsView] Failed to process local interrupted file:", err);
+      alert("Failed to load local recording file for processing.");
+    } finally {
+      setIsProcessingInterrupted(null);
+    }
+  };
+
+  const handleDownloadLocalInterruptedFile = (fileName: string) => {
+    const downloadUrl = `/api/recordings/download?fileName=${encodeURIComponent(fileName)}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleDiscardLocalInterruptedFile = async (fileName: string) => {
+    if (!confirm(`Are you sure you want to delete "${fileName}" from Documents/Echo Meetings?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/recordings/save-local?fileName=${encodeURIComponent(fileName)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Delete request failed");
+      refreshLocalRecordings();
+      if (selectedInterruptedId === fileName) {
+        setSelectedInterruptedId(null);
+      }
+    } catch (err) {
+      console.error("[MeetingsView] Failed to delete file:", err);
+      alert("Failed to delete local interrupted file.");
+    }
+  };
+
   // Quick Add ClickUp Task state
   const [quickAddTaskData, setQuickAddTaskData] = useState<{
     isOpen: boolean;
@@ -434,6 +561,83 @@ export function MeetingsView({
         : m.clickup_space_id === selectedMeetingSpace && !m.is_confidential;
     return matchesSearch && matchesType && matchesFrom && matchesTo && matchesSpace;
   });
+
+  // Interrupted records combining IndexedDB sessions and local interrupted files
+  const interruptedItems = React.useMemo(() => {
+    type UnifiedInterrupted = {
+      id: string;
+      kind: "indexeddb" | "local_file";
+      title: string;
+      date: string;
+      durationSeconds: number;
+      mediaType: "video" | "audio";
+      fileSize?: number;
+      session?: StudioSession;
+      fileName?: string;
+      noteCount: number;
+    };
+
+    const list: UnifiedInterrupted[] = [];
+    const lowerSearch = searchFilter.toLowerCase();
+
+    // 1. IndexedDB Interrupted Sessions
+    for (const s of interruptedSessions) {
+      const isVideo = s.mediaType === "video";
+      const title = `Interrupted Session (${s.sessionId.slice(-6)})`;
+      if (lowerSearch && !title.toLowerCase().includes(lowerSearch) && !s.sessionId.toLowerCase().includes(lowerSearch)) {
+        continue;
+      }
+      list.push({
+        id: s.sessionId,
+        kind: "indexeddb",
+        title,
+        date: s.startedAt ? s.startedAt.split("T")[0] : "",
+        durationSeconds: s.elapsedSeconds || 0,
+        mediaType: isVideo ? "video" : "audio",
+        session: s,
+        noteCount: s.notes ? s.notes.length : 0,
+      });
+    }
+
+    // 2. Local interrupted / checkpoint files in Documents/Echo Meetings
+    const knownSessionIds = new Set(interruptedSessions.map((s) => s.sessionId));
+    for (const f of localRecordingFiles) {
+      const isInterruptedFile = f.name.startsWith("INTERRUPTED_") || f.name.startsWith("CHECKPOINT_");
+      if (!isInterruptedFile) continue;
+
+      // Avoid duplicate card if already represented in IndexedDB session
+      const matchingIndexedDb = interruptedSessions.find((s) => f.name.includes(s.sessionId));
+      if (matchingIndexedDb) continue;
+
+      if (lowerSearch && !f.name.toLowerCase().includes(lowerSearch)) {
+        continue;
+      }
+
+      const isVideo = f.name.endsWith(".mp4") || f.name.includes("video");
+      const title = f.name.startsWith("INTERRUPTED_") ? `Interrupted: ${f.name}` : `Checkpoint: ${f.name}`;
+
+      list.push({
+        id: f.name,
+        kind: "local_file",
+        title,
+        date: (f as any).modifiedAt ? String((f as any).modifiedAt).split("T")[0] : "",
+        durationSeconds: 0,
+        mediaType: isVideo ? "video" : "audio",
+        fileSize: f.size,
+        fileName: f.name,
+        noteCount: 0,
+      });
+    }
+
+    return list;
+  }, [interruptedSessions, localRecordingFiles, searchFilter]);
+
+  const activeInterruptedItem = React.useMemo(() => {
+    if (!selectedInterruptedId && interruptedItems.length > 0) {
+      return interruptedItems[0];
+    }
+    return interruptedItems.find((it) => it.id === selectedInterruptedId) || null;
+  }, [selectedInterruptedId, interruptedItems]);
 
   // Handle Discussion Items Reorder / Remove / Add
   const handleMoveItem = (index: number, direction: "up" | "down") => {
@@ -763,25 +967,97 @@ export function MeetingsView({
 
           {/* Type Filter Pills */}
           <div className="flex items-center gap-1.5 pt-1">
-            {(["All", "Internal", "External"] as const).map((t) => (
+            {(["All", "Internal", "External", "Archives"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
-                onClick={() => setTypeFilter(t)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-none transition-colors ${
+                onClick={() => {
+                  setTypeFilter(t);
+                  if (t === "Archives") {
+                    refreshInterruptedSessions();
+                  }
+                }}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-none transition-colors flex items-center gap-1 ${
                   typeFilter === t
                     ? "bg-[#003366] text-white"
                     : "bg-[#FFFCFB] text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {t}
+                {t === "Archives" && <Archive size={11} className={typeFilter === t ? "text-[#C9AB4C]" : "text-gray-500"} />}
+                <span>{t}</span>
+                {t === "Archives" && interruptedItems.length > 0 && (
+                  <span className={`text-[9px] font-bold px-1 py-0.2 rounded-none ${typeFilter === t ? "bg-amber-400 text-slate-900" : "bg-amber-100 text-amber-800"}`}>
+                    {interruptedItems.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
 
           {/* Meeting Cards List */}
           <div className="space-y-2 pt-2 max-h-[720px] overflow-y-auto pr-1">
-            {filteredList.length > 0 ? (
+            {typeFilter === "Archives" ? (
+              interruptedItems.length > 0 ? (
+                interruptedItems.map((item) => {
+                  const isSelected = selectedInterruptedId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedInterruptedId(item.id)}
+                      className={`p-3.5 rounded-none border text-left cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-[#FAF9F7] border-[#C9AB4C] shadow-xs"
+                          : "bg-[#FFFCFB] border-amber-200 hover:border-amber-300 hover:bg-[#FFFCFB]/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h4 className={`font-serif text-base lg:text-[17px] font-bold italic line-clamp-1 ${isSelected ? "text-[#003366]" : "text-[#1b1d1e]"}`}>
+                          {item.title}
+                        </h4>
+                        <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
+                            <AlertTriangle size={10} className="text-amber-700" /> Interrupted
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-none bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wider">
+                            {item.mediaType}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar size={11} className="text-[#C9AB4C]" />
+                          <span>{item.date ? formatEchoDate(item.date) : "Recent Recording"}</span>
+                        </div>
+                        {item.durationSeconds > 0 ? (
+                          <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                            <Clock size={10} className="text-[#003366]" />
+                            <span>
+                              {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
+                            </span>
+                          </div>
+                        ) : item.fileSize ? (
+                          <span className="text-[10px] text-gray-400">
+                            {(item.fileSize / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
+                        <span>{item.noteCount > 0 ? `${item.noteCount} Notes captured` : "Unprocessed recording"}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#C9AB4C] font-semibold">{isSelected ? "Selected" : "View"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-6 text-center text-xs text-gray-400">
+                  No interrupted recordings found.
+                </div>
+              )
+            ) : filteredList.length > 0 ? (
               filteredList.map((m) => {
                 const isSelected = activeMeeting?.id === m.id;
                 return (
@@ -862,7 +1138,143 @@ export function MeetingsView({
 
         {/* RIGHT DETAIL PANE (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
-          {activeMeeting ? (
+          {typeFilter === "Archives" ? (
+            activeInterruptedItem ? (
+              <div className="bg-[#FFFCFB] border border-amber-200/90 rounded-none p-6 shadow-2xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold tracking-widest uppercase text-amber-900 bg-amber-100 px-2 py-0.5 border border-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle size={12} className="text-amber-700" />
+                      Interrupted Meeting Record
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-mono">
+                      #{activeInterruptedItem.id.slice(-10)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Process into Minutes */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeInterruptedItem.kind === "indexeddb" && activeInterruptedItem.session) {
+                          void handleProcessInterruptedSession(activeInterruptedItem.session);
+                        } else if (activeInterruptedItem.fileName) {
+                          void handleProcessLocalInterruptedFile(activeInterruptedItem.fileName);
+                        }
+                      }}
+                      disabled={isProcessingInterrupted === activeInterruptedItem.id}
+                      className="btn-primary !py-1.5 !px-3.5 !text-xs flex items-center gap-1.5 shadow-xs rounded-none cursor-pointer"
+                    >
+                      <Sparkles size={13} className="text-[#C9AB4C]" />
+                      <span>
+                        {isProcessingInterrupted === activeInterruptedItem.id ? "Processing…" : "Process into Minutes Now"}
+                      </span>
+                    </button>
+
+                    {/* Download Recording */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeInterruptedItem.kind === "indexeddb") {
+                          void handleDownloadInterruptedSession(activeInterruptedItem.id);
+                        } else if (activeInterruptedItem.fileName) {
+                          handleDownloadLocalInterruptedFile(activeInterruptedItem.fileName);
+                        }
+                      }}
+                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] rounded-none cursor-pointer"
+                      title="Download recorded file to disk"
+                    >
+                      <Download size={13} className="text-[#C9AB4C]" />
+                      <span>Download</span>
+                    </button>
+
+                    {/* Discard / Delete */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeInterruptedItem.kind === "indexeddb") {
+                          void handleDiscardInterruptedSession(activeInterruptedItem.id);
+                        } else if (activeInterruptedItem.fileName) {
+                          void handleDiscardLocalInterruptedFile(activeInterruptedItem.fileName);
+                        }
+                      }}
+                      className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-colors rounded-none cursor-pointer"
+                      title="Discard interrupted recording"
+                      aria-label="Discard interrupted recording"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metadata summary grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-amber-50/50 p-4 border border-amber-200 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-0.5">
+                      Recorded Date
+                    </label>
+                    <p className="font-semibold text-gray-800">
+                      {activeInterruptedItem.date ? formatEchoDate(activeInterruptedItem.date) : "Recent Session"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-0.5">
+                      Recorded Duration
+                    </label>
+                    <p className="font-semibold text-gray-800">
+                      {activeInterruptedItem.durationSeconds > 0
+                        ? `${Math.floor(activeInterruptedItem.durationSeconds / 60)} mins ${activeInterruptedItem.durationSeconds % 60} secs`
+                        : activeInterruptedItem.fileSize
+                        ? `${(activeInterruptedItem.fileSize / (1024 * 1024)).toFixed(2)} MB on disk`
+                        : "Incomplete recording"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-0.5">
+                      Media Type
+                    </label>
+                    <p className="font-semibold text-gray-800 uppercase tracking-wide">
+                      {activeInterruptedItem.mediaType === "video" ? "Screen / Video + Audio" : "Audio Recording"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Storage Origin Info */}
+                <div className="text-[11px] text-gray-600 bg-[#FFFCFB] border border-gray-200 p-3">
+                  <span className="font-bold text-[#003366]">Storage Location: </span>
+                  {activeInterruptedItem.kind === "indexeddb" ? (
+                    <span>Browser IndexedDB (echo_studio_db) & Auto-saved in Documents/Echo Meetings</span>
+                  ) : (
+                    <span>Local disk in Documents/Echo Meetings ({activeInterruptedItem.fileName})</span>
+                  )}
+                </div>
+
+                {/* Notes taken during interrupted session if available */}
+                {activeInterruptedItem.session?.notes && activeInterruptedItem.session.notes.length > 0 && (
+                  <div className="border border-gray-200 bg-[#FFFCFB] p-4 space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#003366]">
+                      Notes Captured During Meeting ({activeInterruptedItem.session.notes.length})
+                    </h4>
+                    <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                      {activeInterruptedItem.session.notes.map((n) => (
+                        <div key={n.id} className="text-xs bg-slate-50 border border-slate-200 p-2 flex items-start gap-2">
+                          <span className="font-mono text-[10px] font-bold text-[#003366] bg-slate-200 px-1 py-0.5 shrink-0">
+                            {n.timestamp}
+                          </span>
+                          <span className="text-gray-800">{n.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-[#FFFCFB] border border-gray-200 rounded-none p-12 text-center text-gray-400 text-xs">
+                Select an interrupted recording from the archives list on the left to review or process.
+              </div>
+            )
+          ) : activeMeeting ? (
             <>
               {/* Meeting Header & Export Action Bar */}
               <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
