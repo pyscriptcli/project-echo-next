@@ -26,7 +26,9 @@ import {
   ExternalLink,
   Lock,
   FolderInput,
-  PhilippinePeso
+  PhilippinePeso,
+  Mic,
+  Video
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
@@ -262,6 +264,47 @@ export function MeetingsView({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [showArchiveDetails, setShowArchiveDetails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [detailTab, setDetailTab] = useState<"discussion" | "notes">("discussion");
+  const [localRecordingFiles, setLocalRecordingFiles] = useState<Array<{ name: string; size: number; path: string }>>([]);
+
+  // Fetch local recordings from Echo Meetings folder
+  useEffect(() => {
+    fetch("/api/recordings/save-local")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.files)) {
+          setLocalRecordingFiles(data.files);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Determine matched local audio or video recording for the active meeting
+  const matchedRecording = React.useMemo(() => {
+    if (!activeMeeting || localRecordingFiles.length === 0) return null;
+    const meetingDate = activeMeeting.date?.trim();
+    // Look for file containing date or title tokens
+    const match = localRecordingFiles.find((f) => {
+      const lower = f.name.toLowerCase();
+      if (meetingDate && lower.includes(meetingDate)) return true;
+      const titleClean = activeMeeting.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const fileClean = lower.replace(/[^a-z0-9]/g, "");
+      if (titleClean && titleClean.length > 4 && fileClean.includes(titleClean.slice(0, 10))) return true;
+      return false;
+    });
+    return match || null;
+  }, [activeMeeting, localRecordingFiles]);
+
+  const handleDownloadMatchedRecording = () => {
+    if (!matchedRecording) return;
+    const downloadUrl = `/api/recordings/download?fileName=${encodeURIComponent(matchedRecording.name)}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = matchedRecording.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   // Quick Add ClickUp Task state
   const [quickAddTaskData, setQuickAddTaskData] = useState<{
@@ -679,8 +722,43 @@ export function MeetingsView({
                         <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Export</div>
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportWord(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><FileText size={13} className="text-[#C9AB4C]" /> Word (.docx)</button>
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportPdf(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><Download size={13} className="text-[#C9AB4C]" /> PDF (.pdf)</button>
+                        {matchedRecording && (
+                          <>
+                            <div className="my-1 border-t border-slate-200" />
+                            <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Recording</div>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => { setShowShareMenu(false); handleDownloadMatchedRecording(); }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"
+                            >
+                              {matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? (
+                                <Video size={13} className="text-[#C9AB4C]" />
+                              ) : (
+                                <Mic size={13} className="text-[#C9AB4C]" />
+                              )}
+                              <span>{matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? "Save Video" : "Save Audio"}</span>
+                            </button>
+                          </>
+                        )}
                       </div>}
                     </div>}
+
+                    {matchedRecording && (
+                      <button
+                        type="button"
+                        onClick={handleDownloadMatchedRecording}
+                        className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1.5 text-[#003366] bg-amber-50/50 hover:bg-amber-100/60 border-amber-300 rounded-none cursor-pointer"
+                        title={`Download recorded file: ${matchedRecording.name}`}
+                      >
+                        {matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? (
+                          <Video size={13} className="text-[#C9AB4C]" />
+                        ) : (
+                          <Mic size={13} className="text-[#C9AB4C]" />
+                        )}
+                        <span>{matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? "Save Video" : "Save Audio"}</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -925,20 +1003,66 @@ export function MeetingsView({
                 </div>
               </div>
 
-              {/* Discussion Points Matrix */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-serif font-bold text-lg text-[#003366] italic">
-                    Discussion Points Matrix
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleAddNewItem}
-                    className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white transition-all rounded-none"
-                  >
-                    <Plus size={13} /> Add Topic
-                  </button>
+              {/* 2 TABS: Discussion Points vs Meeting Notes */}
+              <div className="flex border-b border-gray-200 bg-[#FFFCFB]">
+                <button
+                  type="button"
+                  onClick={() => setDetailTab("discussion")}
+                  className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    detailTab === "discussion"
+                      ? "border-[#003366] text-[#003366] bg-white"
+                      : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Discussion Points & Action Items ({activeMeeting.items.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab("notes")}
+                  className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    detailTab === "notes"
+                      ? "border-[#003366] text-[#003366] bg-white"
+                      : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Meeting Notes
+                </button>
+              </div>
+
+              {detailTab === "notes" ? (
+                /* Meeting Notes Tab */
+                <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                    <h3 className="font-serif font-bold text-lg text-[#003366] italic">
+                      Live Notes & Observations
+                    </h3>
+                    <span className="text-[11px] text-gray-400">
+                      Captured during meeting session or added directly
+                    </span>
+                  </div>
+                  <AutoResizeTextarea
+                    value={activeMeeting.meeting_notes || ""}
+                    onChange={(e) => setActiveMeeting({ ...activeMeeting, meeting_notes: e.target.value })}
+                    placeholder="Enter or review timestamped meeting notes, transcript observations, or key bullet points..."
+                    className="w-full text-xs text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[220px]"
+                    rows={8}
+                  />
                 </div>
+              ) : (
+                /* Discussion Points Matrix Tab */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif font-bold text-lg text-[#003366] italic">
+                      Discussion Points Matrix
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleAddNewItem}
+                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white transition-all rounded-none"
+                    >
+                      <Plus size={13} /> Add Topic
+                    </button>
+                  </div>
 
                 {/* Dynamic Cards */}
                 {activeMeeting.items.map((item, idx) => (
@@ -1111,6 +1235,7 @@ export function MeetingsView({
                   </div>
                 ))}
               </div>
+              )}
             </>
           ) : (
             <div className="bg-[#FFFCFB] border border-gray-200 rounded-none p-12 text-center text-gray-400 text-xs">

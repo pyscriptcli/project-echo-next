@@ -3,7 +3,7 @@ import { getTokenFromRequest } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const { meeting_details, items, other_discussions, transcript } = await req.json();
+    const { meeting_details, items, other_discussions, transcript, meeting_notes } = await req.json();
 
     const token = getTokenFromRequest(req);
     if (!token) return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     }
     const teamAtt = meeting_details.prime_attendees || meeting_details.team_attendees || (Array.isArray(meeting_details.attendees_prime) ? meeting_details.attendees_prime.join(", ") : "");
     const extAtt = meeting_details.external_attendees || (Array.isArray(meeting_details.attendees_external) ? meeting_details.attendees_external.join(", ") : "");
+    const effectiveNotes = meeting_notes || meeting_details.meeting_notes || "";
     const description = [
       `# Meeting Details`,
       `**Date:** ${meeting_details.date || ""}`,
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       ...(teamAtt ? [`**Team Attendees:** ${teamAtt}`] : []),
       ...(extAtt ? [`**External Attendees:** ${extAtt}`] : []),
       `\n# Executive Summary\n${other_discussions || ""}`,
+      ...(effectiveNotes ? [`\n# Meeting Notes\n${effectiveNotes}`] : []),
       `\n# Discussion Points\n${JSON.stringify(items || [], null, 2)}`,
       `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`
     ].join("\n");

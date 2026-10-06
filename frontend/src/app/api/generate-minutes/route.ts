@@ -46,6 +46,10 @@ Output strict JSON only, matching this schema:
   "other_discussions": "Comprehensive summary of announcements, non-action items, peripheral topics, and general context."
 }`;
 
+    const effectiveSource = notes && notes.trim()
+      ? `=== MEETING NOTES ===\n${notes.trim()}\n\n=== TRANSCRIPT ===\n${transcript}`
+      : transcript;
+
     const userContent = `
 ${instruction ? `Special Instruction: ${instruction}\n` : ""}
 Topics of Interest:
@@ -55,7 +59,7 @@ Additional Meeting Notes:
 ${notes || "None"}
 
 Source Content:
-${transcript}`;
+${effectiveSource}`;
 
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",

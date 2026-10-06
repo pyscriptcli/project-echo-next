@@ -37,6 +37,7 @@ export interface ArchivedMeeting {
   summary: string;
   items: DiscussionItem[];
   transcript?: string;
+  meeting_notes?: string;
   created_at?: string;
   clickup_space_id?: string;
   clickup_space_name?: string;

@@ -272,6 +272,7 @@ export default function Home() {
   const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
   const [autoDiscoverEnabled, setAutoDiscoverEnabled] = useState(true);
   const [hasAutoDiscovered, setHasAutoDiscovered] = useState(false);
+  const [reviewTab, setReviewTab] = useState<"discussion" | "notes">("discussion");
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<StudioDisplayMode>("panel");
   const [isLoading, setIsLoading] = useState(false);
@@ -626,10 +627,11 @@ export default function Home() {
   };
 
   // Unified submission: handles files (audio, pdf, docx, txt) OR direct pasted text
-  const handleUnifiedSourceSubmission = async (fileOverride?: File, preparedTranscript?: string) => {
+  const handleUnifiedSourceSubmission = async (fileOverride?: File, preparedTranscript?: string, notesOverride?: string) => {
     const fileToUse = fileOverride || selectedFile;
     const hasFile = !!fileToUse;
     const hasText = pastedText.trim().length > 0;
+    const notesToUse = notesOverride !== undefined ? notesOverride : additionalMeetingNotes;
 
     if (!hasFile && !hasText) {
       alert("Please upload a file (audio, document, PDF, text) or paste meeting text.");
@@ -655,7 +657,12 @@ export default function Home() {
         abortController.signal
       );
 
-      setTranscript(preparedTranscript || res.transcript || "");
+      const rawTranscript = preparedTranscript || res.transcript || "";
+      const fullTranscript = notesToUse && notesToUse.trim()
+        ? `=== MEETING NOTES ===\n${notesToUse.trim()}\n\n=== TRANSCRIPT ===\n${rawTranscript}`
+        : rawTranscript;
+
+      setTranscript(fullTranscript);
       if (res.telemetry) {
         setAudioTelemetry(res.telemetry);
         if (res.telemetry.originalDurationSec > 0) {
@@ -678,9 +685,9 @@ export default function Home() {
       setLoadingText("Synthesizing structured Minutes of the Meeting...");
       const topics = "1. Project Updates\n2. Key Decisions\n3. Action Items";
       const momRes = await generateMinutes(
-        preparedTranscript || res.transcript || pastedText,
+        rawTranscript || pastedText,
         topics,
-        additionalMeetingNotes
+        notesToUse
       );
 
       if (!metadata.end_time) setMetadata((current: any) => ({ ...current, end_time: new Date().toTimeString().slice(0, 5) }));
@@ -724,14 +731,17 @@ export default function Home() {
     if (studioRecorder.elapsedSeconds > 0) {
       setRecordedDurationSeconds(studioRecorder.elapsedSeconds);
     }
-    if (notes && notes.length > 0) {
-      setAdditionalMeetingNotes(notes.map((n) => `${n.timestamp} ${n.text}`).join("\n"));
+    const notesText = notes && notes.length > 0
+      ? notes.map((n) => `${n.timestamp} ${n.text}`).join("\n")
+      : "";
+    if (notesText) {
+      setAdditionalMeetingNotes(notesText);
     }
     setCurrentView("minutes");
     setStage("Input");
     setIsStudioOpen(false);
     setStudioMode("panel");
-    handleUnifiedSourceSubmission(file, preparedTranscript);
+    handleUnifiedSourceSubmission(file, preparedTranscript, notesText);
   };
 
   const handleGenerateMinutes = async () => {
@@ -948,7 +958,7 @@ export default function Home() {
         ...(targetListId ? { list_id: targetListId } : {}),
         is_confidential: isConfidential,
       };
-      const res = await saveMeeting(payloadMeta, momItems, otherDiscussions, transcript);
+      const res = await saveMeeting(payloadMeta, momItems, otherDiscussions, transcript, additionalMeetingNotes);
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
       const newRecord: ArchivedMeeting = {
         id: newMeetingId,
@@ -962,6 +972,7 @@ export default function Home() {
         attendees_prime: primeAttendees,
         attendees_external: externalAttendees,
         summary: otherDiscussions,
+        meeting_notes: additionalMeetingNotes,
         items: momItems.map((item, idx) => ({
           id: item.id || `item-${idx}`,
           topic: item.topic_title || `Topic ${idx + 1}`,
@@ -2004,6 +2015,52 @@ export default function Home() {
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
 
+            {/* 2 TABS HEADER: DISCUSSION POINTS VS MEETING NOTES */}
+            <div className="flex border-b border-[#003366]/20 bg-[#FFFCFB]">
+              <button
+                type="button"
+                onClick={() => setReviewTab("discussion")}
+                className={`px-5 py-3 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                  reviewTab === "discussion"
+                    ? "border-[#003366] text-[#003366] bg-white"
+                    : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Discussion Points & Action Items ({momItems.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewTab("notes")}
+                className={`px-5 py-3 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                  reviewTab === "notes"
+                    ? "border-[#003366] text-[#003366] bg-white"
+                    : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Meeting Notes
+              </button>
+            </div>
+
+            {reviewTab === "notes" ? (
+              /* MEETING NOTES TAB */
+              <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-lg font-serif text-[#003366] italic">Live Meeting Notes</h3>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Notes captured during the recording session, attached directly to the transcript and preserved with the meeting record.
+                    </p>
+                  </div>
+                </div>
+                <textarea
+                  className="w-full border border-gray-200 p-3.5 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed min-h-[300px] shadow-2xs rounded-none"
+                  value={additionalMeetingNotes}
+                  onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
+                  placeholder="Timestamped notes and live observations from your recording session..."
+                />
+              </div>
+            ) : (
+              <>
             {/* EXECUTIVE MINUTES MATRIX */}
             <div className="border border-[#003366]/20 bg-[#FFFCFB] shadow-2xs overflow-hidden rounded-none">
               
@@ -2270,6 +2327,8 @@ export default function Home() {
                 placeholder="Summary paragraph of all general discussions and administrative updates..."
               />
             </div>
+            </>
+            )}
 
           </div>
         )}

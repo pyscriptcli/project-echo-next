@@ -17,6 +17,7 @@ function meetingDescription(meeting: any) {
     `**External attendees:** ${(meeting.attendees_external || []).join(", ") || "—"}`,
     "\n# Executive Summary",
     meeting.summary || "—",
+    ...(meeting.meeting_notes ? ["\n# Meeting Notes", meeting.meeting_notes] : []),
     "\n# Discussion Points",
     ...(meeting.items || []).map((item: any, index: number) => `## ${index + 1}. ${item.topic || "Discussion topic"}\n**Discussion:** ${item.discussion_point || "—"}\n**Action:** ${item.action_plan || "—"}\n**Owner:** ${item.person_in_charge || "—"}\n**Target date:** ${item.target_date || "—"}`),
     "\n# Full Transcript",
@@ -35,6 +36,7 @@ function changeSummary(before: any, after: any) {
     ["meeting_type", "meeting type"], 
     ["location", "location"], 
     ["summary", "summary"], 
+    ["meeting_notes", "meeting notes"],
     ["transcript", "full transcript"]
   ];
   const changes = fields.filter(([field]) => JSON.stringify(before?.[field]) !== JSON.stringify(after?.[field])).map(([, label]) => label);
@@ -103,6 +105,12 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
   const durMatch = description.match(/\*\*Duration:\*\*\s*(\d+)\s*mins?/i);
   const durationMinutes = durMatch ? parseInt(durMatch[1], 10) : undefined;
 
+  const hasNotesSection = /# Meeting Notes\r?\n/.test(description);
+  const summary = hasNotesSection
+    ? section("Executive Summary", "Meeting Notes")
+    : section("Executive Summary", "Discussion Points");
+  const meetingNotes = hasNotesSection ? section("Meeting Notes", "Discussion Points") : "";
+
   return {
     id: String(task.id),
     meeting_id: String(task.id),
@@ -114,7 +122,8 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     location: locMatch?.[1]?.trim() || "",
     attendees_prime: attendeesPrime.length > 0 ? attendeesPrime : ["Dave Policarpio"],
     attendees_external: attendeesExternal,
-    summary: section("Executive Summary", "Discussion Points"),
+    summary,
+    meeting_notes: meetingNotes,
     items: parseDiscussionItems(section("Discussion Points", "Full Transcript")),
     transcript: section("Full Transcript"),
     created_at: task.date_created ? new Date(Number(task.date_created)).toISOString() : new Date().toISOString(),
