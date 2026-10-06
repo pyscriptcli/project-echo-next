@@ -84,7 +84,8 @@ import {
   Lock,
   Search,
   Zap,
-  Tag
+  Tag,
+  MessageCircle
 } from "lucide-react";
 
 const VENUE_OPTIONS = [
@@ -920,6 +921,20 @@ export default function Home() {
     }
   };
 
+  const activeMediaFile = selectedFile || studioRecorder.recordedFile;
+
+  const handleExportRecording = () => {
+    if (!activeMediaFile) return;
+    const url = URL.createObjectURL(activeMediaFile);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = activeMediaFile.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleSaveToDb = async (overrideSpaceId?: string, options?: { listId?: string; isConfidential?: boolean }) => {
     const effectiveMeta = getEffectiveMetadata();
     if (!effectiveMeta.client_name?.trim()) {
@@ -1083,6 +1098,8 @@ export default function Home() {
         onExportWord={handleExportWord}
         onExportPdf={handleExportPdf}
         onEmailPdf={() => setShowEmailModal(true)}
+        onExportRecording={activeMediaFile ? handleExportRecording : undefined}
+        recordingName={activeMediaFile ? activeMediaFile.name : null}
         onArchiveClickUp={(spaceId, options) => handleSaveToDb(spaceId, options)}
         archiveSpaces={archiveSpaces}
         loadingArchiveSpaces={loadingArchiveSpaces}
@@ -2046,18 +2063,64 @@ export default function Home() {
               <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                   <div>
-                    <h3 className="text-lg font-serif text-[#003366] italic">Live Meeting Notes</h3>
+                    <h3 className="text-lg font-serif text-[#003366] italic">User Notes & Key Moments</h3>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Notes captured during the recording session, attached directly to the transcript and preserved with the meeting record.
+                      Decisions, follow-ups, and notes captured in the meeting workspace, linked to timestamps and attached to the transcript.
                     </p>
                   </div>
                 </div>
-                <textarea
-                  className="w-full border border-gray-200 p-3.5 text-xs bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed min-h-[300px] shadow-2xs rounded-none"
-                  value={additionalMeetingNotes}
-                  onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
-                  placeholder="Timestamped notes and live observations from your recording session..."
-                />
+
+                {/* Timestamped Notes Preview */}
+                {(() => {
+                  const rawNotes = additionalMeetingNotes || "";
+                  const lines = rawNotes.split("\n").map((l) => l.trim()).filter(Boolean);
+                  if (lines.length === 0) {
+                    return (
+                      <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center">
+                        <MessageCircle size={20} className="mx-auto text-[#003366]" />
+                        <p className="mt-2 text-sm font-medium text-slate-600">Capture the moments that matter</p>
+                        <p className="mt-1 text-xs text-slate-400">Notes stay linked to the meeting time and are fed into the AI transcript.</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                      {lines.map((line, idx) => {
+                        const match = line.match(/^(\[\d{2}:\d{2}(?::\d{2})?\])\s*(.*)$/);
+                        const timestamp = match ? match[1] : null;
+                        const noteText = match ? match[2] : line;
+                        return (
+                          <div key={idx} className="flex items-start gap-2.5 border border-slate-200 bg-white p-3 shadow-2xs">
+                            {timestamp ? (
+                              <span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-0.5 bg-slate-50">
+                                {timestamp}
+                              </span>
+                            ) : (
+                              <span className="text-[#C9AB4C] font-mono text-[11px] font-semibold shrink-0 border border-[#C9AB4C]/20 px-2 py-0.5 bg-amber-50/50">
+                                #{idx + 1}
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-700 flex-1 leading-relaxed break-words">
+                              {noteText}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                    Edit or Add Timestamped Notes
+                  </label>
+                  <textarea
+                    className="w-full border border-gray-200 p-3.5 text-xs font-mono bg-[#FFFCFB] focus:outline-none focus:border-[#C9AB4C] transition-colors leading-relaxed min-h-[140px] shadow-2xs rounded-none"
+                    value={additionalMeetingNotes}
+                    onChange={(e) => setAdditionalMeetingNotes(e.target.value)}
+                    placeholder="[00:00:00] Write a decision, follow-up, or note..."
+                  />
+                </div>
               </div>
             ) : (
               <>

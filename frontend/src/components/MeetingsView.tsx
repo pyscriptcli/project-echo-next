@@ -28,7 +28,8 @@ import {
   FolderInput,
   PhilippinePeso,
   Mic,
-  Video
+  Video,
+  MessageCircle
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
 import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
@@ -723,23 +724,19 @@ export function MeetingsView({
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportWord(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><FileText size={13} className="text-[#C9AB4C]" /> Word (.docx)</button>
                         <button type="button" role="menuitem" onClick={() => { setShowShareMenu(false); void handleExportPdf(); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"><Download size={13} className="text-[#C9AB4C]" /> PDF (.pdf)</button>
                         {matchedRecording && (
-                          <>
-                            <div className="my-1 border-t border-slate-200" />
-                            <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Recording</div>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => { setShowShareMenu(false); handleDownloadMatchedRecording(); }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"
-                            >
-                              {matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? (
-                                <Video size={13} className="text-[#C9AB4C]" />
-                              ) : (
-                                <Mic size={13} className="text-[#C9AB4C]" />
-                              )}
-                              <span>{matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? "Save Video" : "Save Audio"}</span>
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => { setShowShareMenu(false); handleDownloadMatchedRecording(); }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[#003366] hover:bg-[#003366]/5 cursor-pointer"
+                          >
+                            {matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? (
+                              <Video size={13} className="text-[#C9AB4C]" />
+                            ) : (
+                              <Mic size={13} className="text-[#C9AB4C]" />
+                            )}
+                            <span>{matchedRecording.name.endsWith(".mp4") || matchedRecording.name.endsWith(".webm") ? "Export Video" : "Export Audio"}</span>
+                          </button>
                         )}
                       </div>}
                     </div>}
@@ -1031,22 +1028,70 @@ export function MeetingsView({
 
               {detailTab === "notes" ? (
                 /* Meeting Notes Tab */
-                <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                    <h3 className="font-serif font-bold text-lg text-[#003366] italic">
-                      Live Notes & Observations
-                    </h3>
-                    <span className="text-[11px] text-gray-400">
-                      Captured during meeting session or added directly
-                    </span>
+                <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div>
+                      <h3 className="font-serif font-bold text-lg text-[#003366] italic">
+                        User Notes & Decisions
+                      </h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Decisions, follow-ups, and key moments linked to the meeting timestamp.
+                      </p>
+                    </div>
                   </div>
-                  <AutoResizeTextarea
-                    value={activeMeeting.meeting_notes || ""}
-                    onChange={(e) => setActiveMeeting({ ...activeMeeting, meeting_notes: e.target.value })}
-                    placeholder="Enter or review timestamped meeting notes, transcript observations, or key bullet points..."
-                    className="w-full text-xs text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[220px]"
-                    rows={8}
-                  />
+
+                  {/* Timestamped Notes List Preview */}
+                  {(() => {
+                    const rawNotes = activeMeeting.meeting_notes || "";
+                    const lines = rawNotes.split("\n").map((l) => l.trim()).filter(Boolean);
+                    if (lines.length === 0) {
+                      return (
+                        <div className="border border-dashed border-slate-300 bg-white/60 p-6 text-center">
+                          <MessageCircle size={20} className="mx-auto text-[#003366]" />
+                          <p className="mt-2 text-sm font-medium text-slate-600">No meeting notes recorded yet</p>
+                          <p className="mt-1 text-xs text-slate-400">Notes captured in the workspace stay linked to the meeting time.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                        {lines.map((line, idx) => {
+                          const match = line.match(/^(\[\d{2}:\d{2}(?::\d{2})?\])\s*(.*)$/);
+                          const timestamp = match ? match[1] : null;
+                          const noteText = match ? match[2] : line;
+                          return (
+                            <div key={idx} className="flex items-start gap-2.5 border border-slate-200 bg-white p-3 shadow-2xs">
+                              {timestamp ? (
+                                <span className="text-[#003366] font-mono text-[11px] font-semibold shrink-0 border border-[#003366]/15 px-2 py-0.5 bg-slate-50">
+                                  {timestamp}
+                                </span>
+                              ) : (
+                                <span className="text-[#C9AB4C] font-mono text-[11px] font-semibold shrink-0 border border-[#C9AB4C]/20 px-2 py-0.5 bg-amber-50/50">
+                                  #{idx + 1}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-700 flex-1 leading-relaxed break-words">
+                                {noteText}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pt-2 border-t border-gray-100">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                      Edit Raw Notes / Add Timestamped Observations
+                    </label>
+                    <AutoResizeTextarea
+                      value={activeMeeting.meeting_notes || ""}
+                      onChange={(e) => setActiveMeeting({ ...activeMeeting, meeting_notes: e.target.value })}
+                      placeholder="[00:00:00] Enter decision, follow-up, or meeting note..."
+                      className="w-full text-xs font-mono text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[120px]"
+                      rows={4}
+                    />
+                  </div>
                 </div>
               ) : (
                 /* Discussion Points Matrix Tab */

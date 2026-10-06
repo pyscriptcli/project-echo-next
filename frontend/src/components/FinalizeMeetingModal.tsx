@@ -18,7 +18,9 @@ import {
   ChevronRight,
   Lock,
   ExternalLink,
-  Mail
+  Mail,
+  Mic,
+  Video
 } from "lucide-react";
 import { fetchSpaceLists } from "@/lib/api";
 
@@ -44,6 +46,8 @@ interface FinalizeMeetingModalProps {
   onExportWord: () => Promise<void>;
   onExportPdf: () => Promise<void>;
   onEmailPdf?: () => void;
+  onExportRecording?: () => void;
+  recordingName?: string | null;
   onArchiveClickUp: (spaceId: string, options?: { listId?: string; isConfidential?: boolean }) => Promise<any>;
   archiveSpaces: Array<{ id: string; name: string; teamName: string }>;
   loadingArchiveSpaces: boolean;
@@ -67,6 +71,8 @@ export function FinalizeMeetingModal({
   onExportWord,
   onExportPdf,
   onEmailPdf,
+  onExportRecording,
+  recordingName,
   onArchiveClickUp,
   archiveSpaces,
   loadingArchiveSpaces,
@@ -937,6 +943,32 @@ export function FinalizeMeetingModal({
                     <span className="block text-[11px] text-slate-500 mt-0.5">Open a ready-to-review draft</span>
                   </div>
                   <ExternalLink size={15} className="text-slate-400 group-hover:text-[#003366] shrink-0" />
+                </button>}
+
+                {onExportRecording && <button
+                  type="button"
+                  onClick={onExportRecording}
+                  disabled={isProcessing}
+                  className="flex items-center gap-3.5 border border-slate-200 bg-white p-4 text-left hover:border-[#C9AB4C] hover:bg-slate-50/50 transition-all shadow-2xs group disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 bg-[#003366]/5 border border-[#003366]/15 flex items-center justify-center shrink-0 group-hover:bg-[#003366] group-hover:text-[#C9AB4C] transition-colors text-[#003366]">
+                    {recordingName && (recordingName.endsWith(".mp4") || recordingName.endsWith(".webm")) ? (
+                      <Video size={20} />
+                    ) : (
+                      <Mic size={20} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-xs font-bold text-[#003366]">
+                      {recordingName && (recordingName.endsWith(".mp4") || recordingName.endsWith(".webm"))
+                        ? "Export Video"
+                        : "Export Audio"}
+                    </span>
+                    <span className="block text-[11px] text-slate-500 mt-0.5">
+                      Download full meeting media recording
+                    </span>
+                  </div>
+                  <Download size={15} className="text-slate-400 group-hover:text-[#003366] shrink-0" />
                 </button>}
 
                 </div>}
