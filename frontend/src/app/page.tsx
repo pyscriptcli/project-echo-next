@@ -85,7 +85,9 @@ import {
   Search,
   Zap,
   Tag,
-  MessageCircle
+  MessageCircle,
+  Copy,
+  Check
 } from "lucide-react";
 
 const VENUE_OPTIONS = [
@@ -273,7 +275,8 @@ export default function Home() {
   const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
   const [autoDiscoverEnabled, setAutoDiscoverEnabled] = useState(true);
   const [hasAutoDiscovered, setHasAutoDiscovered] = useState(false);
-  const [reviewTab, setReviewTab] = useState<"discussion" | "notes">("discussion");
+  const [reviewTab, setReviewTab] = useState<"discussion" | "notes" | "transcript">("discussion");
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<StudioDisplayMode>("panel");
   const [isLoading, setIsLoading] = useState(false);
@@ -2032,7 +2035,7 @@ export default function Home() {
         {stage === "Review" && (
           <div className="flex flex-col gap-5 w-full">
 
-            {/* 2 TABS HEADER: DISCUSSION POINTS VS MEETING NOTES */}
+            {/* 3 TABS HEADER: DISCUSSION POINTS VS MEETING NOTES VS TRANSCRIPT */}
             <div className="flex border-b border-[#003366]/20 bg-[#FFFCFB]">
               <button
                 type="button"
@@ -2056,9 +2059,61 @@ export default function Home() {
               >
                 Meeting Notes
               </button>
+              <button
+                type="button"
+                onClick={() => setReviewTab("transcript")}
+                className={`px-5 py-3 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                  reviewTab === "transcript"
+                    ? "border-[#003366] text-[#003366] bg-white"
+                    : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Transcript (Full raw Transcript)
+              </button>
             </div>
 
-            {reviewTab === "notes" ? (
+            {reviewTab === "transcript" ? (
+              /* TRANSCRIPT TAB */
+              <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-lg font-serif text-[#003366] italic">Full Raw Transcript</h3>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Spoken dialogue and speaker turns captured during the recording session.
+                    </p>
+                  </div>
+                  {transcript && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(transcript);
+                        setCopiedTranscript(true);
+                        setTimeout(() => setCopiedTranscript(false), 2000);
+                      }}
+                      className="btn-outline !py-1 !px-2.5 !text-[11px] rounded-none flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedTranscript ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      <span>{copiedTranscript ? "Copied" : "Copy Transcript"}</span>
+                    </button>
+                  )}
+                </div>
+                {transcript?.trim() ? (
+                  <AutoResizeTextarea
+                    rows={12}
+                    className="w-full text-xs font-mono text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3.5 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[300px]"
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    placeholder="Full raw transcript text..."
+                  />
+                ) : (
+                  <div className="border border-dashed border-slate-300 bg-white/60 p-8 text-center">
+                    <FileText size={22} className="mx-auto text-[#003366]" />
+                    <p className="mt-2 text-sm font-medium text-slate-600">No transcript available</p>
+                    <p className="mt-1 text-xs text-slate-400">Audio recordings or uploaded transcripts appear here.</p>
+                  </div>
+                )}
+              </div>
+            ) : reviewTab === "notes" ? (
               /* MEETING NOTES TAB */
               <div className="border border-gray-200 bg-[#FFFCFB] p-5 shadow-2xs rounded-none space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -2145,9 +2200,27 @@ export default function Home() {
                 {momItems.length === 0 ? (
                   <div className="p-10 text-center bg-[#FFFCFB] border border-gray-200 rounded-none">
                     <p className="text-gray-500 text-xs mb-3">No minutes items generated yet.</p>
-                    <button onClick={addRow} className="btn-primary !text-xs !py-1.5 !px-3 rounded-none">
-                      <Plus size={13} className="inline mr-1" /> Add First Topic Manually
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={addRow} className="btn-primary !text-xs !py-1.5 !px-3 rounded-none cursor-pointer">
+                        <Plus size={13} className="inline mr-1" /> Add First Topic Manually
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!transcript?.trim()) {
+                            alert("No transcript available to discover topics from.");
+                            return;
+                          }
+                          setShowDiscoverTopicsModal(true);
+                          if (missedTopics.length === 0) {
+                            void discoverTopics("");
+                          }
+                        }}
+                        className="btn-outline !text-xs !py-1.5 !px-3 rounded-none flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles size={13} className="text-[#c9ab4c]" /> Discover Topics
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   momItems.map((item, idx) => (
@@ -2369,9 +2442,26 @@ export default function Home() {
               </div>
 
               {/* Table / Card List Footer */}
-              <div className="p-3.5 bg-[#FFFCFB] border-t border-gray-200 flex items-center">
-                <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none">
+              <div className="p-3.5 bg-[#FFFCFB] border-t border-gray-200 flex items-center gap-2">
+                <button onClick={addRow} className="btn-primary !py-2 !px-4 text-xs rounded-none cursor-pointer">
                   <Plus size={14} className="inline mr-1.5 -mt-0.5" /> Add Topic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!transcript?.trim()) {
+                      alert("No transcript available to discover topics from.");
+                      return;
+                    }
+                    setShowDiscoverTopicsModal(true);
+                    if (missedTopics.length === 0) {
+                      void discoverTopics("");
+                    }
+                  }}
+                  className="btn-outline !py-2 !px-4 text-xs flex items-center gap-1.5 rounded-none text-[#003366] hover:bg-[#003366] hover:text-white transition-colors cursor-pointer"
+                >
+                  <Sparkles size={14} className="text-[#c9ab4c]" />
+                  <span>Discover Topics</span>
                 </button>
               </div>
 

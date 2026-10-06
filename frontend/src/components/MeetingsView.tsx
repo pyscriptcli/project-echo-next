@@ -29,13 +29,17 @@ import {
   PhilippinePeso,
   Mic,
   Video,
-  MessageCircle
+  MessageCircle,
+  Copy,
+  Check
 } from "lucide-react";
 import { ArchivedMeeting, DiscussionItem } from "@/types/meeting";
-import { exportWord, exportPdf, askEcho, discoverClickUpLists } from "@/lib/api";
+import { exportWord, exportPdf, askEcho, discoverClickUpLists, getStoredApiKey } from "@/lib/api";
 import { QuickAddTaskModal } from "./QuickAddTaskModal";
 import { EmailMeetingModal } from "./EmailMeetingModal";
 import { MoveMeetingModal } from "./MoveMeetingModal";
+import { DiscoverTopicsModal } from "./DiscoverTopicsModal";
+import type { DiscoveredTopicItem } from "@/app/api/discover-topics/route";
 import { formatEchoDate } from "@/lib/dateUtils";
 
 const VENUE_OPTIONS = [
@@ -265,7 +269,13 @@ export function MeetingsView({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [showArchiveDetails, setShowArchiveDetails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [detailTab, setDetailTab] = useState<"discussion" | "notes">("discussion");
+  const [detailTab, setDetailTab] = useState<"discussion" | "notes" | "transcript">("discussion");
+  const [showDiscoverTopicsModal, setShowDiscoverTopicsModal] = useState(false);
+  const [missedTopics, setMissedTopics] = useState<DiscoveredTopicItem[]>([]);
+  const [topicQuery, setTopicQuery] = useState("");
+  const [isDiscoveringTopics, setIsDiscoveringTopics] = useState(false);
+  const [autoDiscoverEnabled, setAutoDiscoverEnabled] = useState(false);
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
   const [localRecordingFiles, setLocalRecordingFiles] = useState<Array<{ name: string; size: number; path: string }>>([]);
 
   // Fetch local recordings from Echo Meetings folder
@@ -431,6 +441,97 @@ export function MeetingsView({
       setTimeout(() => setSaveSuccessMsg(false), 3000);
     } catch (error: any) {
       alert(error.message || "Unable to save changes to ClickUp.");
+    }
+  };
+
+  const handleDiscoverTopics = async (queryOverride?: string) => {
+    if (!activeMeeting?.transcript?.trim()) {
+      alert("No transcript found for this meeting archive.");
+      return;
+    }
+    if (isDiscoveringTopics) return;
+    setIsDiscoveringTopics(true);
+    const activeQuery = queryOverride !== undefined ? queryOverride : topicQuery;
+    try {
+      const response = await fetch("/api/discover-topics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": getStoredApiKey() || "",
+        },
+        body: JSON.stringify({
+          transcript: activeMeeting.transcript,
+          query: activeQuery,
+          existingTopics: (activeMeeting.items || []).map((item) => item.topic),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to discover topics.");
+      const incomingList: DiscoveredTopicItem[] = data.topics || [];
+      if (activeQuery?.trim() && missedTopics.length > 0) {
+        const existingSet = new Set(missedTopics.map((t) => t.topic_title.toLowerCase().trim()));
+        const uniqueIncoming = incomingList.filter((t) => !existingSet.has(t.topic_title.toLowerCase().trim()));
+        setMissedTopics([...uniqueIncoming, ...missedTopics]);
+      } else {
+        setMissedTopics(incomingList);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to discover topics.");
+    } finally {
+      setIsDiscoveringTopics(false);
+    }
+  };
+
+  const handleAddDiscoveredTopic = (index: number = 0) => {
+    if (!activeMeeting) return;
+    const suggestion = missedTopics[index];
+    if (!suggestion) return;
+    const newItem: DiscussionItem = {
+      id: `dp_${Date.now()}_${activeMeeting.items.length}`,
+      topic: suggestion.topic_title,
+      evidence: suggestion.evidence_quote || "",
+      discussion_point: suggestion.discussion_point || "Review and complete the discussion details.",
+      action_plan: suggestion.action_plan || "None",
+      target_date: suggestion.indicative_delivery_date || "TBD",
+      person_in_charge: suggestion.person_in_charge || "Unassigned",
+    };
+    setActiveMeeting({
+      ...activeMeeting,
+      items: [...activeMeeting.items, newItem],
+    });
+    setMissedTopics((topics) => topics.filter((_, i) => i !== index));
+  };
+
+  const handleAddAllDiscoveredTopics = () => {
+    if (!activeMeeting || !missedTopics.length) return;
+    const newItems: DiscussionItem[] = missedTopics.map((suggestion, idx) => ({
+      id: `dp_${Date.now()}_${activeMeeting.items.length + idx}`,
+      topic: suggestion.topic_title,
+      evidence: suggestion.evidence_quote || "",
+      discussion_point: suggestion.discussion_point || "Review and complete the discussion details.",
+      action_plan: suggestion.action_plan || "None",
+      target_date: suggestion.indicative_delivery_date || "TBD",
+      person_in_charge: suggestion.person_in_charge || "Unassigned",
+    }));
+    setActiveMeeting({
+      ...activeMeeting,
+      items: [...activeMeeting.items, ...newItems],
+    });
+    setMissedTopics([]);
+  };
+
+  const handleDismissDiscoveredTopic = (index: number) => {
+    setMissedTopics((topics) => topics.filter((_, i) => i !== index));
+  };
+
+  const handleCopyTranscript = async (text: string) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedTranscript(true);
+      setTimeout(() => setCopiedTranscript(false), 2000);
+    } catch {
+      // ignore
     }
   };
 
@@ -1000,7 +1101,7 @@ export function MeetingsView({
                 </div>
               </div>
 
-              {/* 2 TABS: Discussion Points vs Meeting Notes */}
+              {/* 3 TABS: Discussion Points vs Meeting Notes vs Transcript */}
               <div className="flex border-b border-gray-200 bg-[#FFFCFB]">
                 <button
                   type="button"
@@ -1024,9 +1125,60 @@ export function MeetingsView({
                 >
                   Meeting Notes
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab("transcript")}
+                  className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    detailTab === "transcript"
+                      ? "border-[#003366] text-[#003366] bg-white"
+                      : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Transcript (Full raw Transcript)
+                </button>
               </div>
 
-              {detailTab === "notes" ? (
+              {detailTab === "transcript" ? (
+                /* Transcript Tab */
+                <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div>
+                      <h3 className="font-serif font-bold text-lg text-[#003366] italic">
+                        Full Raw Transcript
+                      </h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Spoken dialogue and speaker turns captured during the recording session.
+                      </p>
+                    </div>
+                    {activeMeeting.transcript && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTranscript(activeMeeting.transcript || "")}
+                        className="btn-outline !py-1 !px-2.5 !text-[11px] rounded-none flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {copiedTranscript ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                        <span>{copiedTranscript ? "Copied" : "Copy Transcript"}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {activeMeeting.transcript?.trim() ? (
+                    <AutoResizeTextarea
+                      value={activeMeeting.transcript || ""}
+                      onChange={(e) => setActiveMeeting({ ...activeMeeting, transcript: e.target.value })}
+                      placeholder="Full raw transcript text..."
+                      className="w-full text-xs font-mono text-gray-700 bg-[#FFFCFB] border border-gray-200 rounded-none p-3.5 focus:outline-none focus:border-[#C9AB4C] leading-relaxed min-h-[320px]"
+                      rows={14}
+                    />
+                  ) : (
+                    <div className="border border-dashed border-slate-300 bg-white/60 p-8 text-center">
+                      <FileText size={22} className="mx-auto text-[#003366]" />
+                      <p className="mt-2 text-sm font-medium text-slate-600">No transcript attached to this meeting</p>
+                      <p className="mt-1 text-xs text-slate-400">Audio recordings or uploaded transcripts appear here.</p>
+                    </div>
+                  )}
+                </div>
+              ) : detailTab === "notes" ? (
                 /* Meeting Notes Tab */
                 <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -1100,17 +1252,67 @@ export function MeetingsView({
                     <h3 className="font-serif font-bold text-lg text-[#003366] italic">
                       Discussion Points Matrix
                     </h3>
-                    <button
-                      type="button"
-                      onClick={handleAddNewItem}
-                      className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white transition-all rounded-none"
-                    >
-                      <Plus size={13} /> Add Topic
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddNewItem}
+                        className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white transition-all rounded-none cursor-pointer"
+                      >
+                        <Plus size={13} /> Add Topic
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!activeMeeting.transcript?.trim()) {
+                            alert("No transcript found for this meeting archive to discover topics from.");
+                            return;
+                          }
+                          setShowDiscoverTopicsModal(true);
+                          if (missedTopics.length === 0) {
+                            void handleDiscoverTopics("");
+                          }
+                        }}
+                        className="btn-primary !py-1.5 !px-3 !text-xs flex items-center gap-1.5 rounded-none cursor-pointer"
+                      >
+                        <Sparkles size={13} className="text-[#c9ab4c]" />
+                        <span>Discover Topics</span>
+                      </button>
+                    </div>
                   </div>
 
                 {/* Dynamic Cards */}
-                {activeMeeting.items.map((item, idx) => (
+                {activeMeeting.items.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 bg-white/60 p-8 text-center space-y-3">
+                    <p className="text-sm font-medium text-slate-600">No discussion topics recorded yet</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddNewItem}
+                        className="btn-outline !py-1.5 !px-3 !text-xs flex items-center gap-1 text-[#003366] hover:bg-[#003366] hover:text-white transition-all rounded-none cursor-pointer"
+                      >
+                        <Plus size={13} /> Add Topic Manually
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!activeMeeting.transcript?.trim()) {
+                            alert("No transcript found for this meeting archive to discover topics from.");
+                            return;
+                          }
+                          setShowDiscoverTopicsModal(true);
+                          if (missedTopics.length === 0) {
+                            void handleDiscoverTopics("");
+                          }
+                        }}
+                        className="btn-primary !py-1.5 !px-3 !text-xs flex items-center gap-1.5 rounded-none cursor-pointer"
+                      >
+                        <Sparkles size={13} className="text-[#c9ab4c]" />
+                        <span>Discover Topics</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  activeMeeting.items.map((item, idx) => (
                   <div
                     key={item.id || idx}
                     className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs space-y-3 relative group"
@@ -1278,7 +1480,7 @@ export function MeetingsView({
                       )}
                     </div>
                   </div>
-                ))}
+                )))}
               </div>
               )}
             </>
@@ -1441,6 +1643,25 @@ export function MeetingsView({
           if (onNavigateToTasks) onNavigateToTasks(taskId);
         }}
       />
+
+      {/* Discover & Search Topics Modal */}
+      {activeMeeting && (
+        <DiscoverTopicsModal
+          isOpen={showDiscoverTopicsModal}
+          onClose={() => setShowDiscoverTopicsModal(false)}
+          missedTopics={missedTopics}
+          isDiscoveringTopics={isDiscoveringTopics}
+          autoDiscoverEnabled={autoDiscoverEnabled}
+          onToggleAutoDiscover={() => setAutoDiscoverEnabled(!autoDiscoverEnabled)}
+          topicQuery={topicQuery}
+          onTopicQueryChange={setTopicQuery}
+          onDiscoverTopics={handleDiscoverTopics}
+          onAddTopic={handleAddDiscoveredTopic}
+          onAddAllTopics={handleAddAllDiscoveredTopics}
+          onDismissTopic={handleDismissDiscoveredTopic}
+          transcript={activeMeeting.transcript || ""}
+        />
+      )}
     </div>
   );
 }
