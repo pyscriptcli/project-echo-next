@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getTokenFromRequest } from "@/lib/auth";
 import { formatEchoDate } from "@/lib/dateUtils";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 
@@ -16,6 +17,53 @@ function getClickUpCredentials(req: NextRequest) {
     process.env.CLICKUP_DEFAULT_LIST_ID ||
     "";
   return { token: token.trim(), listId: listId.trim() };
+}
+
+function clickUpDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const timestamp = Number(value);
+  if (!Number.isFinite(timestamp)) return null;
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+interface ClickUpProjectList {
+  id: string | number;
+  name?: string;
+}
+
+interface ClickUpProjectTask {
+  id: string | number;
+  name?: string;
+  url?: string;
+  parent?: string | number | null;
+  status?: { status?: string; type?: string } | null;
+  start_date?: number | string | null;
+  due_date?: number | string | null;
+  assignees?: Array<{
+    id: string | number;
+    username?: string;
+    name?: string;
+    initials?: string;
+  }>;
+}
+
+interface ClickUpProjectFolder {
+  name?: string;
+  space?: { name?: string } | null;
+}
+
+interface ClickUpProjectResponseTask {
+  id: string;
+  name: string;
+  url: string | null;
+  parentId: string | null;
+  listId: string;
+  status: string;
+  statusType: string;
+  startDate: string | null;
+  dueDate: string | null;
+  assignees: Array<{ id: string; name: string; initials: string }>;
 }
 
 // Map ClickUp priority numbers (1: Urgent, 2: High, 3: Normal, 4: Low)
@@ -53,6 +101,83 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const targetListId = searchParams.get("listId") || listId;
+
+    if (action === "project-workspace") {
+      const projectToken = getTokenFromRequest(req);
+      if (!projectToken) {
+        return NextResponse.json({ error: "Sign in with ClickUp to open this project.", needsAuth: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
+      }
+
+      const folderId = "901414174663";
+      const clickUpGet = (path: string) => fetch(`https://api.clickup.com/api/v2${path}`, {
+        headers: { Authorization: projectToken },
+        cache: "no-store",
+      });
+      const [folderResponse, listsResponse] = await Promise.all([
+        clickUpGet(`/folder/${folderId}`),
+        clickUpGet(`/folder/${folderId}/list`),
+      ]);
+
+      if (!folderResponse.ok) {
+        const status = folderResponse.status;
+        return NextResponse.json({
+          error: status === 401 ? "Your ClickUp session has expired. Sign in again to continue." : status === 403 || status === 404 ? "This ClickUp account cannot access the linked project folder." : `ClickUp could not load the project folder (${status}).`,
+        }, { status, headers: { "Cache-Control": "no-store" } });
+      }
+      if (!listsResponse.ok) {
+        return NextResponse.json({ error: `ClickUp could not load the project lists (${listsResponse.status}).` }, { status: listsResponse.status, headers: { "Cache-Control": "no-store" } });
+      }
+
+      const [folder, listsPayload] = await Promise.all([
+        folderResponse.json() as Promise<ClickUpProjectFolder>,
+        listsResponse.json() as Promise<{ lists?: ClickUpProjectList[] }>,
+      ]);
+      const rawLists = Array.isArray(listsPayload.lists) ? listsPayload.lists : [];
+      const taskGroups = await Promise.all(rawLists.map(async (list) => {
+        const tasks: ClickUpProjectTask[] = [];
+        let page = 0;
+        while (true) {
+          const response = await clickUpGet(`/list/${encodeURIComponent(String(list.id))}/task?subtasks=true&include_closed=true&page=${page}`);
+          if (!response.ok) throw new Error(`Unable to load tasks for list ${list.id} (${response.status}).`);
+          const payload = await response.json() as { tasks?: ClickUpProjectTask[] };
+          const batch = Array.isArray(payload.tasks) ? payload.tasks : [];
+          tasks.push(...batch);
+          if (batch.length < 100) break;
+          page += 1;
+        }
+        return { list, tasks };
+      }));
+
+      const tasks: ClickUpProjectResponseTask[] = taskGroups.flatMap(({ list, tasks: listTasks }) => listTasks.map((task) => ({
+        id: String(task.id),
+        name: String(task.name || "Untitled task"),
+        url: typeof task.url === "string" ? task.url : null,
+        parentId: task.parent ? String(task.parent) : null,
+        listId: String(list.id),
+        status: String(task.status?.status || "Open"),
+        statusType: String(task.status?.type || ""),
+        startDate: clickUpDate(task.start_date),
+        dueDate: clickUpDate(task.due_date),
+        assignees: Array.isArray(task.assignees) ? task.assignees.map((assignee) => ({
+          id: String(assignee.id),
+          name: String(assignee.username || assignee.name || "Team member"),
+          initials: String(assignee.initials || assignee.username?.[0] || "?").slice(0, 2),
+        })) : [],
+      })));
+      const taskCounts = new Map<string, number>();
+      tasks.forEach((task) => taskCounts.set(task.listId, (taskCounts.get(task.listId) || 0) + 1));
+
+      return NextResponse.json({
+        folder: {
+          id: folderId,
+          name: String(folder.name || "Project"),
+          url: "https://app.clickup.com/9014981136/v/o/f/901414174663",
+          spaceName: String(folder.space?.name || ""),
+        },
+        lists: rawLists.map((list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), taskCount: taskCounts.get(String(list.id)) || 0 })),
+        tasks,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
 
     if (!token) {
       return NextResponse.json(

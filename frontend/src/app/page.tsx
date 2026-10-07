@@ -37,6 +37,7 @@ import { Sidebar, NavView } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
 import { DashboardView } from "@/components/DashboardView";
+import { ProjectWorkspace } from "@/components/ProjectWorkspace";
 import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { NotebookView } from "@/components/NotebookView";
@@ -414,7 +415,7 @@ export default function Home() {
   // Page Access Governance state
   const [allowedPages, setAllowedPages] = useState<NavView[]>([]);
   const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
-    "dashboard", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms",
+    "dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms",
   ]);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [askEchoEnabled, setAskEchoEnabled] = useState(false);
@@ -422,7 +423,7 @@ export default function Home() {
 
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "forms" || view === "notebook" || view === "market-insights" || view === "demands") setCurrentView(view as NavView);
+    if (view === "forms" || view === "project" || view === "notebook" || view === "market-insights" || view === "demands") setCurrentView(view as NavView);
   }, []);
 
   // Fetch page governance and role access
@@ -440,6 +441,7 @@ export default function Home() {
             const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
             setCurrentView((prev) => {
               if (prev === "forms-admin") return prev;
+              if (prev === "project" && data.allowedPages.includes("tasks")) return prev;
               if (!data.allowedPages.includes(prev)) return data.allowedPages[0] || "forms";
               return prev;
             });
@@ -458,6 +460,7 @@ export default function Home() {
 
   const isPageAllowed = (view: NavView) => {
     if (view === "forms-admin") return false;
+    if (view === "project") return allowedPages.includes("project") || allowedPages.includes("tasks");
     return allowedPages.includes(view);
   };
 
@@ -1272,6 +1275,8 @@ export default function Home() {
                 }}
               />
             )}
+
+            {currentView === "project" && <ProjectWorkspace />}
 
             {/* VIEW: TASKS (CLICKUP PORTAL) */}
             {currentView === "tasks" && (

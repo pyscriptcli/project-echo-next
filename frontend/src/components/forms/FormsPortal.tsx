@@ -37,10 +37,11 @@ import { ALL_FEATURES, FEATURE_CATALOG, type FeatureId } from "@/lib/access-cont
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
 export type FormType = "rfp" | "po" | "pcv";
-export type AppPage = "dashboard" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms";
+export type AppPage = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms";
 
 export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> = [
   { id: "dashboard", label: "Dashboard", desc: "Executive overview & meeting metrics" },
+  { id: "project", label: "Project", desc: "Focused project workspace" },
   { id: "tasks", label: "Tasks", desc: "ClickUp tasks portal & action items" },
   { id: "notebook", label: "Notebook", desc: "Daily logs & team completeness dashboard" },
   { id: "market-insights", label: "Market Insights", desc: "Weekly brief & shared market source archive" },

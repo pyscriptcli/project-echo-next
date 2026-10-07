@@ -13,10 +13,11 @@ import {
   Settings,
   NotebookTabs,
   Newspaper
-  ,ClipboardCheck
+  ,ClipboardCheck,
+  FolderKanban
 } from "lucide-react";
 
-export type NavView = "dashboard" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "forms-admin";
+export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -85,6 +86,12 @@ export function Sidebar({
       badge: null
     },
     {
+      id: "project" as NavView,
+      label: "Project",
+      icon: FolderKanban,
+      badge: null
+    },
+    {
       id: "tasks" as NavView,
       label: "Tasks",
       icon: CheckSquare,
@@ -127,7 +134,7 @@ export function Sidebar({
   const navItems = allNavItems.slice().sort((a, b) => {
     const fallback = allNavItems.length;
     return (orderIndex.get(a.id) ?? fallback) - (orderIndex.get(b.id) ?? fallback);
-  }).filter((item) => Boolean(allowedPages?.includes(item.id)));
+  }).filter((item) => Boolean(allowedPages?.includes(item.id) || (item.id === "project" && allowedPages?.includes("tasks"))));
 
   return (
     <div
