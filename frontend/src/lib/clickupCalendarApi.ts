@@ -54,8 +54,10 @@ function rateLimitWaitMs(response: Response) {
 }
 
 async function fetchAtSafeRate(key: string, token: string, input: string | URL, init?: RequestInit) {
+  const enqueuedAt = Date.now();
   const previous = requestQueues.get(key) || Promise.resolve();
   const operation = previous.catch(() => undefined).then(async () => {
+    const queueWaitMs = Date.now() - enqueuedAt;
     const headers = new Headers(init?.headers);
     headers.set("Authorization", token);
     const requestInit = { ...init, headers, cache: "no-store" as RequestCache };
@@ -69,11 +71,15 @@ async function fetchAtSafeRate(key: string, token: string, input: string | URL, 
       return fetch(input, requestInit);
     };
 
+    const startedAt = Date.now();
     let response = await send();
     if (response.status === 429) {
       const waitMs = rateLimitWaitMs(response);
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       response = await send();
+    }
+    if (process.env.CLICKUP_PERF_LOGS === "true") {
+      console.info("[clickup-perf]", JSON.stringify({ path: new URL(String(input)).pathname, method: (init?.method || "GET").toUpperCase(), queueWaitMs, responseMs: Date.now() - startedAt, status: response.status }));
     }
     return response;
   });
@@ -81,10 +87,10 @@ async function fetchAtSafeRate(key: string, token: string, input: string | URL, 
   return operation;
 }
 
-export function clearClickUpCalendarCache(token: string) {
+export function clearClickUpCalendarCache(token: string, resourcePaths?: string[]) {
   const prefix = `${tokenKey(token)}:`;
   for (const key of responseCache.keys()) {
-    if (key.startsWith(prefix)) responseCache.delete(key);
+    if (key.startsWith(prefix) && (!resourcePaths?.length || resourcePaths.some((path) => key.includes(path)))) responseCache.delete(key);
   }
 }
 
@@ -93,21 +99,24 @@ export async function clickUpCalendarFetch(
   token: string,
   input: string | URL,
   init?: RequestInit,
+  invalidatePaths?: string[],
 ) {
   const key = tokenKey(token);
   const method = (init?.method || "GET").toUpperCase();
   const url = String(input);
 
   if (method !== "GET") {
-    clearClickUpCalendarCache(token);
     const response = await fetchAtSafeRate(key, token, input, init);
-    clearClickUpCalendarCache(token);
+    clearClickUpCalendarCache(token, invalidatePaths);
     return response;
   }
 
   const cacheKey = `${key}:${url}`;
   const cached = responseCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return responseFromCache(cached);
+  if (cached && cached.expiresAt > Date.now()) {
+    if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ path: new URL(url).pathname, method: "GET", cache: "hit" }));
+    return responseFromCache(cached);
+  }
   if (cached) responseCache.delete(cacheKey);
 
   const pending = inFlightGets.get(cacheKey);

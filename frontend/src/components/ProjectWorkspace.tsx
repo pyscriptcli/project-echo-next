@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -30,6 +28,7 @@ interface ProjectList {
   name: string;
   taskCount: number;
   url?: string | null;
+  statuses?: string[];
 }
 
 interface ProjectTask {
@@ -40,6 +39,7 @@ interface ProjectTask {
   listId: string;
   status: string;
   statusType: string;
+  description?: string;
   startDate: string | null;
   dueDate: string | null;
   assignees: Array<{ id: string; name: string; initials: string; profilePicture?: string | null }>;
@@ -56,6 +56,7 @@ interface ProjectData {
   folder: { id: string; name: string; url: string; spaceName: string };
   lists: ProjectList[];
   tasks: ProjectTask[];
+  loadedTaskListIds?: string[];
   members: ProjectMember[];
   defaultAssignees: Record<string, string[]>;
 }
@@ -100,10 +101,18 @@ function routeSlug(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
 }
 
-function routeSegment(name: string, id: string, siblings: Array<{ name: string; id: string }>) {
+function routeSegment(name: string, id: string) {
   const slug = routeSlug(name);
-  return siblings.filter((item) => routeSlug(item.name) === slug).length > 1 ? `${slug}-${id}` : slug;
+  return `${slug}-${id}`;
 }
+
+function routeId(segment: string) {
+  return segment.match(/-(\d+)$/)?.[1] || null;
+}
+
+const PROJECT_CLIENT_CACHE_TTL_MS = 30_000;
+const projectClientCache = new Map<string, { data: ProjectData; updatedAt: number }>();
+const galleryClientCache = new Map<string, { data: ProjectCardData[]; updatedAt: number }>();
 
 function matchRouteSegment<T extends { name: string; id: string }>(items: T[], segment: string) {
   return items.find((item) => segment === routeSlug(item.name) || segment === `${routeSlug(item.name)}-${item.id}`);
@@ -141,11 +150,10 @@ function ClickUpLink({ href, label }: { href: string; label: string }) {
 
 type CalendarScale = "Day" | "4 days" | "Week" | "Month";
 
-function CalendarView({ tasks, lists, members, defaultAssignees, onRefresh }: { tasks: ProjectTask[]; lists: ProjectList[]; members: ProjectMember[]; defaultAssignees: Record<string, string[]>; onRefresh: () => void }) {
+function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, loadingTasks = false }: { tasks: ProjectTask[]; lists: ProjectList[]; members: ProjectMember[]; defaultAssignees: Record<string, string[]>; onTaskChange: (task: ProjectTask) => void; loadingTasks?: boolean }) {
   const [anchor, setAnchor] = useState(() => new Date());
-  const [scale, setScale] = useState<CalendarScale>("Month");
+  const [scale] = useState<CalendarScale>("Month");
   const [query, setQuery] = useState("");
-  const [showClosed, setShowClosed] = useState(false);
   const [listFilter, setListFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -156,6 +164,8 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onRefresh }: { 
   const [taskStatus, setTaskStatus] = useState("to do");
   const [taskPriority, setTaskPriority] = useState("normal");
   const [taskAssignees, setTaskAssignees] = useState<string[]>([]);
+  const [editStatus, setEditStatus] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -175,31 +185,39 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onRefresh }: { 
   const cellCount = scale === "Month" ? Math.ceil((new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate() + new Date(anchor.getFullYear(), anchor.getMonth(), 1).getDay()) / 7) * 7 : scale === "Week" ? 7 : scale === "4 days" ? 4 : 1;
   const days = Array.from({ length: cellCount }, (_, index) => { const date = new Date(start); date.setDate(start.getDate() + index); return date; });
   const today = dateKey(new Date());
-  const visibleTasks = tasks.filter((task) => (showClosed || !isComplete(task)) && (listFilter === "all" || task.listId === listFilter) && (assigneeFilter === "all" || task.assignees.some((person) => person.id === assigneeFilter)) && (statusFilter === "all" || task.status.toLowerCase() === statusFilter) && task.name.toLowerCase().includes(query.toLowerCase()));
+  const visibleTasks = tasks.filter((task) => !isComplete(task) && (listFilter === "all" || task.listId === listFilter) && (assigneeFilter === "all" || task.assignees.some((person) => person.id === assigneeFilter)) && (statusFilter === "all" || task.status.toLowerCase() === statusFilter) && task.name.toLowerCase().includes(query.toLowerCase()));
   const taskMap = new Map<string, ProjectTask[]>();
   visibleTasks.forEach((task) => { const key = (task.dueDate || task.startDate)?.slice(0, 10); if (key) taskMap.set(key, [...(taskMap.get(key) || []), task]); });
   const label = scale === "Month" ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(anchor) : days.length === 1 ? new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(days[0]) : `${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(days[0])} – ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(days[days.length - 1])}`;
-  const move = (amount: number) => { const next = new Date(anchor); next.setDate(next.getDate() + amount * (scale === "Month" ? 0 : scale === "Week" ? 7 : scale === "4 days" ? 4 : 1)); if (scale === "Month") next.setMonth(next.getMonth() + amount); setAnchor(next); };
   const openCreate = (date: string) => { const listId = listFilter !== "all" ? listFilter : lists[0]?.id || ""; setTaskName(""); setTaskDescription(""); setTaskStatus("to do"); setTaskPriority("normal"); setTaskListId(listId); setTaskAssignees(defaultAssignees[listId] || []); setError(""); setModal({ date }); };
-  const openEditDate = (task: ProjectTask) => { setError(""); setModal({ date: (task.dueDate || task.startDate || today).slice(0, 10), task }); };
+  const openEditDate = (task: ProjectTask) => { setError(""); setEditStatus(task.status); setEditRemarks(task.description || ""); setModal({ date: (task.dueDate || task.startDate || today).slice(0, 10), task }); };
   const submit = async () => {
     setBusy(true); setError("");
     try {
-      const result = await fetch(`/api/tasks?action=${modal?.task ? "project-task-update" : "project-task-create"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(modal?.task ? { taskId: modal.task.id, dueDate: modal.date } : { listId: taskListId, name: taskName, description: taskDescription, status: taskStatus, priority: taskPriority, assignees: taskAssignees, dueDate: modal?.date }) });
+      const result = await fetch(`/api/tasks?action=${modal?.task ? "project-task-update" : "project-task-create"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(modal?.task ? { taskId: modal.task.id, listId: modal.task.listId, dueDate: modal.date, status: editStatus, description: editRemarks } : { listId: taskListId, name: taskName, description: taskDescription, status: taskStatus, priority: taskPriority, assignees: taskAssignees, dueDate: modal?.date }) });
       const payload = await result.json(); if (!result.ok) throw new Error(payload.error || "Calendar change failed.");
-      setModal(null); onRefresh();
+      if (modal?.task) {
+        onTaskChange({ ...modal.task, dueDate: new Date(`${modal.date}T00:00:00`).toISOString(), status: editStatus, statusType: /^(complete|completed|closed|done)$/i.test(editStatus) ? "closed" : modal.task.statusType, description: editRemarks });
+      } else if (payload.task) {
+        const saved = payload.task as Record<string, unknown>;
+        const savedStatus = saved.status as { status?: string; type?: string } | null;
+        const savedAssignees = Array.isArray(saved.assignees) ? saved.assignees as Array<{ id: string | number }> : [];
+        onTaskChange({ id: String(saved.id), name: String(saved.name || taskName), url: typeof saved.url === "string" ? saved.url : null, parentId: null, listId: taskListId, status: savedStatus?.status || taskStatus, statusType: savedStatus?.type || "", startDate: null, dueDate: new Date(`${modal!.date}T00:00:00`).toISOString(), assignees: members.filter((member) => savedAssignees.some((assignee) => String(assignee.id) === member.id)) });
+      }
+      setModal(null);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Calendar change failed."); }
     finally { setBusy(false); }
   };
   const changeDate = async (task: ProjectTask, date: string) => {
-    const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId: task.id, dueDate: date }) });
-    const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Unable to reschedule task."); onRefresh();
+    const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId: task.id, listId: task.listId, dueDate: date }) });
+    const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Unable to reschedule task."); onTaskChange({ ...task, dueDate: new Date(`${date}T00:00:00`).toISOString() });
   };
 
   return <section className="border border-slate-200 bg-white" aria-label="Project calendar">
+    {loadingTasks && <div role="status" className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading calendar tasks from ClickUp</div>}
     <header className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-semibold text-[#003366]">Team schedule</h2><p className="mt-1 text-xs text-slate-500">Click a date to create a task. Drag a task to reschedule it.</p></div><div className="flex flex-wrap items-center gap-2"><select aria-label="Calendar timescale" value={scale} onChange={(event) => setScale(event.target.value as CalendarScale)} className="h-9 border border-slate-300 bg-white px-2 text-xs font-semibold text-[#003366]">{["Day", "4 days", "Week", "Month"].map((option) => <option key={option}>{option}</option>)}</select><button type="button" onClick={() => setAnchor(new Date())} className="h-9 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Today</button><button type="button" onClick={() => move(-1)} aria-label="Previous period" className="h-9 w-9 border border-slate-300 text-[#003366]"><ChevronLeft className="mx-auto h-4 w-4" /></button><button type="button" onClick={() => move(1)} aria-label="Next period" className="h-9 w-9 border border-slate-300 text-[#003366]"><ChevronRight className="mx-auto h-4 w-4" /></button></div></div>
-      <div className="flex flex-wrap items-center gap-2"><div className="relative min-w-40 flex-1"><Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-slate-400"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks" className="h-9 w-full border border-slate-200 pl-8 pr-2 text-xs"/></div><select aria-label="Filter by subproject" value={listFilter} onChange={(event) => setListFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All subprojects</option>{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select><select aria-label="Filter by assignee" value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All assignees</option>{Array.from(new Map(tasks.flatMap((task) => task.assignees).map((person) => [person.id, person])).values()).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All statuses</option>{Array.from(new Set(tasks.map((task) => task.status))).map((status) => <option key={status} value={status.toLowerCase()}>{status}</option>)}</select><label className="flex h-9 items-center gap-2 px-2 text-xs text-slate-600"><input type="checkbox" checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)}/>Show closed</label></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-semibold text-[#003366]">Team schedule</h2><p className="mt-1 text-xs text-slate-500">Click a date to create a task. Drag a task to reschedule it.</p></div><label className="relative inline-flex h-9 min-w-[190px] cursor-pointer items-center justify-between gap-3 border border-slate-300 bg-white px-3 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-within:outline focus-within:outline-2 focus-within:outline-[#003366]"><span>{new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(anchor)}</span><CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0"/><input aria-label="Choose calendar date" type="date" value={dateKey(anchor)} onChange={(event) => { if (event.target.value) setAnchor(new Date(`${event.target.value}T12:00:00`)); }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" /></label></div>
+      <div className="flex flex-wrap items-center gap-2"><div className="relative min-w-40 flex-1"><Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-slate-400"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tasks" className="h-9 w-full border border-slate-200 pl-8 pr-2 text-xs"/></div><select aria-label="Filter by subproject" value={listFilter} onChange={(event) => setListFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All subprojects</option>{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select><select aria-label="Filter by assignee" value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All assignees</option>{Array.from(new Map(tasks.flatMap((task) => task.assignees).map((person) => [person.id, person])).values()).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs"><option value="all">All statuses</option>{Array.from(new Set(tasks.map((task) => task.status))).map((status) => <option key={status} value={status.toLowerCase()}>{status}</option>)}</select></div>
     </header>
     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><strong className="text-sm text-[#003366]">{label}</strong><span className="text-xs text-slate-500">{visibleTasks.filter((task) => { const date = (task.dueDate || task.startDate)?.slice(0, 10); return date && days.some((day) => dateKey(day) === date); }).length} scheduled</span></div>
     <div role="grid" aria-label={label} className={`grid ${scale === "Day" ? "grid-cols-1" : "grid-cols-7"}`}>
@@ -207,7 +225,7 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onRefresh }: { 
       {days.map((date) => { const key = dateKey(date); const dayTasks = taskMap.get(key) || []; return <div key={key} role="button" tabIndex={0} aria-label={`Create task on ${key}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openCreate(key); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const task = tasks.find((item) => item.id === event.dataTransfer.getData("text/plain")); if (task) void changeDate(task, key).catch((caught) => setError(caught.message)); }} onClick={() => openCreate(key)} className={`group min-h-28 cursor-pointer border-b border-r border-slate-100 p-2 hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366] ${key.slice(0, 7) !== dateKey(anchor).slice(0, 7) && scale === "Month" ? "bg-slate-50" : "bg-white"} ${scale === "Day" ? "min-h-64" : ""}`}><div className="mb-1 flex items-center justify-between"><span className={`inline-flex h-7 min-w-7 items-center justify-center px-1 text-xs ${key === today ? "bg-[#003366] font-semibold text-white" : "text-slate-600"}`}>{scale === "Month" ? date.getDate() : new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date)}</span></div><div className="space-y-1">{dayTasks.slice(0, scale === "Month" ? 4 : 12).map((task) => <button key={task.id} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", task.id); event.dataTransfer.effectAllowed = "move"; }} onClick={(event) => { event.stopPropagation(); openEditDate(task); }} title={`${task.name} · ${owners(task)} · ${task.status}`} className={`block w-full truncate border-l-2 px-1 py-1 text-left text-[10px] leading-4 ${isComplete(task) ? "border-emerald-600 bg-emerald-50 text-emerald-900" : "border-[#C9A84C] bg-[#FBF7E9] text-[#003366]"}`}>{task.name}<span className="hidden sm:inline"> · {owners(task)}</span></button>)}{dayTasks.length > (scale === "Month" ? 4 : 12) && <p className="px-1 text-[10px] text-slate-500">+{dayTasks.length - 4} more</p>}</div></div>; })}
     </div>
     {error && <p role="alert" className="border-t border-red-100 px-4 py-2 text-xs text-red-700">{error}</p>}
-    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="calendar-task-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-slate-200 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}><div className="mb-4 flex items-center justify-between"><div><h3 id="calendar-task-title" className="font-semibold text-[#003366]">{modal.task ? "Reschedule task" : "Create task"}</h3><p className="mt-1 text-xs text-slate-500">{modal.task ? "Change this task’s calendar date." : "Add a task to this date and choose where it belongs."}</p></div><button type="button" onClick={() => setModal(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><X className="h-4 w-4"/></button></div>{modal.task ? <p className="mb-3 text-sm text-slate-700">{modal.task.name}</p> : <><input autoFocus value={taskName} onChange={(event) => setTaskName(event.target.value)} placeholder="Task name" className="mb-3 h-10 w-full border border-slate-300 px-3 text-sm"/><select value={taskListId} onChange={(event) => { const nextId = event.target.value; setTaskListId(nextId); setTaskAssignees(defaultAssignees[nextId] || []); }} className="mb-3 h-10 w-full border border-slate-300 bg-white px-3 text-sm" aria-label="Task list">{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select><textarea value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Description (optional)" rows={3} className="mb-3 w-full border border-slate-300 px-3 py-2 text-sm"/><div className="mb-3 grid grid-cols-2 gap-2"><select value={taskStatus} onChange={(event) => setTaskStatus(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task status">{Array.from(new Set(["to do", ...tasks.map((task) => task.status.toLowerCase())])).map((status) => <option key={status} value={status}>{status.replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>)}</select><select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task priority">{["urgent", "high", "normal", "low"].map((priority) => <option key={priority} value={priority}>{priority[0].toUpperCase() + priority.slice(1)} priority</option>)}</select></div><label className="mb-3 block text-xs font-semibold text-slate-600">Assignees<select multiple value={taskAssignees} onChange={(event) => setTaskAssignees(Array.from(event.target.selectedOptions, (option) => option.value))} className="mt-1 h-24 w-full border border-slate-300 bg-white px-3 py-2 text-sm" aria-label="Assignees">{members.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label></>}<label className="block text-xs font-semibold text-slate-600">Due date<input type="date" value={modal.date} onChange={(event) => setModal({ ...modal, date: event.target.value })} className="mt-1 h-10 w-full border border-slate-300 px-3 text-sm"/></label>{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModal(null)} className="min-h-11 px-3 text-xs text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Cancel</button><button type="button" disabled={busy || (!modal.task && !taskName.trim())} onClick={() => void submit()} className="min-h-11 bg-[#003366] px-4 text-xs font-semibold text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]">{busy ? "Saving…" : "Save to ClickUp"}</button></div></div></div>}
+    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="calendar-task-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-slate-200 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}><div className="mb-4 flex items-center justify-between"><div><h3 id="calendar-task-title" className="font-semibold text-[#003366]">{modal.task ? "Edit task" : "Create task"}</h3><p className="mt-1 text-xs text-slate-500">{modal.task ? "Change this task’s calendar date." : "Add a task to this date and choose where it belongs."}</p></div><button type="button" onClick={() => setModal(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><X className="h-4 w-4"/></button></div>{modal.task ? <><label className="mb-3 block text-xs font-semibold text-slate-600">Status<select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="mt-1 h-10 w-full border border-slate-300 bg-white px-3 text-sm text-[#003366]" aria-label="Task status">{Array.from(new Set([editStatus, ...tasks.map((task) => task.status)])).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="mb-3 block text-xs font-semibold text-slate-600">Remarks<textarea value={editRemarks} onChange={(event) => setEditRemarks(event.target.value)} maxLength={10000} rows={5} placeholder="Add progress notes or task remarks" className="mt-1 w-full border border-slate-300 px-3 py-2 text-sm font-normal leading-5" /></label><div className="mb-3 flex items-center justify-between gap-3 border border-slate-200 bg-[#F7FAFC] p-3"><div><p className="text-xs font-semibold text-[#003366]">Files</p><p className="mt-1 text-[11px] text-slate-500">Open this task in ClickUp to attach files.</p></div>{modal.task.url && <a href={modal.task.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 shrink-0 items-center gap-2 border border-slate-300 bg-white px-3 text-[10px] font-semibold text-[#003366]">Upload in ClickUp <ArrowUpRight className="h-3 w-3" /></a>}</div></> : <><input autoFocus value={taskName} onChange={(event) => setTaskName(event.target.value)} placeholder="Task name" className="mb-3 h-10 w-full border border-slate-300 px-3 text-sm"/><select value={taskListId} onChange={(event) => { const nextId = event.target.value; setTaskListId(nextId); setTaskAssignees(defaultAssignees[nextId] || []); }} className="mb-3 h-10 w-full border border-slate-300 bg-white px-3 text-sm" aria-label="Task list">{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select><textarea value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Description (optional)" rows={3} className="mb-3 w-full border border-slate-300 px-3 py-2 text-sm"/><div className="mb-3 grid grid-cols-2 gap-2"><select value={taskStatus} onChange={(event) => setTaskStatus(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task status">{Array.from(new Set(["to do", ...tasks.map((task) => task.status.toLowerCase())])).map((status) => <option key={status} value={status}>{status.replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>)}</select><select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task priority">{["urgent", "high", "normal", "low"].map((priority) => <option key={priority} value={priority}>{priority[0].toUpperCase() + priority.slice(1)} priority</option>)}</select></div><label className="mb-3 block text-xs font-semibold text-slate-600">Assignees<select multiple value={taskAssignees} onChange={(event) => setTaskAssignees(Array.from(event.target.selectedOptions, (option) => option.value))} className="mt-1 h-24 w-full border border-slate-300 bg-white px-3 py-2 text-sm" aria-label="Assignees">{members.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label></>}<label className="block text-xs font-semibold text-slate-600">Due date<input type="date" value={modal.date} onChange={(event) => setModal({ ...modal, date: event.target.value })} className="mt-1 h-10 w-full border border-slate-300 px-3 text-sm"/></label>{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModal(null)} className="min-h-11 px-3 text-xs text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Cancel</button><button type="button" disabled={busy || (!modal.task && !taskName.trim())} onClick={() => void submit()} className="min-h-11 bg-[#003366] px-4 text-xs font-semibold text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]">{busy ? "Saving…" : modal.task ? "Save changes" : "Save to ClickUp"}</button></div></div></div>}
   </section>;
 }
 
@@ -252,45 +270,101 @@ function taskTree(tasks: ProjectTask[]): TaskTreeNode[] {
     if (/site documentation/i.test(name)) return 2;
     return 3;
   };
+  const taskOrder = (name: string, phase: number) => {
+    const normalized = name.toLowerCase();
+    if (phase === 0) {
+      if (/project brief/.test(normalized)) return 0;
+      if (/site sourcing/.test(normalized)) return 1;
+      if (/sourcing activity/.test(normalized)) return 2;
+      if (/ssr submission\s*3p|3p.*ssr submission|3p to franchisee/.test(normalized)) return 3;
+      if (/franchisee ssr review/.test(normalized)) return 4;
+      if (/franchisee ssr submission/.test(normalized)) return 5;
+      if (/bu.*cre.*ssr review|ssr review.*bu.*cre/.test(normalized)) return 6;
+      if (/conditional milestone|test fit.*required/.test(normalized)) return 7;
+      if (/test fit generation/.test(normalized)) return 8;
+      if (/bu.*cre.*site approval/.test(normalized)) return 9;
+    } else if (phase === 1) {
+      if (/overall phase envelope/.test(normalized)) return 0;
+      if (/conduct site nego|full due diligence/.test(normalized)) return 1;
+      if (/reloc topo|as-found plans|property due dil/.test(normalized)) return 2;
+      if (/risk assessment form|technical due diligence/.test(normalized)) return 3;
+      if (/franchisee final approval.*nego|final approval of nego position/.test(normalized)) return 4;
+      if (/negotiation.*acquisition/.test(normalized)) return 5;
+    } else if (phase === 2) {
+      if (/overall phase envelope/.test(normalized)) return 0;
+      if (/negotiations? of col|col.*fla.*negotiat/.test(normalized)) return 1;
+      if (/submission.*negotiated col|negotiated col.*fla/.test(normalized)) return 2;
+      if (/conditional workflow|if with revisions/.test(normalized)) return 3;
+      if (/franchisee col review|bu.*cre.*fla review/.test(normalized)) return 4;
+      if (/3p endorsement/.test(normalized)) return 5;
+      if (/franchisee final col approval|bu.*cre.*fla final approval/.test(normalized)) return 6;
+      if (/col.*fla signing/.test(normalized)) return 7;
+    }
+    return Number.MAX_SAFE_INTEGER;
+  };
+  const sortDescendants = (node: TaskTreeNode, phase: number): TaskTreeNode => ({
+    ...node,
+    children: node.children.map((child, index) => ({ child, index }))
+      .sort((a, b) => taskOrder(a.child.task.name, phase) - taskOrder(b.child.task.name, phase) || a.index - b.index)
+      .map(({ child }) => sortDescendants(child, phase)),
+  });
   return tree
     .map((node, index) => ({ node, index }))
     .sort((a, b) => phaseOrder(a.node.task.name) - phaseOrder(b.node.task.name) || a.index - b.index)
-    .map(({ node }) => node);
+    .map(({ node }) => sortDescendants(node, phaseOrder(node.task.name)));
 }
 
-function TaskRow({ task, depth = 0 }: { task: ProjectTask; depth?: number }) {
+function TaskRow({ task, depth = 0, onOpen }: { task: ProjectTask; depth?: number; onOpen: (task: ProjectTask) => void }) {
   const content = <>
     <span className="min-w-0 flex-1"><span className={`block truncate text-[13px] font-medium ${depth ? "text-slate-700" : "text-[#003366]"}`}>{task.name}</span><span className="mt-1 block truncate text-[10px] text-slate-500">{owners(task)}</span></span>
     <span className={`shrink-0 border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${statusStyle(task)}`}>{task.status}</span>
     <span className="hidden w-28 shrink-0 text-right text-[11px] text-slate-600 sm:block">{formatDate(task.dueDate)}</span>
   </>;
-  return task.url ? <a href={task.url} target="_blank" rel="noreferrer" className="flex min-h-12 items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0 transition-colors hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">{content}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400" /></a> : <div className="flex min-h-12 items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">{content}</div>;
+  return <button type="button" onClick={() => onOpen(task)} className="flex min-h-12 w-full items-center gap-3 border-b border-slate-100 px-3 py-2 text-left last:border-b-0 transition-colors hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">{content}<span className="shrink-0 text-[10px] font-medium text-[#31577D]">Edit</span></button>;
 }
 
-function TaskHierarchy({ tasks }: { tasks: ProjectTask[] }) {
+function TaskHierarchy({ tasks, statuses, onTaskChange }: { tasks: ProjectTask[]; statuses: string[]; onTaskChange: (task: ProjectTask) => void }) {
   const tree = useMemo(() => taskTree(tasks), [tasks]);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
+  const [status, setStatus] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const openTask = (task: ProjectTask) => { setEditingTask(task); setStatus(task.status); setRemarks(task.description || ""); setError(""); };
+  const saveTask = async () => {
+    if (!editingTask) return;
+    setSaving(true); setError("");
+    try {
+      const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId: editingTask.id, listId: editingTask.listId, status, description: remarks }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Task changes could not be saved.");
+      onTaskChange({ ...editingTask, status, statusType: /^(complete|completed|closed|done)$/i.test(status) ? "closed" : editingTask.statusType, description: remarks });
+      setEditingTask(null);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Task changes could not be saved."); }
+    finally { setSaving(false); }
+  };
   const toggle = (id: string) => setCollapsed((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const renderNode = (node: TaskTreeNode, depth: number, phaseIndex: number): ReactNode => {
     const { task, children } = node;
-    if (!children.length) return <TaskRow key={task.id} task={task} depth={depth} />;
+    if (!children.length) return <TaskRow key={task.id} task={task} depth={depth} onOpen={openTask} />;
     const phase = depth === 0, isCollapsed = collapsed.has(task.id);
     const descendants: ProjectTask[] = [];
     const collect = (child: TaskTreeNode) => { descendants.push(child.task); child.children.forEach(collect); };
     children.forEach(collect);
     const complete = descendants.filter(isComplete).length;
     return <section key={task.id} className={phase ? "overflow-hidden border border-slate-200 bg-white shadow-[0_2px_8px_rgba(0,51,102,0.04)]" : "relative ml-3 border-l-2 border-[#D9E3EC] pl-3 sm:ml-5 sm:pl-4"}>
-      <button type="button" aria-expanded={!isCollapsed} onClick={() => toggle(task.id)} className={`flex w-full items-center gap-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366] ${phase ? "min-h-[66px] bg-[#F7FAFC] px-4 py-3 hover:bg-[#F2F6F9]" : "min-h-12 px-2 py-2 hover:bg-[#F7FAFC]"}`}>
+      <div className={`flex w-full items-center gap-2 ${phase ? "min-h-[66px] bg-[#F7FAFC] px-4 py-3 hover:bg-[#F2F6F9]" : "min-h-12 px-2 py-2 hover:bg-[#F7FAFC]"}`}><button type="button" aria-expanded={!isCollapsed} onClick={() => toggle(task.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366]">
         <span className={`flex h-7 w-7 shrink-0 items-center justify-center ${phase ? "bg-[#003366] text-white" : "bg-white text-[#31577D] ring-1 ring-slate-200"}`}><ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} /></span>
         <span className="min-w-0 flex-1">{phase && <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.16em] text-[#A98611]">Phase {phaseIndex + 1}</span>}<span className={`block truncate ${phase ? "text-base font-bold text-[#003366] sm:text-lg" : "text-[13px] font-semibold text-[#21486D]"}`}>{task.name}</span></span>
         {/conditional/i.test(task.name) && <span className="hidden border border-[#E6D49A] bg-[#FBF7E9] px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[#725900] sm:inline">Conditional</span>}
         <span className="shrink-0 text-right text-[10px] text-slate-500"><span className="block font-semibold tabular-nums text-[#31577D]">{complete} / {descendants.length}</span><span className="hidden sm:block">complete</span></span>
-      </button>
+      </button><button type="button" onClick={() => openTask(task)} className="shrink-0 px-2 py-1 text-[10px] font-semibold text-[#31577D] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Edit</button></div>
       {phase && <div className="flex h-1 bg-slate-100"><div className="bg-[#C9A84C]" style={{ width: `${descendants.length ? Math.round(complete / descendants.length * 100) : 0}%` }} /></div>}
       {!isCollapsed && <div className={phase ? "space-y-1 px-3 py-3 sm:px-5 sm:py-4" : "pb-2"}>{children.map((child, index) => renderNode(child, depth + 1, index))}</div>}
     </section>;
   };
-  return <div className="space-y-3">{tree.map((node, index) => renderNode(node, 0, index))}</div>;
+  return <div className="space-y-3">{tree.map((node, index) => renderNode(node, 0, index))}{editingTask && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { if (!saving) setEditingTask(null); }}><section role="dialog" aria-modal="true" aria-labelledby="task-editor-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-slate-200 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}><header className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#31577D]">Task details</p><h2 id="task-editor-title" className="mt-1 text-lg font-semibold text-[#003366]">{editingTask.name}</h2></div><button type="button" aria-label="Close task editor" onClick={() => setEditingTask(null)} className="flex h-8 w-8 items-center justify-center text-[#003366] hover:bg-slate-50"><X className="h-4 w-4" /></button></header><label className="mt-5 block text-xs font-semibold text-slate-600">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1 h-10 w-full border border-slate-300 bg-white px-3 text-sm text-[#003366] focus:border-[#003366] focus:outline-none">{Array.from(new Set([status, ...statuses])).filter(Boolean).map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="mt-4 block text-xs font-semibold text-slate-600">Remarks<textarea value={remarks} onChange={(event) => setRemarks(event.target.value)} maxLength={10000} rows={6} placeholder="Add progress notes or other task remarks" className="mt-1 w-full resize-y border border-slate-300 px-3 py-2 text-sm font-normal leading-5 text-[#003366] placeholder:text-slate-400 focus:border-[#003366] focus:outline-none" /></label><div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-[#F7FAFC] p-3"><div><p className="text-xs font-semibold text-[#003366]">Files</p><p className="mt-1 text-[11px] text-slate-500">Open this task in ClickUp to attach or manage files.</p></div>{editingTask.url && <a href={editingTask.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-2 border border-slate-300 bg-white px-3 text-[11px] font-semibold text-[#003366] hover:border-[#003366]">Upload files in ClickUp <ArrowUpRight className="h-3.5 w-3.5" /></a>}</div>{error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}<footer className="mt-5 flex justify-end gap-2"><button type="button" disabled={saving} onClick={() => setEditingTask(null)} className="min-h-10 px-3 text-xs text-slate-600">Cancel</button><button type="button" disabled={saving || (status === editingTask.status && remarks === (editingTask.description || ""))} onClick={() => void saveTask()} className="min-h-10 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button></footer></section></div>}</div>;
 }
 function LoadingSkeleton({ variant }: { variant: "gallery" | "project" | "subproject" }) {
   const bar = (className: string) => <span aria-hidden="true" className={`block animate-pulse bg-slate-200 ${className}`} />;
@@ -436,7 +510,7 @@ function SubprojectStatusCards({ folderId, listId, tasks }: { folderId: string; 
   </section>;
 }
 
-function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaultAssignees, onAssign, savingAssignees, onBack, onRefresh }: {
+function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaultAssignees, onAssign, savingAssignees, onBack, onRefresh, tasksLoading, onTaskChange }: {
   folderId: string;
   folderUrl: string;
   list: ProjectList;
@@ -447,14 +521,11 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
   savingAssignees: boolean;
   onBack: () => void;
   onRefresh: () => void;
+  tasksLoading: boolean;
+  onTaskChange: (task: ProjectTask) => void;
 }) {
-  const [view, setView] = useState<"tasks" | "calendar" | "schedule">("tasks");
-  const scheduled = tasks.filter((task) => task.startDate || task.dueDate);
-  const dateValues = scheduled.flatMap((task) => [task.startDate, task.dueDate]).filter((value): value is string => Boolean(value)).map((value) => new Date(value).getTime()).filter(Number.isFinite);
-  const minDate = dateValues.length ? Math.min(...dateValues) : 0;
-  const maxDate = dateValues.length ? Math.max(...dateValues) : 0;
-  const span = Math.max(86400000, maxDate - minDate);
-  const tabs = [{ id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }, { id: "schedule", label: "Schedule" }] as const;
+  const [view, setView] = useState<"tasks" | "calendar">("tasks");
+  const tabs = [{ id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }] as const;
 
   const assignedMembers = defaultAssignees.map((id) => members.find((member) => member.id === id)).filter((member): member is ProjectMember => Boolean(member));
 
@@ -465,9 +536,8 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
       <ClickUpLink href={list.url || folderUrl} label="Open subproject in ClickUp" />    </>} />
     <SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} />
     <div role="tablist" aria-label={`${list.name} workspace views`} className="flex border-b border-slate-200">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`min-h-11 border-b-2 px-4 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}</button>)}</div>
-    {view === "tasks" ? tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy tasks={tasks} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
-      : view === "calendar" ? <CalendarView tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onRefresh={onRefresh} />
-         : scheduled.length ? <section className="border border-slate-200 bg-white"><header className="border-b border-slate-100 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Schedule</h2><p className="mt-1 text-xs text-slate-500">Tasks with start or due dates in this subproject.</p></header>{scheduled.map((task) => { const start = new Date(task.startDate || task.dueDate!).getTime(); const end = new Date(task.dueDate || task.startDate!).getTime(); const left = Math.max(0, Math.min(100, ((Math.min(start, end) - minDate) / span) * 100)); const width = Math.max(2, Math.min(100 - left, (Math.max(86400000, Math.abs(end - start)) / span) * 100)); return <div key={task.id} className="grid min-h-14 grid-cols-1 items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(150px,0.8fr)_minmax(180px,2fr)] sm:gap-3"><div className="min-w-0"><p className="truncate text-xs font-semibold text-[#003366]">{task.name}</p><p className="mt-1 truncate text-[10px] text-slate-500">{formatDate(task.startDate || task.dueDate)} to {formatDate(task.dueDate || task.startDate)}</p></div><div className="relative h-5 bg-[#F7FAFC]"><span className={`absolute top-0 h-5 ${isComplete(task) ? "bg-emerald-600" : "bg-[#31577D]"}`} style={{ left: `${left}%`, width: `${width}%` }} /></div></div>; })}</section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No scheduled tasks yet</h2><p className="mt-1 text-xs text-slate-600">Add a start or due date to a task to see it on this schedule.</p></div>}
+    {view === "tasks" ? tasksLoading ? <section className="space-y-2 border border-slate-200 bg-white p-4" role="status"><span className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading Timeline tasks from ClickUp</span>{[0, 1, 2].map((row) => <div key={row} className="h-11 animate-pulse border border-slate-100 bg-slate-50" />)}</section> : tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy tasks={tasks} statuses={list.statuses || Array.from(new Set(tasks.map((task) => task.status)))} onTaskChange={onTaskChange} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
+      : <CalendarView tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onTaskChange={onTaskChange} />}
   </section>;
 }
 
@@ -492,6 +562,7 @@ export function ProjectWorkspace() {
   const [activeListId, setActiveListId] = useState("");
   const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingAssigneeListId, setSavingAssigneeListId] = useState<string | null>(null);
   const galleryRequest = useRef<Promise<ProjectCardData[]> | null>(null);
@@ -513,6 +584,12 @@ export function ProjectWorkspace() {
 
   const fetchGallery = useCallback(async (force = false) => {
     if (force) galleryRequest.current = null;
+    const cached = galleryClientCache.get("projects");
+    if (!force && cached) {
+      setProjects(cached.data);
+      if (Date.now() - cached.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS) return cached.data;
+      galleryRequest.current = null;
+    }
     if (!galleryRequest.current) {
       galleryRequest.current = (async () => {
         const response = await fetch(`/api/tasks?action=project-gallery${force ? "&refresh=1" : ""}`, { cache: "no-store" });
@@ -523,6 +600,7 @@ export function ProjectWorkspace() {
     }
     try {
       const loadedProjects = await galleryRequest.current;
+      galleryClientCache.set("projects", { data: loadedProjects, updatedAt: Date.now() });
       setProjects(loadedProjects);
       return loadedProjects;
     } catch (loadError) {
@@ -532,6 +610,7 @@ export function ProjectWorkspace() {
   }, []);
 
   useEffect(() => {
+    if (pathname !== "/projects") return;
     let active = true;
     fetchGallery().then(() => { if (active) setError(null); })
       .catch((loadError: unknown) => {
@@ -542,13 +621,17 @@ export function ProjectWorkspace() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [fetchGallery]);
+  }, [pathname, fetchGallery]);
 
   const fetchProject = useCallback(async (folderId: string, force = false): Promise<ProjectData> => {
+    const cached = projectClientCache.get(folderId);
+    if (!force && cached && Date.now() - cached.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS) return cached.data;
     const response = await fetch(`/api/tasks?action=project-workspace&folderId=${encodeURIComponent(folderId)}${force ? "&refresh=1" : ""}`, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Unable to load this project.");
-    return payload as ProjectData;
+    const projectData = payload as ProjectData;
+    projectClientCache.set(folderId, { data: projectData, updatedAt: Date.now() });
+    return projectData;
   }, []);
 
   useEffect(() => {
@@ -565,39 +648,99 @@ export function ProjectWorkspace() {
     }
 
     let active = true;
-    setLoading(true);
-    setError(null);
-    setData(null);
-    setScreen(segments.length > 1 ? "subproject" : "project");
+    const targetScreen = segments.length > 1 ? "subproject" : "project";
+    setScreen(targetScreen);
     setView("overview");
-    fetchGallery().then((allProjects) => {
-      const project = matchRouteSegment(allProjects, segments[0]);
-      if (!project || !selectedProjectIds.includes(project.id)) throw new Error("This folder is not included in the shared Projects list.");
-      setActiveFolderId(project.id);
-      return fetchProject(project.id).then((projectData) => ({ project, projectData }));
-    }).then(({ projectData }) => {
-      if (!active) return;
-      setData(projectData);
-      if (segments.length > 1) {
-        const subproject = matchRouteSegment(projectData.lists, segments[1]);
-        if (!subproject) {
-          setError("This subproject could not be found in the selected project.");
-          return;
+    setError(null);
+    const folderFromPath = routeId(segments[0]);
+    const cachedEntry = folderFromPath ? projectClientCache.get(folderFromPath) : null;
+    const cachedData = cachedEntry?.data || null;
+    const cachedIsFresh = Boolean(cachedEntry && Date.now() - cachedEntry.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS);
+    const routeListId = segments.length > 1 ? routeId(segments[1]) : null;
+    setTasksLoading(Boolean(segments.length > 1 && (!cachedData?.loadedTaskListIds?.includes(routeListId || "") || !cachedIsFresh)));
+    if (cachedData && selectedProjectIds.includes(folderFromPath!)) {
+      setData(cachedData);
+      setActiveFolderId(folderFromPath!);
+      if (routeListId) setActiveListId(routeListId);
+      setLoading(false);
+    } else {
+      setData(null);
+      setLoading(true);
+    }
+    void (async () => {
+      try {
+        let folderId = folderFromPath;
+        if (!folderId) {
+          const allProjects = await fetchGallery();
+          folderId = matchRouteSegment(allProjects, segments[0])?.id || null;
         }
-        setActiveListId(subproject.id);
-        setScreen("subproject");
-      } else {
-        setActiveListId("");
-        setScreen("project");
+        if (!folderId || !selectedProjectIds.includes(folderId)) throw new Error("This folder is not included in the shared Projects list.");
+        setActiveFolderId(folderId);
+        let projectData = await fetchProject(folderId, Boolean(cachedData && !cachedIsFresh));
+        if (!active) return;
+        if (cachedIsFresh && cachedData) projectData = { ...projectData, tasks: cachedData.tasks, loadedTaskListIds: cachedData.loadedTaskListIds };
+        if (segments.length > 1) {
+          const listIdFromPath = routeId(segments[1]);
+          const subproject = listIdFromPath
+            ? projectData.lists.find((list) => list.id === listIdFromPath)
+            : matchRouteSegment(projectData.lists, segments[1]);
+          if (!subproject) throw new Error("This subproject could not be found in the selected project.");
+          setActiveListId(subproject.id);
+          setScreen("subproject");
+          if (!projectData.loadedTaskListIds?.includes(subproject.id)) {
+            const response = await fetch(`/api/tasks?action=project-list-tasks&folderId=${encodeURIComponent(folderId)}&listId=${encodeURIComponent(subproject.id)}${cachedIsFresh ? "" : "&refresh=1"}`, { cache: "no-store" });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || "Unable to load subproject tasks.");
+            projectData = { ...projectData, tasks: [...projectData.tasks.filter((task) => task.listId !== subproject.id), ...(payload.tasks as ProjectTask[])], loadedTaskListIds: [...(projectData.loadedTaskListIds || []), subproject.id] };
+            projectClientCache.set(folderId, { data: projectData, updatedAt: Date.now() });
+          }
+          setTasksLoading(false);
+        } else {
+          setActiveListId("");
+          setScreen("project");
+          setTasksLoading(false);
+        }
+        if (active) setData(projectData);
+      } catch (loadError) {
+        if (!active) return;
+        if (!cachedData) setError(loadError instanceof Error ? loadError.message : "Unable to load this project.");
+        setTasksLoading(false);
+      } finally {
+        if (active) setLoading(false);
       }
-    }).catch((loadError: unknown) => {
-      if (!active) return;
-      setError(loadError instanceof Error ? loadError.message : "Unable to load this project.");
-      setScreen(segments.length > 1 ? "subproject" : "project");
-    }).finally(() => { if (active) setLoading(false); });
+    })();
     return () => { active = false; };
   }, [pathname, selectionLoaded, selectedProjectIds, fetchGallery, fetchProject]);
 
+  useEffect(() => {
+    if (screen !== "project" || view !== "calendar" || !data || data.lists.length === 0) return;
+    const listIds = data.lists.map((list) => list.id);
+    if (listIds.every((id) => data.loadedTaskListIds?.includes(id))) return;
+    let active = true;
+    void fetch(`/api/tasks?action=project-tasks&folderId=${encodeURIComponent(data.folder.id)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "Unable to load project calendar tasks.");
+        if (!active) return;
+        const nextData = { ...data, tasks: payload.tasks as ProjectTask[], loadedTaskListIds: listIds };
+        setData(nextData);
+        projectClientCache.set(data.folder.id, { data: nextData, updatedAt: Date.now() });
+      })
+      .catch((loadError: unknown) => { if (active) setError(loadError instanceof Error ? loadError.message : "Unable to load project calendar tasks."); });
+    return () => { active = false; };
+  }, [screen, view, data]);
+
+  useEffect(() => {
+    if (data) projectClientCache.set(data.folder.id, { data, updatedAt: Date.now() });
+  }, [data]);
+
+  const updateProjectTask = (changedTask: ProjectTask) => {
+    setData((current) => {
+      if (!current) return current;
+      const exists = current.tasks.some((task) => task.id === changedTask.id);
+      return { ...current, tasks: exists ? current.tasks.map((task) => task.id === changedTask.id ? changedTask : task) : [...current.tasks, changedTask] };
+    });
+  };
   const refreshGallery = () => {
     setLoading(true);
     setError(null);
@@ -625,15 +768,35 @@ export function ProjectWorkspace() {
   };
 
   const openProject = (project: ProjectCardData) => {
-    router.push(`/projects/${routeSegment(project.name, project.id, projects)}`);
+    router.push(`/projects/${routeSegment(project.name, project.id)}`);
   };
 
   const refreshProject = () => {
     if (!activeFolderId) return refreshGallery();
     setLoading(true);
     setError(null);
+    const loadedListIds = data?.loadedTaskListIds || [];
     fetchProject(activeFolderId, true)
-      .then(setData)
+      .then(async (freshData) => {
+        if (!loadedListIds.length) return freshData;
+        let freshTasks: ProjectTask[] = [];
+        if (loadedListIds.length >= freshData.lists.length) {
+          const response = await fetch(`/api/tasks?action=project-tasks&folderId=${encodeURIComponent(activeFolderId)}&refresh=1`, { cache: "no-store" });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.error || "Unable to refresh project tasks.");
+          freshTasks = payload.tasks as ProjectTask[];
+        } else {
+          const responses = await Promise.all(loadedListIds.map(async (listId) => {
+            const response = await fetch(`/api/tasks?action=project-list-tasks&folderId=${encodeURIComponent(activeFolderId)}&listId=${encodeURIComponent(listId)}&refresh=1`, { cache: "no-store" });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || "Unable to refresh subproject tasks.");
+            return payload.tasks as ProjectTask[];
+          }));
+          freshTasks = responses.flat();
+        }
+        return { ...freshData, tasks: freshTasks, loadedTaskListIds: loadedListIds };
+      })
+      .then((freshData) => { setData(freshData); projectClientCache.set(activeFolderId, { data: freshData, updatedAt: Date.now() }); })
       .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load this project."))
       .finally(() => setLoading(false));
   };
@@ -662,7 +825,7 @@ export function ProjectWorkspace() {
     const project = projects.find((item) => item.id === data?.folder.id);
     const list = data?.lists.find((item) => item.id === listId);
     if (!project || !list || !data) return;
-    router.push(`/projects/${routeSegment(project.name, project.id, projects)}/${routeSegment(list.name, list.id, data.lists)}`);
+    router.push(`/projects/${routeSegment(project.name, project.id)}/${routeSegment(list.name, list.id)}`);
   };
 
   const tasksByList = useMemo(() => {
@@ -677,7 +840,7 @@ export function ProjectWorkspace() {
 
   const activeList = data?.lists.find((list) => list.id === activeListId);
   if (screen === "subproject") {
-    if (data && activeList) return <SubprojectWorkspace folderId={data.folder.id} folderUrl={data.folder.url} list={activeList} tasks={tasksByList.get(activeList.id) || []} members={data.members} defaultAssignees={data.defaultAssignees[activeList.id] || []} onAssign={(ids) => void saveDefaultAssignees(activeList.id, ids)} savingAssignees={savingAssigneeListId === activeList.id} onBack={() => router.push(`/projects/${routeSegment(data.folder.name, data.folder.id, projects)}`)} onRefresh={refreshProject} />;
+    if (data && activeList) return <SubprojectWorkspace folderId={data.folder.id} folderUrl={data.folder.url} list={activeList} tasks={tasksByList.get(activeList.id) || []} members={data.members} defaultAssignees={data.defaultAssignees[activeList.id] || []} onAssign={(ids) => void saveDefaultAssignees(activeList.id, ids)} savingAssignees={savingAssigneeListId === activeList.id} onBack={() => router.push(`/projects/${routeSegment(data.folder.name, data.folder.id)}`)} onRefresh={refreshProject} tasksLoading={tasksLoading} onTaskChange={updateProjectTask} />;
     return <section className="mx-auto w-full max-w-[1440px] space-y-3 pb-8"><LoadingSkeleton variant="subproject" /></section>;
   }
 
@@ -697,14 +860,16 @@ export function ProjectWorkspace() {
           <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.lists.map((list) => {
               const listTasks = tasksByList.get(list.id) || [];
+              const listTasksLoaded = Boolean(data.loadedTaskListIds?.includes(list.id));
               const listDone = listTasks.filter(isComplete).length;
               const listProgress = listTasks.length ? Math.round((listDone / listTasks.length) * 100) : 0;
+              const taskCount = listTasksLoaded ? listTasks.length : list.taskCount;
               const lead = (data.defaultAssignees[list.id] || []).map((id) => data.members.find((member) => member.id === id)).find((member): member is ProjectMember => Boolean(member));
               return <article key={list.id} className="border border-slate-200 bg-white p-3 transition-colors hover:border-[#C9A84C]">
                 <button type="button" onClick={() => openSubproject(list.id)} className="block w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">
-                  <span className="flex items-start justify-between gap-2"><span className="text-sm font-semibold text-[#003366]">{list.name}</span><span className="shrink-0 text-[10px] text-slate-500">{listTasks.length} tasks</span></span>
-                  <span className="mt-2 block h-1.5 bg-slate-100"><span className="block h-full bg-[#C9A84C]" style={{ width: `${listProgress}%` }} /></span>
-                  <span className="mt-2 block text-[10px] text-slate-500">{listProgress}% complete</span>
+                  <span className="flex items-start justify-between gap-2"><span className="text-sm font-semibold text-[#003366]">{list.name}</span><span className="shrink-0 text-[10px] text-slate-500">{taskCount} tasks</span></span>
+                  <span className="mt-2 block h-1.5 bg-slate-100"><span className="block h-full bg-[#C9A84C]" style={{ width: `${listTasksLoaded ? listProgress : 0}%` }} /></span>
+                  <span className="mt-2 block text-[10px] text-slate-500">{listTasksLoaded ? `${listProgress}% complete` : "Progress loads when opened"}</span>
                 </button>
                 <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-slate-100 pt-2">{lead ? <span className="flex min-w-0 items-center gap-2"><MemberAvatars members={[lead]} emptyLabel=""/><span className="truncate text-xs text-slate-700">{lead.name}</span></span> : <span className="truncate text-xs text-slate-400">Unassigned</span>}<button type="button" onClick={() => openSubproject(list.id)} className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-[#31577D] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Open workspace <ArrowUpRight className="h-3 w-3" /></button></div>
               </article>;
@@ -712,7 +877,7 @@ export function ProjectWorkspace() {
           </div>
           {data.lists.length === 0 && <p className="p-5 text-sm text-slate-600">No subprojects are included in this project yet.</p>}
         </section>
-          : data && view === "calendar" ? <CalendarView tasks={tasks} lists={data.lists} members={data.members} defaultAssignees={data.defaultAssignees} onRefresh={refreshProject} /> : null}
+          : data && view === "calendar" ? <CalendarView tasks={tasks} lists={data.lists} members={data.members} defaultAssignees={data.defaultAssignees} onTaskChange={updateProjectTask} loadingTasks={data.lists.some((list) => !data.loadedTaskListIds?.includes(list.id))} /> : null}
     </section>
   );
 }
