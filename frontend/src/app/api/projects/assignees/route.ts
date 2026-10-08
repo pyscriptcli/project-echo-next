@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
+import { recordProjectActivity } from "@/lib/projectActivity";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -12,10 +13,12 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const listId = String(body.listId || "");
+    const folderId = String(body.folderId || "");
+    const listName = String(body.listName || "Subproject");
     const assigneeIds: string[] = Array.isArray(body.assigneeIds) ? Array.from(new Set<string>(body.assigneeIds.map(String).filter((id: string) => /^\d+$/.test(id)))).slice(0, 1) : [];
-    if (!/^\d+$/.test(listId)) return NextResponse.json({ error: "Choose a valid subproject." }, { status: 400 });
+    if (!/^\d+$/.test(listId) || !/^\d+$/.test(folderId)) return NextResponse.json({ error: "Choose a valid project and subproject." }, { status: 400 });
     const leadId = Number(assigneeIds[0]);
-    let taskIds: string[] = [];
+    const taskIds: string[] = [];
     let assignedCount = 0;
     let alreadyAssignedCount = 0;
     let failedCount = 0;
@@ -47,9 +50,15 @@ export async function PUT(req: NextRequest) {
     const defaults = config.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object" && !Array.isArray(config.projectDefaultAssignees)
       ? config.projectDefaultAssignees as Record<string, string[]>
       : {};
+    const previousLeadId = defaults[listId]?.[0] || "";
     if (assigneeIds.length) defaults[listId] = assigneeIds;
     else delete defaults[listId];
     await saveAdminConfig({ ...config, projectDefaultAssignees: defaults });
+    if (previousLeadId !== (assigneeIds[0] || "")) await recordProjectActivity(req, {
+      folderId, listId, listName, eventType: "subproject-lead-changed",
+      summary: assigneeIds.length ? `Set ${String(body.leadName || "a new member")} as subproject lead and assigned them to ${assignedCount + alreadyAssignedCount} existing tasks` : "Cleared the subproject lead",
+      details: { previousLeadId: previousLeadId || null, leadId: assigneeIds[0] || null, leadName: String(body.leadName || ""), assignedCount, alreadyAssignedCount, failedCount, taskIds },
+    });
     return NextResponse.json({ listId, assigneeIds, taskIds, assignedCount, alreadyAssignedCount, failedCount }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const status = error instanceof AdminConfigError ? error.status : 503;

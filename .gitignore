@@ -6,6 +6,9 @@ node_modules/
 frontend/.next/
 frontend/out/
 
+# Supabase CLI state
+supabase/.temp/
+
 # Environment files
 .env
 .env*.local

@@ -4,6 +4,7 @@ import { formatEchoDate } from "@/lib/dateUtils";
 import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 import { loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
+import { recordProjectActivity } from "@/lib/projectActivity";
 
 function getClickUpCredentials(req: NextRequest) {
   const cookieToken = req.cookies.get("echo_clickup_token")?.value || "";
@@ -33,7 +34,7 @@ function serializeProjectTask(task: ClickUpProjectTask, listId: string): ClickUp
   return {
     id: String(task.id), name: String(task.name || "Untitled task"), url: typeof task.url === "string" ? task.url : null,
     parentId: task.parent ? String(task.parent) : null, listId,
-    status: String(task.status?.status || "Open"), statusType: String(task.status?.type || ""),
+    status: String(task.status?.status || "Open"), statusType: String(task.status?.type || ""), statusColor: typeof task.status?.color === "string" ? task.status.color : null,
     description: String(task.description_text || task.description || ""),
     startDate: clickUpDate(task.start_date), dueDate: clickUpDate(task.due_date),
     assignees: Array.isArray(task.assignees) ? task.assignees.map((assignee) => ({
@@ -71,7 +72,7 @@ interface ClickUpProjectTask {
   description_text?: string | null;
   url?: string;
   parent?: string | number | null;
-  status?: { status?: string; type?: string } | null;
+  status?: { status?: string; type?: string; color?: string } | null;
   start_date?: number | string | null;
   due_date?: number | string | null;
   assignees?: Array<{
@@ -97,6 +98,7 @@ interface ClickUpProjectResponseTask {
   listId: string;
   status: string;
   statusType: string;
+  statusColor: string | null;
   description: string;
   startDate: string | null;
   dueDate: string | null;
@@ -702,10 +704,16 @@ export async function POST(req: NextRequest) {
       const currentList = await currentResponse.json().catch(() => ({}));
       if (!currentResponse.ok) return NextResponse.json({ error: currentList.err || "Unable to load the subproject description." }, { status: currentResponse.status });
       if (String(currentList.folder?.id || "") !== folderId) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
-      const markdown_content = replaceActionPlan(String(currentList.markdown_content || currentList.content || ""), actionPlan);
+      const currentContent = String(currentList.markdown_content || currentList.content || "");
+      const previousActionPlan = readActionPlan(currentContent).trim();
+      const markdown_content = replaceActionPlan(currentContent, actionPlan);
       const response = await clickUpCalendarFetch(projectToken, listUrl, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markdown_content }) }, [`/list/${subprojectListId}`]);
       const result = await response.json().catch(() => ({}));
       if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to save the action plan." }, { status: response.status });
+      if (previousActionPlan !== actionPlan) await recordProjectActivity(req, {
+        folderId, listId: subprojectListId, listName: String(currentList.name || "Subproject"), eventType: "action-plan-updated",
+        summary: "Updated the project action plan", details: { previous: previousActionPlan, current: actionPlan },
+      });
       return NextResponse.json({ success: true, actionPlan });
     }
     if (action === "project-task-update" || action === "project-task-create") {
@@ -727,22 +735,60 @@ export async function POST(req: NextRequest) {
         }, body.listId && /^\d+$/.test(String(body.listId)) ? [`/list/${String(body.listId)}/task`] : undefined);
         const result = await response.json().catch(() => ({}));
         if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to update task in ClickUp." }, { status: response.status });
+        const folderId = String(body.folderId || "");
+        const taskName = String(body.taskName || result.name || "Task");
+        const listName = String(body.listName || "Subproject");
+        const previous = body.previous && typeof body.previous === "object" ? body.previous as Record<string, unknown> : {};
+        const oldStatus = String(previous.status || "");
+        const nextStatus = String(payload.status || "");
+        if (/^\d+$/.test(folderId)) {
+          if (nextStatus && nextStatus.toLowerCase() !== oldStatus.toLowerCase()) await recordProjectActivity(req, {
+            folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
+            taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-status-changed",
+            summary: `Changed status from ${oldStatus || "To Do"} to ${nextStatus}`,
+            details: { from: oldStatus, to: nextStatus },
+          });
+          const oldDescription = String(previous.description || "");
+          const nextDescription = typeof payload.description === "string" ? payload.description : oldDescription;
+          if (nextDescription !== oldDescription) await recordProjectActivity(req, {
+            folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
+            taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-remarks-updated",
+            summary: nextDescription.trim() ? "Updated task remarks" : "Cleared task remarks",
+            details: { remarks: nextDescription.slice(0, 1000) },
+          });
+          if (payload.due_date !== undefined) {
+            const oldDueDate = previous.dueDate ? new Date(String(previous.dueDate)).getTime() : null;
+            const nextDueDate = payload.due_date ? Number(payload.due_date) : null;
+            if (oldDueDate !== nextDueDate) await recordProjectActivity(req, {
+              folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
+              taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-date-moved",
+              summary: `Changed the due date${nextDueDate ? ` to ${new Date(nextDueDate).toLocaleDateString()}` : ""}`,
+              details: { from: previous.dueDate || null, to: nextDueDate ? new Date(nextDueDate).toISOString() : null },
+            });
+          }
+          const oldLinks = new Set((String(previous.description || "").match(/https?:\/\/[^\s)<>]+/g) || []).map((link) => link.replace(/[.,;]+$/, "")));
+          const addedLinks = (nextDescription.match(/https?:\/\/[^\s)<>]+/g) || []).map((link: string) => link.replace(/[.,;]+$/, "")).filter((link: string) => !oldLinks.has(link));
+          if (addedLinks.length) await recordProjectActivity(req, {
+            folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
+            taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-file-link-added",
+            summary: `Added ${addedLinks.length} link${addedLinks.length === 1 ? "" : "s"} to task remarks`, details: { links: addedLinks.slice(0, 10) },
+          });
+        }
         return NextResponse.json({ success: true, task: result });
       }
       if (!body.listId || !String(body.name || "").trim()) return NextResponse.json({ error: "A list and task name are required." }, { status: 400 });
       const payload: Record<string, unknown> = { name: String(body.name).trim(), status: body.status || "to do" };
       if (body.description) payload.description = String(body.description);
       if (body.priority) payload.priority = priorityToNumber(body.priority);
+      const config = await loadAdminConfig().catch(() => null);
+      const defaults = config?.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object"
+        ? config.projectDefaultAssignees as Record<string, string[]>
+        : {};
+      const leadIds = (defaults[String(body.listId)] || []).slice(0, 1).map(Number).filter(Number.isFinite);
       const requestedAssignees = Array.isArray(body.assignees) ? body.assignees : [];
-      let assigneeIds = requestedAssignees.map(Number).filter(Number.isFinite);
-      if (assigneeIds.length === 0) {
-        const config = await loadAdminConfig().catch(() => null);
-        const defaults = config?.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object"
-          ? config.projectDefaultAssignees as Record<string, string[]>
-          : {};
-        assigneeIds = (defaults[String(body.listId)] || []).slice(0, 1).map(Number).filter(Number.isFinite);
-      }
+      const assigneeIds = Array.from(new Set([...leadIds, ...requestedAssignees.map(Number).filter(Number.isFinite)]));
       if (assigneeIds.length) payload.assignees = assigneeIds;
+      payload.notify_all = false;
       if (body.dueDate) { payload.due_date = new Date(body.dueDate).getTime(); payload.due_date_time = false; }
       if (body.startDate) { payload.start_date = new Date(body.startDate).getTime(); payload.start_date_time = false; }
       const response = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/list/${encodeURIComponent(String(body.listId))}/task`, {
@@ -750,6 +796,12 @@ export async function POST(req: NextRequest) {
       }, [`/list/${String(body.listId)}/task`]);
       const result = await response.json().catch(() => ({}));
       if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to create task in ClickUp." }, { status: response.status });
+      if (/^\d+$/.test(String(body.folderId || ""))) await recordProjectActivity(req, {
+        folderId: String(body.folderId), listId: String(body.listId), listName: String(body.listName || "Subproject"),
+        taskId: String(result.id || ""), taskName: String(result.name || body.name), taskUrl: typeof result.url === "string" ? result.url : null,
+        eventType: "task-created", summary: assigneeIds.length ? `Created a task and assigned it to ${(result.assignees || []).map((assignee: { username?: string; name?: string }) => assignee.username || assignee.name).filter(Boolean).join(", ") || "the subproject lead"}` : "Created a task",
+        details: { status: result.status?.status || body.status || "To Do", assigneeIds, assignees: (result.assignees || []).map((assignee: { username?: string; name?: string }) => assignee.username || assignee.name).filter(Boolean) },
+      });
       return NextResponse.json({ success: true, task: result });
     }
     const targetListId = body.listId || listId;

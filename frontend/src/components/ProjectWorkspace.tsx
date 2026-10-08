@@ -1,30 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   ArrowUpRight,
+  Activity,
   CalendarDays,
-  CheckCircle2,
   ChevronDown,
-  Clock3,
-  ExternalLink,
   FolderKanban,
-  ListTodo,
   LoaderCircle,
   MapPin,
   RefreshCw,
-  Users,
-  Plus,
   Search,
   X,
 } from "lucide-react";
 
 const PROJECT_URL = "https://app.clickup.com/9014981136/v/o/f/901414174663";
 const ProjectMapEmbed = dynamic(() => import("@/components/ProjectMapEmbed"), { ssr: false, loading: () => <section role="status" className="flex min-h-72 items-center justify-center border border-slate-200 bg-white text-xs text-slate-500"><LoaderCircle className="mr-2 h-4 w-4 animate-spin text-[#003366]" />Loading map editor</section> });
-type View = "overview" | "calendar" | "map";
+type View = "overview" | "calendar" | "activity" | "map";
 
 interface ProjectList {
   id: string;
@@ -42,6 +37,7 @@ interface ProjectTask {
   listId: string;
   status: string;
   statusType: string;
+  statusColor?: string | null;
   description?: string;
   startDate: string | null;
   dueDate: string | null;
@@ -120,6 +116,94 @@ function statusStyle(task: ProjectTask) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function statusInlineStyle(task: ProjectTask): CSSProperties | undefined {
+  const color = task.statusColor || "";
+  if (!/^#[\da-f]{6}$/i.test(color)) return undefined;
+  return { borderColor: color, backgroundColor: `${color}1A`, color };
+}
+
+interface ProjectActivityEvent {
+  id: string;
+  listId: string;
+  listName: string;
+  taskId: string | null;
+  taskName: string | null;
+  eventType: string;
+  summary: string;
+  actorName: string;
+  taskUrl: string | null;
+  details: Record<string, unknown>;
+  createdAt: string;
+}
+
+function activityTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    "task-created": "Task created",
+    "task-status-changed": "Status changed",
+    "task-remarks-updated": "Remarks updated",
+    "task-date-moved": "Task rescheduled",
+    "task-file-link-added": "File or link added",
+    "action-plan-updated": "Action plan updated",
+    "subproject-lead-changed": "Lead assignee changed",
+  };
+  return labels[type] || type.replace(/-/g, " ").replace(/^./, (character) => character.toUpperCase());
+}
+
+function ProjectActivityFeed({ folderId, lists, fixedListId }: { folderId: string; lists: ProjectList[]; fixedListId?: string }) {
+  const [filter, setFilter] = useState(fixedListId || "all");
+  const [dateFilter, setDateFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [activities, setActivities] = useState<ProjectActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ folderId });
+      if (fixedListId || filter !== "all") params.set("listId", fixedListId || filter);
+      const response = await fetch(`/api/projects/activity?${params}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Project activity could not be loaded.");
+      setActivities(Array.isArray(payload.activities) ? payload.activities : []);
+      setError("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Project activity could not be loaded.");
+    } finally { setLoading(false); }
+  }, [filter, fixedListId, folderId]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => { void load(); }, 0);
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 30_000);
+    window.addEventListener("focus", load);
+    return () => { window.clearTimeout(initialLoad); window.clearInterval(timer); window.removeEventListener("focus", load); };
+  }, [load]);
+
+  const activityTypes = useMemo(() => Array.from(new Set(activities.map((event) => event.eventType))).sort(), [activities]);
+  const filteredActivities = useMemo(() => activities.filter((event) => {
+    if (typeFilter !== "all" && event.eventType !== typeFilter) return false;
+    if (dateFilter && dateKey(new Date(event.createdAt)) !== dateFilter) return false;
+    return true;
+  }), [activities, dateFilter, typeFilter]);
+
+  return <section aria-label="Project activity" className="border border-slate-200 bg-white">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+      <div><h2 className="flex items-center gap-2 text-sm font-semibold text-[#003366]"><Activity className="h-4 w-4" />Activity</h2><p className="mt-0.5 text-[10px] text-slate-500">Recent changes across project workspaces</p></div>
+      <div className="flex flex-wrap items-center gap-2">
+        {!fixedListId && <select aria-label="Filter activity by subproject" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs text-[#003366]"><option value="all">All subprojects</option>{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select>}
+        <label className="relative inline-flex h-9 min-w-[170px] cursor-pointer items-center justify-between gap-3 border border-slate-300 bg-white px-3 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-within:outline focus-within:outline-2 focus-within:outline-[#003366]">
+          <span>{dateFilter ? new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${dateFilter}T12:00:00`)) : "All dates"}</span>
+          <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
+          <input aria-label="Filter activity by date" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+        </label>
+        <select aria-label="Filter activity by type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs text-[#003366]"><option value="all">All activity types</option>{activityTypes.map((type) => <option key={type} value={type}>{activityTypeLabel(type)}</option>)}</select>
+        <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex h-9 items-center gap-1.5 border border-slate-300 px-2.5 text-[10px] font-semibold text-[#003366] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</button>
+      </div>
+    </header>
+    {error ? <div role="alert" className="m-4 border border-amber-300 bg-[#FBF7E9] px-3 py-3 text-xs text-[#003366]">{error}<p className="mt-1 text-[10px]">Set up the activity table using <code>supabase/project_activity.sql</code>.</p></div>
+      : loading ? <div role="status" className="space-y-2 p-4">{[0, 1, 2].map((item) => <div key={item} className="h-14 animate-pulse border border-slate-100 bg-slate-50" />)}</div>
+        : filteredActivities.length ? <ol className="divide-y divide-slate-100">{filteredActivities.map((event) => <li key={event.id} className="flex gap-3 px-4 py-3"><span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EEF3F8] text-[#31577D]"><Activity aria-hidden="true" className="h-3.5 w-3.5" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-baseline gap-x-1.5 text-xs"><span className="font-semibold text-[#003366]">{event.actorName}</span><span className="text-slate-600">{event.summary}</span>{event.taskName && <span className="font-medium text-slate-700">· {event.taskName}</span>}</div><div className="mt-1 flex flex-wrap items-center gap-x-2 text-[10px] text-slate-500"><span>{event.listName}</span><span aria-hidden="true">·</span><time dateTime={event.createdAt}>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.createdAt))}</time><span aria-hidden="true">·</span><span>{activityTypeLabel(event.eventType)}</span>{event.taskUrl && <a href={event.taskUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#31577D] underline">Open task</a>}</div>{typeof event.details.remarks === "string" && event.details.remarks && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-600">{event.details.remarks}</p>}{typeof event.details.current === "string" && event.details.current && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-600">{event.details.current}</p>}{Array.isArray(event.details.links) && (event.details.links as string[]).map((href) => <a key={href} href={href} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[10px] text-[#31577D] underline">{href}</a>)}</div></li>)}</ol>
+        : <div className="px-4 py-10 text-center"><Activity aria-hidden="true" className="mx-auto h-5 w-5 text-slate-400" /><p className="mt-2 text-xs font-semibold text-[#003366]">{activities.length ? "No activity matches these filters" : "No activity yet"}</p><p className="mt-1 text-[10px] text-slate-500">{activities.length ? "Choose another date or activity type." : "Task and action-plan changes will appear here."}</p></div>}
+  </section>;
+}
+
 function dateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -180,7 +264,7 @@ function ClickUpLink({ href, label }: { href: string; label: string }) {
 
 type CalendarScale = "Day" | "4 days" | "Week" | "Month";
 
-function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, loadingTasks = false }: { tasks: ProjectTask[]; lists: ProjectList[]; members: ProjectMember[]; defaultAssignees: Record<string, string[]>; onTaskChange: (task: ProjectTask) => void; loadingTasks?: boolean }) {
+function CalendarView({ folderId, tasks, lists, members, defaultAssignees, onTaskChange, loadingTasks = false }: { folderId: string; tasks: ProjectTask[]; lists: ProjectList[]; members: ProjectMember[]; defaultAssignees: Record<string, string[]>; onTaskChange: (task: ProjectTask) => void; loadingTasks?: boolean }) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [scale] = useState<CalendarScale>("Month");
   const [query, setQuery] = useState("");
@@ -227,22 +311,25 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, l
   const submit = async () => {
     setBusy(true); setError("");
     try {
-      const result = await fetch(`/api/tasks?action=${modal?.task ? "project-task-update" : "project-task-create"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(modal?.task ? { taskId: modal.task.id, listId: modal.task.listId, dueDate: modal.date, status: editStatus, description: editRemarks } : { listId: taskListId, name: taskName, description: taskDescription, status: taskStatus, priority: taskPriority, assignees: taskAssignees, dueDate: modal?.date }) });
+      const currentList = lists.find((list) => list.id === (modal?.task?.listId || taskListId));
+      const result = await fetch(`/api/tasks?action=${modal?.task ? "project-task-update" : "project-task-create"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(modal?.task ? { folderId, listId: modal.task.listId, listName: currentList?.name, taskId: modal.task.id, taskName: modal.task.name, previous: { status: modal.task.status, description: modal.task.description || "", dueDate: modal.task.dueDate }, dueDate: modal.date, status: editStatus, description: editRemarks } : { folderId, listId: taskListId, listName: currentList?.name, name: taskName, description: taskDescription, status: taskStatus, priority: taskPriority, assignees: taskAssignees, dueDate: modal?.date }) });
       const payload = await result.json(); if (!result.ok) throw new Error(payload.error || "Calendar change failed.");
       if (modal?.task) {
-        onTaskChange({ ...modal.task, dueDate: new Date(`${modal.date}T00:00:00`).toISOString(), status: editStatus, statusType: /^(complete|completed|closed|done)$/i.test(editStatus) ? "closed" : modal.task.statusType, description: editRemarks });
+        const savedStatus = payload.task?.status as { color?: string; type?: string } | undefined;
+        onTaskChange({ ...modal.task, dueDate: new Date(`${modal.date}T00:00:00`).toISOString(), status: editStatus, statusType: savedStatus?.type || (/^(complete|completed|closed|done)$/i.test(editStatus) ? "closed" : modal.task.statusType), statusColor: savedStatus?.color || modal.task.statusColor, description: editRemarks });
       } else if (payload.task) {
         const saved = payload.task as Record<string, unknown>;
-        const savedStatus = saved.status as { status?: string; type?: string } | null;
+        const savedStatus = saved.status as { status?: string; type?: string; color?: string } | null;
         const savedAssignees = Array.isArray(saved.assignees) ? saved.assignees as Array<{ id: string | number }> : [];
-        onTaskChange({ id: String(saved.id), name: String(saved.name || taskName), url: typeof saved.url === "string" ? saved.url : null, parentId: null, listId: taskListId, status: savedStatus?.status || taskStatus, statusType: savedStatus?.type || "", startDate: null, dueDate: new Date(`${modal!.date}T00:00:00`).toISOString(), assignees: members.filter((member) => savedAssignees.some((assignee) => String(assignee.id) === member.id)) });
+        onTaskChange({ id: String(saved.id), name: String(saved.name || taskName), url: typeof saved.url === "string" ? saved.url : null, parentId: null, listId: taskListId, status: savedStatus?.status || taskStatus, statusType: savedStatus?.type || "", statusColor: savedStatus?.color || null, startDate: null, dueDate: new Date(`${modal!.date}T00:00:00`).toISOString(), assignees: members.filter((member) => savedAssignees.some((assignee) => String(assignee.id) === member.id)) });
       }
       setModal(null);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Calendar change failed."); }
     finally { setBusy(false); }
   };
   const changeDate = async (task: ProjectTask, date: string) => {
-    const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId: task.id, listId: task.listId, dueDate: date }) });
+    const currentList = lists.find((list) => list.id === task.listId);
+    const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId: task.listId, listName: currentList?.name, taskId: task.id, taskName: task.name, previous: { status: task.status, description: task.description || "", dueDate: task.dueDate }, dueDate: date }) });
     const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Unable to reschedule task."); onTaskChange({ ...task, dueDate: new Date(`${date}T00:00:00`).toISOString() });
   };
 
@@ -255,7 +342,7 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, l
     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><strong className="text-sm text-[#003366]">{label}</strong><span className="text-xs text-slate-500">{visibleTasks.filter((task) => { const date = (task.dueDate || task.startDate)?.slice(0, 10); return date && days.some((day) => dateKey(day) === date); }).length} scheduled</span></div>
     <div role="grid" aria-label={label} className={`grid ${scale === "Day" ? "grid-cols-1" : "grid-cols-7"}`}>
       {scale !== "Day" && (scale === "Month" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : days.map((day) => new Intl.DateTimeFormat("en", { weekday: "short" }).format(day))).map((day, index) => <div key={`${day}-${index}`} className="border-b border-r border-slate-200 bg-[#F7FAFC] px-2 py-2 text-center text-[10px] font-semibold uppercase text-slate-500">{day}</div>)}
-      {days.map((date) => { const key = dateKey(date); const dayTasks = taskMap.get(key) || []; return <div key={key} role="button" tabIndex={0} aria-label={`Create task on ${key}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openCreate(key); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const task = tasks.find((item) => item.id === event.dataTransfer.getData("text/plain")); if (task) void changeDate(task, key).catch((caught) => setError(caught.message)); }} onClick={() => openCreate(key)} className={`group min-h-28 cursor-pointer border-b border-r border-slate-100 p-2 hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366] ${key.slice(0, 7) !== dateKey(anchor).slice(0, 7) && scale === "Month" ? "bg-slate-50" : "bg-white"} ${scale === "Day" ? "min-h-64" : ""}`}><div className="mb-1 flex items-center justify-between"><span className={`inline-flex h-7 min-w-7 items-center justify-center px-1 text-xs ${key === today ? "bg-[#003366] font-semibold text-white" : "text-slate-600"}`}>{scale === "Month" ? date.getDate() : new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date)}</span></div><div className="space-y-1">{dayTasks.slice(0, scale === "Month" ? 4 : 12).map((task) => <button key={task.id} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", task.id); event.dataTransfer.effectAllowed = "move"; }} onClick={(event) => { event.stopPropagation(); openEditDate(task); }} title={`${task.name} · ${owners(task)} · ${task.status}`} className={`block w-full truncate border-l-2 px-1 py-1 text-left text-[10px] leading-4 ${isComplete(task) ? "border-emerald-600 bg-emerald-50 text-emerald-900" : "border-[#C9A84C] bg-[#FBF7E9] text-[#003366]"}`}>{task.name}<span className="hidden sm:inline"> · {owners(task)}</span></button>)}{dayTasks.length > (scale === "Month" ? 4 : 12) && <p className="px-1 text-[10px] text-slate-500">+{dayTasks.length - 4} more</p>}</div></div>; })}
+      {days.map((date) => { const key = dateKey(date); const dayTasks = taskMap.get(key) || []; return <div key={key} role="button" tabIndex={0} aria-label={`Create task on ${key}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openCreate(key); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const task = tasks.find((item) => item.id === event.dataTransfer.getData("text/plain")); if (task) void changeDate(task, key).catch((caught) => setError(caught.message)); }} onClick={() => openCreate(key)} className={`group min-h-28 cursor-pointer border-b border-r border-slate-100 p-2 hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366] ${key.slice(0, 7) !== dateKey(anchor).slice(0, 7) && scale === "Month" ? "bg-slate-50" : "bg-white"} ${scale === "Day" ? "min-h-64" : ""}`}><div className="mb-1 flex items-center justify-between"><span className={`inline-flex h-7 min-w-7 items-center justify-center px-1 text-xs ${key === today ? "bg-[#003366] font-semibold text-white" : "text-slate-600"}`}>{scale === "Month" ? date.getDate() : new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date)}</span></div><div className="space-y-1">{dayTasks.slice(0, scale === "Month" ? 4 : 12).map((task) => <button key={task.id} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", task.id); event.dataTransfer.effectAllowed = "move"; }} onClick={(event) => { event.stopPropagation(); openEditDate(task); }} title={`${task.name} · ${owners(task)} · ${task.status}`} style={statusInlineStyle(task)} className={`block w-full truncate border-l-2 px-1 py-1 text-left text-[10px] leading-4 ${isComplete(task) ? "border-emerald-600 bg-emerald-50 text-emerald-900" : "border-[#C9A84C] bg-[#FBF7E9] text-[#003366]"}`}>{task.name}<span className="hidden sm:inline"> · {owners(task)}</span></button>)}{dayTasks.length > (scale === "Month" ? 4 : 12) && <p className="px-1 text-[10px] text-slate-500">+{dayTasks.length - 4} more</p>}</div></div>; })}
     </div>
     {error && <p role="alert" className="border-t border-red-100 px-4 py-2 text-xs text-red-700">{error}</p>}
     {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="calendar-task-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-slate-200 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}><div className="mb-4 flex items-center justify-between"><div><h3 id="calendar-task-title" className="font-semibold text-[#003366]">{modal.task ? "Edit task" : "Create task"}</h3><p className="mt-1 text-xs text-slate-500">{modal.task ? "Change this task’s calendar date." : "Add a task to this date and choose where it belongs."}</p></div><button type="button" onClick={() => setModal(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><X className="h-4 w-4"/></button></div>{modal.task ? <><label className="mb-3 block text-xs font-semibold text-slate-600">Status<select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="mt-1 h-10 w-full border border-slate-300 bg-white px-3 text-sm text-[#003366]" aria-label="Task status">{editStatusOptions.map((item) => <option key={item.label} value={item.value}>{item.label}</option>)}</select></label><label className="mb-3 block text-xs font-semibold text-slate-600">Remarks<textarea value={editRemarks} onChange={(event) => setEditRemarks(event.target.value)} maxLength={10000} rows={5} placeholder="Add progress notes or task remarks" className="mt-1 w-full border border-slate-300 px-3 py-2 text-sm font-normal leading-5" /></label><div className="mb-3 flex items-center justify-between gap-3 border border-slate-200 bg-[#F7FAFC] p-3"><div><p className="text-xs font-semibold text-[#003366]">Files</p><p className="mt-1 text-[11px] text-slate-500">Open this task in ClickUp to attach files.</p></div>{modal.task.url && <a href={modal.task.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 shrink-0 items-center gap-2 border border-slate-300 bg-white px-3 text-[10px] font-semibold text-[#003366]">Upload in ClickUp <ArrowUpRight className="h-3 w-3" /></a>}</div></> : <><input autoFocus value={taskName} onChange={(event) => setTaskName(event.target.value)} placeholder="Task name" className="mb-3 h-10 w-full border border-slate-300 px-3 text-sm"/><select value={taskListId} onChange={(event) => { const nextId = event.target.value; setTaskListId(nextId); setTaskStatus(projectStatusOptions(lists.find((list) => list.id === nextId)?.statuses || [])[0].value); setTaskAssignees(defaultAssignees[nextId] || []); }} className="mb-3 h-10 w-full border border-slate-300 bg-white px-3 text-sm" aria-label="Task list">{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select><textarea value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} placeholder="Description (optional)" rows={3} className="mb-3 w-full border border-slate-300 px-3 py-2 text-sm"/><div className="mb-3 grid grid-cols-2 gap-2"><select value={taskStatus} onChange={(event) => setTaskStatus(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task status">{createStatusOptions.map((status) => <option key={status.label} value={status.value}>{status.label}</option>)}</select><select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value)} className="h-10 border border-slate-300 bg-white px-2 text-sm" aria-label="Task priority">{["urgent", "high", "normal", "low"].map((priority) => <option key={priority} value={priority}>{priority[0].toUpperCase() + priority.slice(1)} priority</option>)}</select></div><label className="mb-3 block text-xs font-semibold text-slate-600">Assignees<select multiple value={taskAssignees} onChange={(event) => setTaskAssignees(Array.from(event.target.selectedOptions, (option) => option.value))} className="mt-1 h-24 w-full border border-slate-300 bg-white px-3 py-2 text-sm" aria-label="Assignees">{members.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label></>}<label className="block text-xs font-semibold text-slate-600">Due date<input type="date" value={modal.date} onChange={(event) => setModal({ ...modal, date: event.target.value })} className="mt-1 h-10 w-full border border-slate-300 px-3 text-sm"/></label>{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModal(null)} className="min-h-11 px-3 text-xs text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Cancel</button><button type="button" disabled={busy || (!modal.task && !taskName.trim())} onClick={() => void submit()} className="min-h-11 bg-[#003366] px-4 text-xs font-semibold text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]">{busy ? "Saving…" : modal.task ? "Save changes" : "Save to ClickUp"}</button></div></div></div>}
@@ -350,13 +437,13 @@ function taskTree(tasks: ProjectTask[]): TaskTreeNode[] {
 function TaskRow({ task, depth = 0, onOpen }: { task: ProjectTask; depth?: number; onOpen: (task: ProjectTask) => void }) {
   const content = <>
     <span className="min-w-0 flex-1"><span className={`block truncate text-[13px] font-medium ${depth ? "text-slate-700" : "text-[#003366]"}`}>{task.name}</span><span className="mt-1 block truncate text-[10px] text-slate-500">{owners(task)}</span></span>
-    <span className={`shrink-0 border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${statusStyle(task)}`}>{projectStatusLabel(task.status)}</span>
+    <span style={statusInlineStyle(task)} className={`shrink-0 border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${statusStyle(task)}`}>{projectStatusLabel(task.status)}</span>
     <span className="hidden w-28 shrink-0 text-right text-[11px] text-slate-600 sm:block">{formatDate(task.dueDate)}</span>
   </>;
   return <button type="button" onClick={() => onOpen(task)} className="flex min-h-12 w-full items-center gap-3 border-b border-slate-100 px-3 py-2 text-left last:border-b-0 transition-colors hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">{content}<span className="shrink-0 text-[10px] font-medium text-[#31577D]">Edit</span></button>;
 }
 
-function TaskHierarchy({ tasks, statuses, onTaskChange }: { tasks: ProjectTask[]; statuses: string[]; onTaskChange: (task: ProjectTask) => void }) {
+function TaskHierarchy({ folderId, listName, tasks, statuses, onTaskChange }: { folderId: string; listName: string; tasks: ProjectTask[]; statuses: string[]; onTaskChange: (task: ProjectTask) => void }) {
   const tree = useMemo(() => taskTree(tasks), [tasks]);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null);
@@ -369,10 +456,11 @@ function TaskHierarchy({ tasks, statuses, onTaskChange }: { tasks: ProjectTask[]
     if (!editingTask) return;
     setSaving(true); setError("");
     try {
-      const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId: editingTask.id, listId: editingTask.listId, status, description: remarks }) });
+      const response = await fetch("/api/tasks?action=project-task-update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId: editingTask.listId, listName, taskId: editingTask.id, taskName: editingTask.name, previous: { status: editingTask.status, description: editingTask.description || "", dueDate: editingTask.dueDate }, status, description: remarks }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Task changes could not be saved.");
-      onTaskChange({ ...editingTask, status, statusType: /^(complete|completed|closed|done)$/i.test(status) ? "closed" : editingTask.statusType, description: remarks });
+      const savedStatus = payload.task?.status as { color?: string; type?: string } | undefined;
+      onTaskChange({ ...editingTask, status, statusType: savedStatus?.type || (/^(complete|completed|closed|done)$/i.test(status) ? "closed" : editingTask.statusType), statusColor: savedStatus?.color || editingTask.statusColor, description: remarks });
       setEditingTask(null);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Task changes could not be saved."); }
     finally { setSaving(false); }
@@ -558,8 +646,8 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
   tasksLoading: boolean;
   onTaskChange: (task: ProjectTask) => void;
 }) {
-  const [view, setView] = useState<"tasks" | "calendar">("tasks");
-  const tabs = [{ id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }] as const;
+  const [view, setView] = useState<"tasks" | "calendar" | "activity">("tasks");
+  const tabs = [{ id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }, { id: "activity", label: "Activity" }] as const;
 
   const assignedMembers = defaultAssignees.map((id) => members.find((member) => member.id === id)).filter((member): member is ProjectMember => Boolean(member));
 
@@ -571,8 +659,9 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
     {assigneeSyncMessage && <p role="status" className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{assigneeSyncMessage}</p>}
     <SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} />
     <div role="tablist" aria-label={`${list.name} workspace views`} className="flex border-b border-slate-200">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`min-h-11 border-b-2 px-4 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}</button>)}</div>
-    {view === "tasks" ? tasksLoading ? <section className="space-y-2 border border-slate-200 bg-white p-4" role="status"><span className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading Timeline tasks from ClickUp</span>{[0, 1, 2].map((row) => <div key={row} className="h-11 animate-pulse border border-slate-100 bg-slate-50" />)}</section> : tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy tasks={tasks} statuses={list.statuses || Array.from(new Set(tasks.map((task) => task.status)))} onTaskChange={onTaskChange} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
-      : <CalendarView tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onTaskChange={onTaskChange} />}
+    {view === "tasks" ? tasksLoading ? <section className="space-y-2 border border-slate-200 bg-white p-4" role="status"><span className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading Timeline tasks from ClickUp</span>{[0, 1, 2].map((row) => <div key={row} className="h-11 animate-pulse border border-slate-100 bg-slate-50" />)}</section> : tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy folderId={folderId} listName={list.name} tasks={tasks} statuses={list.statuses || Array.from(new Set(tasks.map((task) => task.status)))} onTaskChange={onTaskChange} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
+      : view === "calendar" ? <CalendarView folderId={folderId} tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onTaskChange={onTaskChange} />
+        : <ProjectActivityFeed folderId={folderId} lists={[list]} fixedListId={list.id} />}
   </section>;
 }
 
@@ -843,7 +932,7 @@ export function ProjectWorkspace() {
     setError(null);
     setAssigneeSyncMessage("");
     try {
-      const response = await fetch("/api/projects/assignees", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listId, assigneeIds }) });
+      const response = await fetch("/api/projects/assignees", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId: data.folder.id, listId, listName: data.lists.find((list) => list.id === listId)?.name, leadName: data.members.find((member) => member.id === assigneeIds[0])?.name, assigneeIds }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Default assignee could not be saved.");
       const taskIds = new Set<string>(Array.isArray(payload.taskIds) ? payload.taskIds.map(String) : []);
@@ -872,9 +961,9 @@ export function ProjectWorkspace() {
   };
 
   const openSubproject = (listId: string) => {
-    const project = projects.find((item) => item.id === data?.folder.id);
+    const project = data?.folder;
     const list = data?.lists.find((item) => item.id === listId);
-    if (!project || !list || !data) return;
+    if (!project || !list) return;
     router.push(`/projects/${routeSegment(project.name, project.id)}/${routeSegment(list.name, list.id)}`);
   };
 
@@ -902,7 +991,7 @@ export function ProjectWorkspace() {
     </>} />
     {assigneeSyncMessage && <p role="status" className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{assigneeSyncMessage}</p>}
       <div role="tablist" aria-label={`${data?.folder.name || "Project"} workspace views`} className="flex border-b border-slate-200">
-        {([{ id: "overview", label: "Overview" }, { id: "calendar", label: "Calendar" }, { id: "map", label: "Map" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`inline-flex min-h-9 items-center gap-2 border-b-2 px-3 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.id === "calendar" ? <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" /> : tab.id === "map" ? <MapPin aria-hidden="true" className="h-3.5 w-3.5" /> : null}{tab.label}</button>)}
+    {([{ id: "overview", label: "Overview" }, { id: "calendar", label: "Calendar" }, { id: "activity", label: "Activity" }, { id: "map", label: "Map" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`inline-flex min-h-9 items-center gap-2 border-b-2 px-3 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.id === "calendar" ? <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" /> : tab.id === "map" ? <MapPin aria-hidden="true" className="h-3.5 w-3.5" /> : tab.id === "activity" ? <Activity aria-hidden="true" className="h-3.5 w-3.5" /> : null}{tab.label}</button>)}
       </div>
       {loading && !data ? <LoadingSkeleton variant="project" />
         : error ? <div role="alert" className="border border-amber-300 bg-[#FFFCFB] p-6"><h2 className="text-sm font-semibold text-[#003366]">Project data could not be loaded</h2><p className="mt-2 text-sm leading-6 text-slate-700">{error}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={refreshProject} className="inline-flex min-h-11 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]">Try again <RefreshCw aria-hidden="true" className="h-4 w-4" /></button><a href="/api/auth/login" className="inline-flex min-h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Sign in with ClickUp <ArrowUpRight aria-hidden="true" className="h-4 w-4" /></a></div></div>
@@ -928,7 +1017,8 @@ export function ProjectWorkspace() {
           </div>
           {data.lists.length === 0 && <p className="p-5 text-sm text-slate-600">No subprojects are included in this project yet.</p>}
         </section>
-          : data && view === "calendar" ? <CalendarView tasks={tasks} lists={data.lists} members={data.members} defaultAssignees={data.defaultAssignees} onTaskChange={updateProjectTask} loadingTasks={data.lists.some((list) => !data.loadedTaskListIds?.includes(list.id))} />
+          : data && view === "calendar" ? <CalendarView folderId={data.folder.id} tasks={tasks} lists={data.lists} members={data.members} defaultAssignees={data.defaultAssignees} onTaskChange={updateProjectTask} loadingTasks={data.lists.some((list) => !data.loadedTaskListIds?.includes(list.id))} />
+          : data && view === "activity" ? <ProjectActivityFeed folderId={data.folder.id} lists={data.lists} />
           : data && view === "map" ? <ProjectMapEmbed projectName={data.folder.name} /> : null}
     </section>
   );
