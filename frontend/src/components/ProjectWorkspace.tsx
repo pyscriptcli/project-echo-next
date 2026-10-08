@@ -187,9 +187,6 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, l
   const [listFilter, setListFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const createStatusOptions = projectStatusOptions(lists.find((list) => list.id === taskListId)?.statuses || []);
-  const editStatusOptions = projectStatusOptions(lists.find((list) => list.id === modal?.task?.listId)?.statuses || tasks.filter((task) => task.listId === modal?.task?.listId).map((task) => task.status));
-  const filterStatusOptions = projectStatusOptions(tasks.map((task) => task.status));
   const [modal, setModal] = useState<{ date: string; task?: ProjectTask } | null>(null);
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -201,6 +198,9 @@ function CalendarView({ tasks, lists, members, defaultAssignees, onTaskChange, l
   const [editRemarks, setEditRemarks] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const createStatusOptions = projectStatusOptions(lists.find((list) => list.id === taskListId)?.statuses || []);
+  const editStatusOptions = projectStatusOptions(lists.find((list) => list.id === modal?.task?.listId)?.statuses || tasks.filter((task) => task.listId === modal?.task?.listId).map((task) => task.status));
+  const filterStatusOptions = projectStatusOptions(tasks.map((task) => task.status));
   useEffect(() => {
     if (!modal) return;
     const dismissOnEscape = (event: KeyboardEvent) => {
