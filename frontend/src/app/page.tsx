@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Stepper, Stage } from "@/components/Stepper";
 import { StudioPanel } from "@/components/StudioPanel";
 import { StudioRecoveryBanner } from "@/components/StudioRecoveryBanner";
@@ -221,6 +222,8 @@ function DatePickerInput({
 }
 
 export default function Home() {
+  const pathname = usePathname();
+  const router = useRouter();
   // ClickUp OAuth Authentication State
   const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
   const [authUser, setAuthUser] = useState<{
@@ -426,6 +429,10 @@ export default function Home() {
     if (view === "forms" || view === "project" || view === "notebook" || view === "market-insights" || view === "demands") setCurrentView(view as NavView);
   }, []);
 
+  useEffect(() => {
+    if (pathname === "/projects" || pathname.startsWith("/projects/")) setCurrentView("project");
+  }, [pathname]);
+
   // Fetch page governance and role access
   useEffect(() => {
     const refreshGovernance = () => {
@@ -473,6 +480,8 @@ export default function Home() {
     }
     if (isPageAllowed(view)) {
       setCurrentView(view);
+      if (view === "project") router.push("/projects");
+      else if (pathname === "/projects" || pathname.startsWith("/projects/")) router.push("/");
     }
   };
 

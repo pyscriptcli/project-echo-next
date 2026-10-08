@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { formatEchoDate } from "@/lib/dateUtils";
+import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
+import { loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 
 function getClickUpCredentials(req: NextRequest) {
   const cookieToken = req.cookies.get("echo_clickup_token")?.value || "";
@@ -30,6 +32,8 @@ function clickUpDate(value: unknown): string | null {
 interface ClickUpProjectList {
   id: string | number;
   name?: string;
+  task_count?: number;
+  url?: string;
 }
 
 interface ClickUpProjectTask {
@@ -49,8 +53,10 @@ interface ClickUpProjectTask {
 }
 
 interface ClickUpProjectFolder {
+  id?: string | number;
   name?: string;
-  space?: { name?: string } | null;
+  url?: string;
+  space?: { id?: string | number; name?: string } | null;
 }
 
 interface ClickUpProjectResponseTask {
@@ -63,7 +69,17 @@ interface ClickUpProjectResponseTask {
   statusType: string;
   startDate: string | null;
   dueDate: string | null;
-  assignees: Array<{ id: string; name: string; initials: string }>;
+  assignees: Array<{ id: string; name: string; initials: string; profilePicture?: string | null }>;
+}
+
+interface ClickUpProjectMember {
+  id: string | number;
+  username?: string;
+  name?: string;
+  initials?: string;
+  profilePicture?: string | null;
+  profile_picture?: string | null;
+  email?: string;
 }
 
 // Map ClickUp priority numbers (1: Urgent, 2: High, 3: Normal, 4: Low)
@@ -102,17 +118,50 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get("action");
     const targetListId = searchParams.get("listId") || listId;
 
+    if (action === "project-gallery") {
+      const projectToken = getTokenFromRequest(req);
+      if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to view projects.", needsAuth: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
+      if (searchParams.get("refresh") === "1") clearClickUpCalendarCache(projectToken);
+      const anchorFolderId = "901414174663";
+      const clickUpGet = (path: string) => clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2${path}`);
+      const anchorResponse = await clickUpGet(`/folder/${anchorFolderId}`);
+      if (!anchorResponse.ok) return NextResponse.json({ error: `ClickUp could not load the configured project folder (${anchorResponse.status}).` }, { status: anchorResponse.status });
+      const anchor = await anchorResponse.json() as ClickUpProjectFolder;
+      const spaceId = anchor.space?.id;
+      if (!spaceId) return NextResponse.json({ error: "The configured ClickUp folder has no accessible Space." }, { status: 422 });
+      const foldersResponse = await clickUpGet(`/space/${encodeURIComponent(String(spaceId))}/folder?archived=false`);
+      if (!foldersResponse.ok) return NextResponse.json({ error: `ClickUp could not load project folders (${foldersResponse.status}).` }, { status: foldersResponse.status });
+      const foldersPayload = await foldersResponse.json() as { folders?: Array<{ id: string | number; name?: string; archived?: boolean; url?: string; lists?: ClickUpProjectList[] }> };
+      const folders = (foldersPayload.folders || []).filter((folder) => !folder.archived);
+      const projects = await Promise.all(folders.map(async (folder) => {
+        let folderLists = folder.lists;
+        if (!Array.isArray(folderLists)) {
+          const listsResponse = await clickUpGet(`/folder/${encodeURIComponent(String(folder.id))}/list?archived=false`);
+          if (!listsResponse.ok) throw new Error(`Unable to load lists for project folder ${folder.id} (${listsResponse.status}).`);
+          const listsPayload = await listsResponse.json() as { lists?: ClickUpProjectList[] };
+          folderLists = listsPayload.lists || [];
+        }
+        return {
+          id: String(folder.id),
+          name: String(folder.name || "Untitled project"),
+          url: typeof folder.url === "string" ? folder.url : `https://app.clickup.com/9014981136/v/o/f/${encodeURIComponent(String(folder.id))}`,
+          listCount: folderLists.length,
+          spaceName: String(anchor.space?.name || ""),
+        };
+      }));
+      return NextResponse.json({ space: { id: String(spaceId), name: String(anchor.space?.name || "ClickUp Space") }, projects }, { headers: { "Cache-Control": "no-store" } });
+    }
+
     if (action === "project-workspace") {
       const projectToken = getTokenFromRequest(req);
       if (!projectToken) {
         return NextResponse.json({ error: "Sign in with ClickUp to open this project.", needsAuth: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
       }
+      if (searchParams.get("refresh") === "1") clearClickUpCalendarCache(projectToken);
 
-      const folderId = "901414174663";
-      const clickUpGet = (path: string) => fetch(`https://api.clickup.com/api/v2${path}`, {
-        headers: { Authorization: projectToken },
-        cache: "no-store",
-      });
+      const folderId = searchParams.get("folderId") || "901414174663";
+      if (!/^\d+$/.test(folderId)) return NextResponse.json({ error: "Invalid project folder." }, { status: 400 });
+      const clickUpGet = (path: string) => clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2${path}`);
       const [folderResponse, listsResponse] = await Promise.all([
         clickUpGet(`/folder/${folderId}`),
         clickUpGet(`/folder/${folderId}/list`),
@@ -162,8 +211,33 @@ export async function GET(req: NextRequest) {
           id: String(assignee.id),
           name: String(assignee.username || assignee.name || "Team member"),
           initials: String(assignee.initials || assignee.username?.[0] || "?").slice(0, 2),
+          profilePicture: (assignee as ClickUpProjectMember).profilePicture || (assignee as ClickUpProjectMember).profile_picture || null,
         })) : [],
       })));
+      const memberMap = new Map<string, ClickUpProjectMember>();
+      tasks.forEach((task) => task.assignees.forEach((member) => memberMap.set(member.id, { id: member.id, username: member.name, initials: member.initials, profilePicture: member.profilePicture })));
+      const spaceId = folder.space?.id;
+      if (spaceId) {
+        const membersResponse = await clickUpGet(`/space/${encodeURIComponent(String(spaceId))}/member`);
+        if (membersResponse.ok) {
+          const membersPayload = await membersResponse.json() as { members?: Array<{ user?: ClickUpProjectMember } | ClickUpProjectMember> };
+          for (const entry of membersPayload.members || []) {
+            const member = "user" in entry && entry.user ? entry.user : entry as ClickUpProjectMember;
+            memberMap.set(String(member.id), member);
+          }
+        }
+      }
+      const members = Array.from(memberMap.values()).map((member) => ({
+        id: String(member.id),
+        name: String(member.username || member.name || member.email || "Team member"),
+        initials: String(member.initials || member.username?.[0] || member.name?.[0] || "?").slice(0, 2),
+        profilePicture: member.profilePicture || member.profile_picture || null,
+      }));
+      const projectConfig = await loadAdminConfig().catch(() => null);
+      const storedAssignees = projectConfig && typeof projectConfig.projectDefaultAssignees === "object" && projectConfig.projectDefaultAssignees
+        ? projectConfig.projectDefaultAssignees as Record<string, string[]>
+        : {};
+      const defaultAssignees = Object.fromEntries(Object.entries(storedAssignees).map(([listId, ids]) => [listId, Array.isArray(ids) ? ids.slice(0, 1) : []]));
       const taskCounts = new Map<string, number>();
       tasks.forEach((task) => taskCounts.set(task.listId, (taskCounts.get(task.listId) || 0) + 1));
 
@@ -171,11 +245,13 @@ export async function GET(req: NextRequest) {
         folder: {
           id: folderId,
           name: String(folder.name || "Project"),
-          url: "https://app.clickup.com/9014981136/v/o/f/901414174663",
+          url: typeof folder.url === "string" ? folder.url : `https://app.clickup.com/9014981136/v/o/f/${encodeURIComponent(folderId)}`,
           spaceName: String(folder.space?.name || ""),
         },
-        lists: rawLists.map((list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), taskCount: taskCounts.get(String(list.id)) || 0 })),
+        lists: rawLists.map((list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), url: list.url || null, taskCount: taskCounts.get(String(list.id)) || 0 })),
         tasks,
+        members,
+        defaultAssignees,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -552,6 +628,45 @@ export async function POST(req: NextRequest) {
   try {
     const { token, listId } = getClickUpCredentials(req);
     const body = await req.json();
+    const action = req.nextUrl.searchParams.get("action");
+    const projectToken = getTokenFromRequest(req);
+    if (action === "project-task-update" || action === "project-task-create") {
+      if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to update this calendar." }, { status: 401 });
+      if (action === "project-task-update") {
+        if (!body.taskId) return NextResponse.json({ error: "Task ID is required." }, { status: 400 });
+        const payload: Record<string, unknown> = {};
+        if (body.dueDate !== undefined) payload.due_date = body.dueDate ? new Date(body.dueDate).getTime() : null;
+        if (body.startDate !== undefined) payload.start_date = body.startDate ? new Date(body.startDate).getTime() : null;
+        const response = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${encodeURIComponent(String(body.taskId))}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to update task in ClickUp." }, { status: response.status });
+        return NextResponse.json({ success: true, task: result });
+      }
+      if (!body.listId || !String(body.name || "").trim()) return NextResponse.json({ error: "A list and task name are required." }, { status: 400 });
+      const payload: Record<string, unknown> = { name: String(body.name).trim(), status: body.status || "to do" };
+      if (body.description) payload.description = String(body.description);
+      if (body.priority) payload.priority = priorityToNumber(body.priority);
+      const requestedAssignees = Array.isArray(body.assignees) ? body.assignees : [];
+      let assigneeIds = requestedAssignees.map(Number).filter(Number.isFinite);
+      if (assigneeIds.length === 0) {
+        const config = await loadAdminConfig().catch(() => null);
+        const defaults = config?.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object"
+          ? config.projectDefaultAssignees as Record<string, string[]>
+          : {};
+        assigneeIds = (defaults[String(body.listId)] || []).slice(0, 1).map(Number).filter(Number.isFinite);
+      }
+      if (assigneeIds.length) payload.assignees = assigneeIds;
+      if (body.dueDate) { payload.due_date = new Date(body.dueDate).getTime(); payload.due_date_time = false; }
+      if (body.startDate) { payload.start_date = new Date(body.startDate).getTime(); payload.start_date_time = false; }
+      const response = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/list/${encodeURIComponent(String(body.listId))}/task`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to create task in ClickUp." }, { status: response.status });
+      return NextResponse.json({ success: true, task: result });
+    }
     const targetListId = body.listId || listId;
 
     if (!token) {

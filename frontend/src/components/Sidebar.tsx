@@ -87,7 +87,7 @@ export function Sidebar({
     },
     {
       id: "project" as NavView,
-      label: "Project",
+      label: "Projects",
       icon: FolderKanban,
       badge: null
     },
