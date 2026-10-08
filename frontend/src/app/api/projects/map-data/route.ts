@@ -1,11 +1,14 @@
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getTokenFromRequest } from '@/lib/auth';
 import { clearClickUpCalendarCache, clickUpCalendarFetch } from '@/lib/clickupCalendarApi';
 
 export const dynamic = 'force-dynamic';
 const GEOJSON_TASK_ID = '86bcf1ywz';
 const LEGACY_GEOJSON_LIST_ID = '901412841984';
+const GEOJSON_BUCKET = 'echo-project-geojson';
+const GEOJSON_OBJECT = `projects/${GEOJSON_TASK_ID}.geojson`;
 const START = '<!-- PROJECT_ECHO_GEOJSON_V1_START -->';
 const END = '<!-- PROJECT_ECHO_GEOJSON_V1_END -->';
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
@@ -17,9 +20,22 @@ type MapList = { markdown_content?: string; content?: string };
 
 const writeQueues = new Map<string, Promise<void>>();
 const appliedChanges = new Map<string, { revision: string; updatedAt: string }>();
+let storageClient: SupabaseClient | null = null;
 
 function digest(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function getStorageClient() {
+  if (storageClient) return storageClient;
+  const url = process.env.SUPABASE_URL || '';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!url || !key) throw Object.assign(new Error('Supabase Storage is not configured on the server.'), { status: 503 });
+  storageClient = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
+  });
+  return storageClient;
 }
 
 function validCoordinates(value: unknown, depth = 0): boolean {
@@ -70,14 +86,6 @@ function parseCollection(content: string): FeatureCollection {
   }
 }
 
-function replaceCollection(content: string, collection: FeatureCollection) {
-  const block = `${START}\n\n\`\`\`json\n${JSON.stringify(collection)}\n\`\`\`\n\n${END}`;
-  const start = content.indexOf(START);
-  const end = content.indexOf(END, start + START.length);
-  if (start >= 0 && end >= 0) return `${content.slice(0, start)}${block}${content.slice(end + END.length)}`.trim();
-  return [content.trim(), block].filter(Boolean).join('\n\n');
-}
-
 async function getMapTask(token: string, fresh = false) {
   const url = `https://api.clickup.com/api/v2/task/${GEOJSON_TASK_ID}?include_markdown_description=true`;
   if (fresh) clearClickUpCalendarCache(token, [`/task/${GEOJSON_TASK_ID}`]);
@@ -98,13 +106,35 @@ async function getLegacyCollection(token: string): Promise<FeatureCollection> {
   return parseCollection(String(list.markdown_content ?? list.content ?? ''));
 }
 
+async function getClickUpFallback(token: string): Promise<FeatureCollection> {
+  const { content } = await getMapTask(token, true);
+  if (hasStoredCollection(content)) return parseCollection(content);
+  try { return await getLegacyCollection(token); }
+  catch { return EMPTY; }
+}
+
+async function getStoredCollection(): Promise<FeatureCollection | null> {
+  const { data, error } = await getStorageClient().storage.from(GEOJSON_BUCKET).download(GEOJSON_OBJECT);
+  if (error) {
+    if (error.statusCode === '404' || /object not found/i.test(error.message)) return null;
+    throw Object.assign(new Error(`Supabase Storage could not read the project GeoJSON: ${error.message}`), { status: Number(error.statusCode) || 502 });
+  }
+  try {
+    const value: unknown = JSON.parse(await data.text());
+    if (!validCollection(value)) throw new Error('Stored GeoJSON did not pass validation.');
+    return value;
+  } catch {
+    throw Object.assign(new Error('The GeoJSON file in Supabase Storage is invalid; it was not overwritten.'), { status: 422 });
+  }
+}
+
 function hasStoredCollection(content: string) {
   return content.includes(START) || content.includes(END);
 }
 
 function jsonError(error: unknown) {
   const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status?: unknown }).status) : 502;
-  const message = error instanceof Error ? error.message : 'ClickUp map data could not be saved.';
+  const message = error instanceof Error ? error.message : 'Project map data could not be saved.';
   return NextResponse.json({ error: message }, { status: status >= 400 && status < 600 ? status : 502 });
 }
 
@@ -123,16 +153,17 @@ export async function GET(request: NextRequest) {
   const token = getTokenFromRequest(request);
   if (!token) return NextResponse.json({ error: 'Sign in with ClickUp to open the project map.' }, { status: 401 });
   try {
-    const { content } = await getMapTask(token, true);
-    let data = parseCollection(content);
-    let migratedFromLegacy = false;
-    if (!hasStoredCollection(content)) {
-      try {
-        data = await getLegacyCollection(token);
-        migratedFromLegacy = data.features.length > 0;
-      } catch { /* Existing task data remains usable when legacy storage is unavailable. */ }
+    const stored = await getStoredCollection();
+    const data = stored || await getClickUpFallback(token);
+    if (request.nextUrl.searchParams.get('download') === '1') {
+      return new NextResponse(JSON.stringify(data, null, 2), { headers: {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/geo+json; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${GEOJSON_TASK_ID}.geojson"`,
+      } });
     }
-    return NextResponse.json({ data, revision: digest(data), taskId: GEOJSON_TASK_ID, migratedFromLegacy }, { headers: { 'Cache-Control': 'no-store' } });
+    if (stored) return NextResponse.json({ data, revision: digest(data), source: 'supabase', object: GEOJSON_OBJECT }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ data, revision: digest(data), source: 'clickup-migration', migratedFromClickUp: data.features.length > 0 }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return jsonError(error); }
 }
 
@@ -152,21 +183,17 @@ export async function PUT(request: NextRequest) {
       const repeated = appliedChanges.get(changeId);
       if (repeated) return { saved: true, revision: repeated.revision, updatedAt: repeated.updatedAt };
       const { content } = await getMapTask(token, true);
-      let current = parseCollection(content);
-      if (!hasStoredCollection(content)) {
-        try { current = await getLegacyCollection(token); }
-        catch { current = EMPTY; }
-      }
+      const stored = await getStoredCollection();
+      const current = stored || await getClickUpFallback(token);
       const revision = digest(current);
       if (revision !== body.baseRevision) return { conflict: true as const, data: current, revision };
-      const markdown_content = replaceCollection(content, body.data as FeatureCollection);
-      const response = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/task/${GEOJSON_TASK_ID}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ markdown_content }),
-      }, [`/task/${GEOJSON_TASK_ID}`]);
-      const responseBody = await response.json().catch(() => ({}));
-      if (!response.ok) throw Object.assign(new Error(responseBody.err || responseBody.error || 'ClickUp could not save the project map to the task description.'), { status: response.status });
+      const collection = body.data as FeatureCollection;
+      const { error } = await getStorageClient().storage.from(GEOJSON_BUCKET).upload(GEOJSON_OBJECT, Buffer.from(JSON.stringify(collection)), {
+        contentType: 'application/geo+json', cacheControl: '0', upsert: true,
+      });
+      if (error) throw Object.assign(new Error(`Supabase could not save the GeoJSON file: ${error.message}`), { status: Number(error.statusCode) || 502 });
       const updatedAt = new Date().toISOString();
-      const nextRevision = digest(body.data);
+      const nextRevision = digest(collection);
       appliedChanges.set(changeId, { revision: nextRevision, updatedAt });
       if (appliedChanges.size > 500) appliedChanges.delete(appliedChanges.keys().next().value || '');
       return { saved: true as const, revision: nextRevision, updatedAt };

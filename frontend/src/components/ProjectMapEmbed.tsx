@@ -46,7 +46,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
   const savingRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState('Loading GeoJSON from ClickUp...');
+  const [status, setStatus] = useState('Loading project GeoJSON...');
   const [ready, setReady] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,10 +68,10 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
       if (!response.ok) throw new Error(payload.error || 'Map data could not be loaded from ClickUp.');
       if (!isFeatureCollection(payload.data)) throw new Error('The GeoJSON in the designated ClickUp task is invalid or too large.');
       dataRef.current = payload.data;
-      migrationPendingRef.current = Boolean(payload.migratedFromLegacy);
+      migrationPendingRef.current = Boolean(payload.migratedFromClickUp);
       revisionRef.current = String(payload.revision || '');
       sessionIdRef.current = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setStatus(payload.migratedFromLegacy ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into this task.' : 'Waiting for map editor...');
+      setStatus(payload.migratedFromClickUp ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'Waiting for map editor...');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Map data could not be loaded from ClickUp.');
     } finally { setLoading(false); }
@@ -92,14 +92,14 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
       if (!response.ok) throw new Error(payload.error || 'Map data could not be refreshed from ClickUp.');
       if (!isFeatureCollection(payload.data)) throw new Error('The GeoJSON in the designated ClickUp task is invalid or too large.');
       dataRef.current = payload.data;
-      migrationPendingRef.current = Boolean(payload.migratedFromLegacy);
+      migrationPendingRef.current = Boolean(payload.migratedFromClickUp);
       revisionRef.current = String(payload.revision || '');
       queuedChangeRef.current = null;
       setHasUnsavedChanges(false);
       setSaveError('');
       setHasConflict(false);
       if (initializedRef.current && sessionIdRef.current) post({ type: 'atlas:replace-data', protocolVersion: 1, sessionId: sessionIdRef.current, revision: revisionRef.current, data: payload.data });
-      setStatus(payload.migratedFromLegacy ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into this task.' : 'Project GeoJSON refreshed from ClickUp.');
+      setStatus(payload.migratedFromClickUp ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'GeoJSON refreshed from Supabase Storage.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Map data could not be refreshed from ClickUp.');
     } finally { setLoading(false); }
@@ -146,7 +146,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
           migrationPendingRef.current = false;
           post({ type: 'atlas:saved', protocolVersion: 1, sessionId: sessionIdRef.current, revision: revisionRef.current, changeId: change.changeId });
           setHasUnsavedChanges(false);
-          setStatus('GeoJSON saved to the ClickUp task description.');
+          setStatus('GeoJSON file saved to Supabase Storage.');
         }
       }
     } catch (caught) {
@@ -169,7 +169,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
       if (!message || message.protocolVersion !== 1 || typeof message.type !== 'string') return;
       if (message.type === 'atlas:ready') { sendInit(); return; }
       if (message.sessionId !== sessionIdRef.current) return;
-      if (message.type === 'atlas:loaded') { setReady(true); setStatus(migrationPendingRef.current ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into this task.' : 'Map loaded - editing enabled'); return; }
+      if (message.type === 'atlas:loaded') { setReady(true); setStatus(migrationPendingRef.current ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'Map loaded - editing enabled'); return; }
       if (message.type === 'atlas:error') { setStatus(typeof message.message === 'string' ? message.message : 'The map editor reported an error.'); return; }
       if (message.type === 'atlas:save-request') { void persistQueuedChange(); return; }
       if (message.type !== 'atlas:change' || typeof message.changeId !== 'string' || (typeof message.baseRevision !== 'string' && typeof message.baseRevision !== 'number') || !isFeatureCollection(message.data)) return;
@@ -196,7 +196,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
     <header className="flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-white px-3 py-2">
       <div><h2 className="text-sm font-semibold text-[#003366]">Project map</h2><p role="status" className="text-[10px] text-slate-500">{status}</p></div>
       <div className="flex items-center gap-1.5">
-        <a href="https://app.clickup.com/t/9014981136/86bcf1ywz" target="_blank" rel="noreferrer" className="hidden text-[10px] font-semibold text-[#003366] underline sm:inline">GeoJSON task in ClickUp</a>
+        <a href="/api/projects/map-data?download=1" className="hidden text-[10px] font-semibold text-[#003366] underline sm:inline">Download .geojson</a>
         <button type="button" onClick={() => void persistQueuedChange()} disabled={!hasUnsavedChanges || hasConflict || saving || !ready} className="inline-flex h-8 items-center gap-1.5 border border-[#003366] bg-[#003366] px-2.5 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"><Save className={`h-3.5 w-3.5 ${saving ? 'animate-pulse' : ''}`} />{saving ? 'Saving…' : 'Save GeoJSON'}</button>
         <button type="button" onClick={() => void refreshData()} disabled={loading || saving} aria-label="Refresh map data" className="inline-flex h-8 items-center gap-1.5 border border-slate-300 px-2.5 text-[10px] font-semibold text-[#003366] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
         <button type="button" onClick={() => setFullScreen((value) => !value)} className="inline-flex h-8 items-center gap-1.5 border border-[#003366] bg-[#003366] px-2.5 text-[10px] font-semibold text-white">{fullScreen ? <X className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}{fullScreen ? 'Close' : 'Full screen'}</button>
