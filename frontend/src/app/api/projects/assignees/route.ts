@@ -1,16 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
+import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function PUT(req: NextRequest) {
-  if (!getTokenFromRequest(req)) return NextResponse.json({ error: "Sign in with ClickUp to update project assignees." }, { status: 401 });
+  const token = getTokenFromRequest(req);
+  if (!token) return NextResponse.json({ error: "Sign in with ClickUp to update project assignees." }, { status: 401 });
   try {
     const body = await req.json();
     const listId = String(body.listId || "");
     const assigneeIds: string[] = Array.isArray(body.assigneeIds) ? Array.from(new Set<string>(body.assigneeIds.map(String).filter((id: string) => /^\d+$/.test(id)))).slice(0, 1) : [];
     if (!/^\d+$/.test(listId)) return NextResponse.json({ error: "Choose a valid subproject." }, { status: 400 });
+    const leadId = Number(assigneeIds[0]);
+    let taskIds: string[] = [];
+    let assignedCount = 0;
+    let alreadyAssignedCount = 0;
+    let failedCount = 0;
+    if (Number.isFinite(leadId)) {
+      const tasks: Array<{ id: string | number; assignees?: Array<{ id: string | number }> }> = [];
+      for (let page = 0; ; page += 1) {
+        const response = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${encodeURIComponent(listId)}/task?subtasks=true&include_closed=true&page=${page}`);
+        if (!response.ok) return NextResponse.json({ error: `Lead saved was canceled because existing tasks could not be loaded (${response.status}).` }, { status: response.status });
+        const payload = await response.json() as { tasks?: typeof tasks };
+        const pageTasks = payload.tasks || [];
+        tasks.push(...pageTasks);
+        if (pageTasks.length < 100) break;
+      }
+      for (const task of tasks) {
+        const taskId = String(task.id);
+        if ((task.assignees || []).some((assignee) => String(assignee.id) === String(leadId))) { alreadyAssignedCount += 1; taskIds.push(taskId); continue; }
+        const response = await clickUpCalendarFetch(
+          token,
+          `https://api.clickup.com/api/v2/task/${encodeURIComponent(taskId)}`,
+          { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assignees: { add: [leadId], rem: [] } }) },
+          [`/list/${listId}/task`, `/task/${taskId}`],
+        );
+        if (!response.ok) failedCount += 1;
+        else { assignedCount += 1; taskIds.push(taskId); }
+      }
+      clearClickUpCalendarCache(token, [`/list/${listId}/task`]);
+    }
     const config = await loadAdminConfig();
     const defaults = config.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object" && !Array.isArray(config.projectDefaultAssignees)
       ? config.projectDefaultAssignees as Record<string, string[]>
@@ -18,7 +50,7 @@ export async function PUT(req: NextRequest) {
     if (assigneeIds.length) defaults[listId] = assigneeIds;
     else delete defaults[listId];
     await saveAdminConfig({ ...config, projectDefaultAssignees: defaults });
-    return NextResponse.json({ listId, assigneeIds }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ listId, assigneeIds, taskIds, assignedCount, alreadyAssignedCount, failedCount }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const status = error instanceof AdminConfigError ? error.status : 503;
     return NextResponse.json({ error: "The subproject assignees could not be saved." }, { status });
