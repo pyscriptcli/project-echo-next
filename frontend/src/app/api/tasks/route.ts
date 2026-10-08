@@ -329,8 +329,8 @@ export async function GET(req: NextRequest) {
       if (String(list.folder?.id || "") !== folderId) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
       const taskId = searchParams.get("taskId") || "";
       if (taskId) {
-        if (!/^\d+$/.test(taskId)) return NextResponse.json({ error: "A valid task is required." }, { status: 400 });
-        const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${taskId}`);
+        if (!/^[A-Za-z0-9_-]+$/.test(taskId)) return NextResponse.json({ error: "A valid task is required." }, { status: 400 });
+        const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${encodeURIComponent(taskId)}`);
         const task = await taskResponse.json().catch(() => ({})) as ClickUpProjectTask;
         if (!taskResponse.ok) return NextResponse.json({ error: task.name || "Unable to load the selected task." }, { status: taskResponse.status });
         if (String(task.list?.id || "") !== subprojectListId) return NextResponse.json({ error: "The selected task does not belong to this subproject." }, { status: 403 });
@@ -723,14 +723,14 @@ export async function POST(req: NextRequest) {
       const actionPlan = String(body.actionPlan || "").trim();
       if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to save this action plan." }, { status: 401 });
       if (!/^\d+$/.test(folderId) || !/^\d+$/.test(subprojectListId)) return NextResponse.json({ error: "A valid project and subproject are required." }, { status: 400 });
-      if (!/^\d+$/.test(taskId)) return NextResponse.json({ error: "Choose a pending task for this action plan." }, { status: 400 });
+      if (!/^[A-Za-z0-9_-]+$/.test(taskId)) return NextResponse.json({ error: "Choose a pending task for this action plan." }, { status: 400 });
       if (actionPlan.length > 2_000) return NextResponse.json({ error: "Keep the action plan under 2,000 characters." }, { status: 400 });
       const listUrl = `https://api.clickup.com/api/v2/list/${subprojectListId}`;
       const listResponse = await clickUpCalendarFetch(projectToken, listUrl);
       const currentList = await listResponse.json().catch(() => ({}));
       if (!listResponse.ok) return NextResponse.json({ error: currentList.err || "Unable to load the subproject." }, { status: listResponse.status });
       if (String(currentList.folder?.id || "") !== folderId) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
-      const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${taskId}`);
+      const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${encodeURIComponent(taskId)}`);
       const task = await taskResponse.json().catch(() => ({})) as ClickUpProjectTask;
       if (!taskResponse.ok) return NextResponse.json({ error: "Unable to load the selected task." }, { status: taskResponse.status });
       if (String(task.list?.id || "") !== subprojectListId) return NextResponse.json({ error: "The selected task does not belong to this subproject." }, { status: 403 });

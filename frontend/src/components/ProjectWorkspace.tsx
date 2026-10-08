@@ -616,10 +616,10 @@ function SubprojectStatusCards({ folderId, listId, tasks, tasksLoading, onTaskCh
   const pendingPlanTasks = useMemo(() => tasks
     .filter((task) => !isComplete(task) && task.actionPlanFieldAvailable)
     .sort((left, right) => (Date.parse(right.dateUpdated || right.dateCreated || "") || 0) - (Date.parse(left.dateUpdated || left.dateCreated || "") || 0) || left.name.localeCompare(right.name)), [tasks]);
-  const selectedPlanTask = pendingPlanTasks.find((task) => task.id === selectedPlanTaskId) || null;
+  const selectedPlanTask = tasks.find((task) => task.id === selectedPlanTaskId) || null;
 
   useEffect(() => {
-    if (!pendingPlanTasks.some((task) => task.id === selectedPlanTaskId)) setSelectedPlanTaskId(pendingPlanTasks[0]?.id || "");
+    if (!selectedPlanTaskId || !pendingPlanTasks.some((task) => task.id === selectedPlanTaskId)) setSelectedPlanTaskId(pendingPlanTasks[0]?.id || "");
   }, [pendingPlanTasks, selectedPlanTaskId]);
 
   useEffect(() => {
@@ -630,7 +630,10 @@ function SubprojectStatusCards({ folderId, listId, tasks, tasksLoading, onTaskCh
   }, [selectedPlanTask?.id]);
 
   const saveActionPlan = async () => {
-    if (!selectedPlanTask) return;
+    if (!selectedPlanTask || isComplete(selectedPlanTask) || !selectedPlanTask.actionPlanFieldAvailable) {
+      setPlanError("Choose a pending task with an Action Plan field.");
+      return;
+    }
     setSavingPlan(true); setPlanError(""); setSaveMessage("");
     try {
       const response = await fetch("/api/tasks?action=project-action-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId, taskId: selectedPlanTask.id, taskName: selectedPlanTask.name, taskUrl: selectedPlanTask.url, actionPlan }) });
@@ -646,7 +649,7 @@ function SubprojectStatusCards({ folderId, listId, tasks, tasksLoading, onTaskCh
     <article className="border border-slate-200 bg-white px-4 py-4 sm:px-5"><div className="min-h-[42px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Current stage</p></div><h2 className="mt-1 text-2xl font-semibold text-[#003366]">{currentStage?.name || "Not started"}</h2><div className="mt-4 flex items-baseline gap-1.5"><span className="text-2xl font-semibold tabular-nums text-[#003366]">{completedCount}</span><span className="text-sm tabular-nums text-slate-500">/ {currentStage?.tasks.length || 0} tasks completed</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-[#C9A84C]" style={{ width: `${currentStage?.tasks.length ? Math.round(completedCount / currentStage.tasks.length * 100) : 0}%` }} /></div></article>
     <article className="border border-slate-200 bg-white p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Action plan</p><p className="mt-1 text-[11px] text-slate-500">Briefly describe the current project status.</p></div><div className="flex shrink-0 items-center gap-3">{updatedAt && savedPlan === actionPlan.trim() && <span role="status" className="text-[10px] text-slate-500">Updated as of {updatedAt}</span>}<button type="button" onClick={() => void saveActionPlan()} disabled={tasksLoading || savingPlan || !selectedPlanTask || actionPlan.trim() === savedPlan.trim()} className="min-h-8 border border-[#003366] bg-[#003366] px-3 text-[10px] font-semibold text-white hover:bg-[#174778] disabled:cursor-not-allowed disabled:opacity-50">{savingPlan ? "Saving…" : "Save action plan"}</button></div></div>
-      <label className="mt-3 block"><span className="mb-1 block text-[10px] font-semibold text-slate-600">Pending task</span><select aria-label="Pending task for action plan" value={selectedPlanTask?.id || ""} onChange={(event) => setSelectedPlanTaskId(event.target.value)} disabled={tasksLoading || pendingPlanTasks.length === 0} className="h-9 w-full border border-slate-200 bg-white px-2 text-xs text-[#003366] disabled:bg-slate-50"><option value="">{tasksLoading ? "Loading pending tasks…" : pendingPlanTasks.length ? "Select a pending task" : "No pending tasks with an Action Plan field"}</option>{pendingPlanTasks.map((task) => <option key={task.id} value={task.id}>{task.name} · {task.status}</option>)}</select></label>
+      <label className="mt-3 block"><span className="mb-1 block text-[10px] font-semibold text-slate-600">Pending task</span><select aria-label="Pending task for action plan" value={pendingPlanTasks.some((task) => task.id === selectedPlanTaskId) ? selectedPlanTaskId : ""} onChange={(event) => { setSelectedPlanTaskId(event.target.value); setPlanError(""); }} disabled={tasksLoading || pendingPlanTasks.length === 0} className="h-9 w-full border border-slate-200 bg-white px-2 text-xs text-[#003366] disabled:bg-slate-50"><option value="">{tasksLoading ? "Loading pending tasks…" : pendingPlanTasks.length ? "Select a pending task" : "No pending tasks with an Action Plan field"}</option>{pendingPlanTasks.map((task) => <option key={task.id} value={task.id}>{task.name} · {task.status}</option>)}</select></label>
       <textarea aria-label="Action plan" value={actionPlan} onChange={(event) => { setActionPlan(event.target.value); setSaveMessage(""); }} disabled={tasksLoading || !selectedPlanTask} maxLength={2000} rows={4} placeholder={!selectedPlanTask ? "Choose a pending task to load its action plan" : "Current status and next step"} className="mt-3 min-h-28 w-full resize-y border border-slate-200 px-3 py-2 text-xs leading-5 text-[#003366] placeholder:text-slate-400 focus:border-[#003366] focus:outline-none disabled:bg-slate-50" />{planError && <p role="alert" className="mt-1 text-[10px] text-red-700">{planError}</p>}
     </article>
   </section>;
