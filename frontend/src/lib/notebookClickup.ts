@@ -17,6 +17,7 @@ export interface RawClickUpTask {
   name?: string;
   parent?: string;
   url?: string;
+  status?: { status?: string; type?: string };
   due_date?: string | null;
   start_date?: string | null;
   assignees?: Array<{
@@ -249,6 +250,43 @@ export async function writeCategories(token: string, taskId: string, categories:
     });
     if (!response.ok) throw new Error(`Unable to save the ${key} Daily Log field.`);
   }));
+}
+
+let completedOnTimeStatusCache: { status: string | null; expiresAt: number } | null = null;
+
+async function getCompletedOnTimeStatus(token: string) {
+  if (completedOnTimeStatusCache && completedOnTimeStatusCache.expiresAt > Date.now()) {
+    return completedOnTimeStatusCache.status;
+  }
+  const response = await fetchClickUp(`https://api.clickup.com/api/v2/list/${DAILY_LOG_LIST_ID}`, {
+    headers: { Authorization: token }, cache: "no-store",
+  });
+  if (!response.ok) {
+    completedOnTimeStatusCache = { status: null, expiresAt: Date.now() + 60_000 };
+    return null;
+  }
+  const body = await response.json();
+  const statuses = (body.statuses || []) as Array<{ status?: string }>;
+  const completed = statuses.find((item) => normalizeFieldName(item.status || "").replace(/\s+/g, "") === "completedontime");
+  completedOnTimeStatusCache = { status: completed?.status || null, expiresAt: Date.now() + 5 * 60_000 };
+  return completedOnTimeStatusCache.status;
+}
+
+export async function completeDailyTaskOnTimeIfPopulated(token: string, taskId: string, currentStatus: string, categories: Categories) {
+  const hasInput = Object.values(categories).some((value) => value.trim().length > 0);
+  const normalizedStatus = normalizeFieldName(currentStatus);
+  if (!hasInput || (normalizedStatus !== "to do" && normalizedStatus !== "todo")) return { updated: false };
+
+  const completedStatus = await getCompletedOnTimeStatus(token);
+  if (!completedStatus) return { updated: false, warning: "The KPI Monitoring list has no Completed On-Time status configured." };
+
+  const response = await fetchClickUp(`https://api.clickup.com/api/v2/task/${taskId}`, {
+    method: "PUT",
+    headers: clickUpHeaders(token),
+    body: JSON.stringify({ status: completedStatus }),
+  });
+  if (!response.ok) return { updated: false, warning: "The log was saved, but ClickUp could not update its status to Completed On-Time." };
+  return { updated: true };
 }
 
 export async function createTask(token: string, payload: Record<string, unknown>) {

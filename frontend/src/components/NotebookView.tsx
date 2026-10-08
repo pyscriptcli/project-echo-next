@@ -34,6 +34,7 @@ interface NotebookEntry {
   name: string;
   date: string;
   url: string;
+  status: string;
   member: NotebookMember;
   categories: Record<CategoryKey, string>;
   hasContent: boolean;
@@ -149,6 +150,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [saveWarning, setSaveWarning] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [payload, setPayload] = useState<NotebookPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,6 +207,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
     });
     setIsDirty(false);
     setLastSaved(null);
+    setSaveWarning("");
   }, [selectedDayEntry?.id, selectedDate, member?.id]);
 
   const weekStart = startOfWeek(selectedDate);
@@ -266,10 +269,11 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
       const response = await fetch("/api/notebook", {
         method: selectedDayEntry ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(selectedDayEntry ? { taskId: selectedDayEntry.id, categories: draftCategories } : { date: selectedDate, member: { id: member.id, name: member.name }, categories: draftCategories }),
+        body: JSON.stringify(selectedDayEntry ? { taskId: selectedDayEntry.id, currentStatus: selectedDayEntry.status, categories: draftCategories } : { date: selectedDate, member: { id: member.id, name: member.name }, categories: draftCategories }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Unable to save the daily log.");
+      setSaveWarning(typeof body.warning === "string" ? body.warning : "");
       setIsDirty(false);
       setLastSaved(new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }));
       await loadNotebook();
@@ -288,6 +292,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
 
   const updateCategory = (key: CategoryKey, value: string) => {
     setDraftCategories((current) => ({ ...current, [key]: value }));
+    setSaveWarning("");
     setIsDirty(true);
   };
 
@@ -582,7 +587,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
                   );
                 })}
                 <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-[#FFFCFB]/70">
-                  <p className="text-xs text-gray-500">Press Enter for another bullet. Changes save automatically after you pause typing.</p>
+                  <div><p className="text-xs text-gray-500">Press Enter for another bullet. Changes save automatically after you pause typing.</p>{saveWarning && <p role="status" className="mt-1 text-xs text-amber-700">{saveWarning}</p>}</div>
                   <div className="flex items-center gap-2 shrink-0">
                     {selectedDayEntry && <button type="button" onClick={deleteDailyLog} disabled={deleting || saving} className="h-10 px-3 border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-2"><Trash2 size={15} /> Delete</button>}
                     <span className={`text-xs font-semibold ${saving || isDirty ? "text-[#003366]" : "text-emerald-700"}`}>{saving ? "Saving…" : isDirty ? "Autosave pending" : lastSaved ? `Saved ${lastSaved}` : "Autosave on"}</span>

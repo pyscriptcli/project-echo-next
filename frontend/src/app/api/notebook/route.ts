@@ -4,6 +4,7 @@ import {
   CategoryKey,
   DAILY_LOG_LIST_ID,
   categoryPayload,
+  completeDailyTaskOnTimeIfPopulated,
   dateFromTask,
   ensureDailyTask,
   extractText,
@@ -62,6 +63,7 @@ export async function GET(req: NextRequest) {
         name: task.name || date,
         date,
         url: task.url || "",
+        status: task.status?.status || "",
         member: owner,
         categories,
         hasContent: Object.values(categories).some((value) => value.trim().length > 0),
@@ -96,7 +98,8 @@ export async function POST(req: NextRequest) {
     const categories = categoryPayload(body.categories);
     const { daily, createdParent } = await ensureDailyTask(token, body.date, { id: String(body.member.id), name: String(body.member.name) });
     await writeCategories(token, String(daily.id), categories);
-    return NextResponse.json({ success: true, taskId: daily.id, url: daily.url || "", createdParent });
+    const statusResult = await completeDailyTaskOnTimeIfPopulated(token, String(daily.id), daily.status?.status || "to do", categories);
+    return NextResponse.json({ success: true, taskId: daily.id, url: daily.url || "", createdParent, ...statusResult });
   } catch (error) {
     console.error("Notebook create failed:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to create the Daily Log." }, { status: 502 });
@@ -109,8 +112,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     if (!body.taskId) return NextResponse.json({ error: "A Daily Log task is required." }, { status: 400 });
-    await writeCategories(token, String(body.taskId), categoryPayload(body.categories));
-    return NextResponse.json({ success: true });
+    const categories = categoryPayload(body.categories);
+    await writeCategories(token, String(body.taskId), categories);
+    const statusResult = await completeDailyTaskOnTimeIfPopulated(token, String(body.taskId), String(body.currentStatus || ""), categories);
+    return NextResponse.json({ success: true, ...statusResult });
   } catch (error) {
     console.error("Notebook update failed:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update the Daily Log." }, { status: 502 });
