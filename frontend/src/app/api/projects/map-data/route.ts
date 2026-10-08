@@ -2,21 +2,15 @@ import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getTokenFromRequest } from '@/lib/auth';
-import { clearClickUpCalendarCache, clickUpCalendarFetch } from '@/lib/clickupCalendarApi';
 
 export const dynamic = 'force-dynamic';
-const GEOJSON_TASK_ID = '86bcf1ywz';
-const LEGACY_GEOJSON_LIST_ID = '901412841984';
+const GEOJSON_FILE_ID = 'mi-trs-901414174663';
 const GEOJSON_BUCKET = 'echo-project-geojson';
-const GEOJSON_OBJECT = `projects/${GEOJSON_TASK_ID}.geojson`;
-const START = '<!-- PROJECT_ECHO_GEOJSON_V1_START -->';
-const END = '<!-- PROJECT_ECHO_GEOJSON_V1_END -->';
+const GEOJSON_OBJECT = `projects/${GEOJSON_FILE_ID}.geojson`;
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 const MAX_GEOJSON_BYTES = 450_000;
 type GeoFeature = { type: 'Feature'; id?: string | number; geometry: { type: string; coordinates: unknown }; properties: Record<string, unknown> };
 type FeatureCollection = { type: 'FeatureCollection'; features: GeoFeature[]; [key: string]: unknown };
-type MapTask = { markdown_description?: string; description?: string };
-type MapList = { markdown_content?: string; content?: string };
 
 const writeQueues = new Map<string, Promise<void>>();
 const appliedChanges = new Map<string, { revision: string; updatedAt: string }>();
@@ -71,48 +65,6 @@ function validCollection(value: unknown): value is FeatureCollection {
   });
 }
 
-function parseCollection(content: string): FeatureCollection {
-  const start = content.indexOf(START);
-  const end = content.indexOf(END, start + START.length);
-  if (start < 0 && end < 0) return EMPTY;
-  if (start < 0 || end < 0) throw Object.assign(new Error('The GeoJSON block in the ClickUp task description is incomplete.'), { status: 422 });
-  const block = content.slice(start + START.length, end).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  try {
-    const data: unknown = JSON.parse(block);
-    if (!validCollection(data)) throw new Error('Stored GeoJSON did not pass validation.');
-    return data;
-  } catch {
-    throw Object.assign(new Error('The GeoJSON stored in the ClickUp task description is invalid; it was not overwritten.'), { status: 422 });
-  }
-}
-
-async function getMapTask(token: string, fresh = false) {
-  const url = `https://api.clickup.com/api/v2/task/${GEOJSON_TASK_ID}?include_markdown_description=true`;
-  if (fresh) clearClickUpCalendarCache(token, [`/task/${GEOJSON_TASK_ID}`]);
-  const response = await clickUpCalendarFetch(token, url);
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(body.err || body.error || 'ClickUp could not read the project map task.'), { status: response.status });
-  const task = body as MapTask;
-  return { content: String(task.markdown_description ?? task.description ?? '') };
-}
-
-async function getLegacyCollection(token: string): Promise<FeatureCollection> {
-  const path = `/list/${LEGACY_GEOJSON_LIST_ID}`;
-  clearClickUpCalendarCache(token, [path]);
-  const response = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2${path}`);
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(body.err || body.error || 'ClickUp could not read the previous project map data.'), { status: response.status });
-  const list = body as MapList;
-  return parseCollection(String(list.markdown_content ?? list.content ?? ''));
-}
-
-async function getClickUpFallback(token: string): Promise<FeatureCollection> {
-  const { content } = await getMapTask(token, true);
-  if (hasStoredCollection(content)) return parseCollection(content);
-  try { return await getLegacyCollection(token); }
-  catch { return EMPTY; }
-}
-
 async function getStoredCollection(): Promise<FeatureCollection | null> {
   const { data, error } = await getStorageClient().storage.from(GEOJSON_BUCKET).download(GEOJSON_OBJECT);
   if (error) {
@@ -128,10 +80,6 @@ async function getStoredCollection(): Promise<FeatureCollection | null> {
   }
 }
 
-function hasStoredCollection(content: string) {
-  return content.includes(START) || content.includes(END);
-}
-
 function jsonError(error: unknown) {
   const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status?: unknown }).status) : 502;
   const message = error instanceof Error ? error.message : 'Project map data could not be saved.';
@@ -139,37 +87,34 @@ function jsonError(error: unknown) {
 }
 
 async function serializeWrite<T>(work: () => Promise<T>): Promise<T> {
-  const previous = writeQueues.get(GEOJSON_TASK_ID) || Promise.resolve();
+  const previous = writeQueues.get(GEOJSON_FILE_ID) || Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolve) => { release = resolve; });
   const tail = previous.then(() => current);
-  writeQueues.set(GEOJSON_TASK_ID, tail);
+  writeQueues.set(GEOJSON_FILE_ID, tail);
   await previous;
   try { return await work(); }
-  finally { release(); if (writeQueues.get(GEOJSON_TASK_ID) === tail) writeQueues.delete(GEOJSON_TASK_ID); }
+  finally { release(); if (writeQueues.get(GEOJSON_FILE_ID) === tail) writeQueues.delete(GEOJSON_FILE_ID); }
 }
 
 export async function GET(request: NextRequest) {
-  const token = getTokenFromRequest(request);
-  if (!token) return NextResponse.json({ error: 'Sign in with ClickUp to open the project map.' }, { status: 401 });
+  if (!getTokenFromRequest(request)) return NextResponse.json({ error: 'Sign in to open the project map.' }, { status: 401 });
   try {
     const stored = await getStoredCollection();
-    const data = stored || await getClickUpFallback(token);
+    const data = stored || EMPTY;
     if (request.nextUrl.searchParams.get('download') === '1') {
       return new NextResponse(JSON.stringify(data, null, 2), { headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'application/geo+json; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${GEOJSON_TASK_ID}.geojson"`,
+        'Content-Disposition': `attachment; filename="${GEOJSON_FILE_ID}.geojson"`,
       } });
     }
-    if (stored) return NextResponse.json({ data, revision: digest(data), source: 'supabase', object: GEOJSON_OBJECT }, { headers: { 'Cache-Control': 'no-store' } });
-    return NextResponse.json({ data, revision: digest(data), source: 'clickup-migration', migratedFromClickUp: data.features.length > 0 }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ data, revision: digest(data), source: 'supabase', object: GEOJSON_OBJECT }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return jsonError(error); }
 }
 
 export async function PUT(request: NextRequest) {
-  const token = getTokenFromRequest(request);
-  if (!token) return NextResponse.json({ error: 'Sign in with ClickUp to save map edits.' }, { status: 401 });
+  if (!getTokenFromRequest(request)) return NextResponse.json({ error: 'Sign in to save map edits.' }, { status: 401 });
   let body: { data?: unknown; baseRevision?: unknown; changeId?: unknown };
   try { body = await request.json(); }
   catch { return NextResponse.json({ error: 'Invalid map update payload.' }, { status: 400 }); }
@@ -182,9 +127,8 @@ export async function PUT(request: NextRequest) {
     const result = await serializeWrite(async () => {
       const repeated = appliedChanges.get(changeId);
       if (repeated) return { saved: true, revision: repeated.revision, updatedAt: repeated.updatedAt };
-      const { content } = await getMapTask(token, true);
       const stored = await getStoredCollection();
-      const current = stored || await getClickUpFallback(token);
+      const current = stored || EMPTY;
       const revision = digest(current);
       if (revision !== body.baseRevision) return { conflict: true as const, data: current, revision };
       const collection = body.data as FeatureCollection;

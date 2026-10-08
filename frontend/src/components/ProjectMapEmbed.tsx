@@ -40,7 +40,6 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
   const sessionIdRef = useRef('');
   const revisionRef = useRef<string | number>('');
   const dataRef = useRef<GeoJsonCollection>({ type: 'FeatureCollection', features: [] });
-  const migrationPendingRef = useRef(false);
   const initializedRef = useRef(false);
   const queuedChangeRef = useRef<AtlasChange | null>(null);
   const savingRef = useRef(false);
@@ -65,15 +64,14 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
     try {
       const response = await fetch('/api/projects/map-data', { cache: 'no-store' });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Map data could not be loaded from ClickUp.');
-      if (!isFeatureCollection(payload.data)) throw new Error('The GeoJSON in the designated ClickUp task is invalid or too large.');
+      if (!response.ok) throw new Error(payload.error || 'Map data could not be loaded from Supabase Storage.');
+      if (!isFeatureCollection(payload.data)) throw new Error('The saved GeoJSON is invalid or too large.');
       dataRef.current = payload.data;
-      migrationPendingRef.current = Boolean(payload.migratedFromClickUp);
       revisionRef.current = String(payload.revision || '');
       sessionIdRef.current = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setStatus(payload.migratedFromClickUp ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'Waiting for map editor...');
+      setStatus('Waiting for map editor...');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Map data could not be loaded from ClickUp.');
+      setError(caught instanceof Error ? caught.message : 'Map data could not be loaded from Supabase Storage.');
     } finally { setLoading(false); }
   }, []);
 
@@ -84,24 +82,23 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
   }, [atlasOrigin]);
 
   const refreshData = useCallback(async () => {
-    if (hasUnsavedChanges && !window.confirm('Discard unsaved map changes and reload the saved GeoJSON from ClickUp?')) return;
+    if (hasUnsavedChanges && !window.confirm('Discard unsaved map changes and reload the saved GeoJSON from Supabase Storage?')) return;
     setLoading(true); setError('');
     try {
       const response = await fetch('/api/projects/map-data', { cache: 'no-store' });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Map data could not be refreshed from ClickUp.');
-      if (!isFeatureCollection(payload.data)) throw new Error('The GeoJSON in the designated ClickUp task is invalid or too large.');
+      if (!response.ok) throw new Error(payload.error || 'Map data could not be refreshed from Supabase Storage.');
+      if (!isFeatureCollection(payload.data)) throw new Error('The saved GeoJSON is invalid or too large.');
       dataRef.current = payload.data;
-      migrationPendingRef.current = Boolean(payload.migratedFromClickUp);
       revisionRef.current = String(payload.revision || '');
       queuedChangeRef.current = null;
       setHasUnsavedChanges(false);
       setSaveError('');
       setHasConflict(false);
       if (initializedRef.current && sessionIdRef.current) post({ type: 'atlas:replace-data', protocolVersion: 1, sessionId: sessionIdRef.current, revision: revisionRef.current, data: payload.data });
-      setStatus(payload.migratedFromClickUp ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'GeoJSON refreshed from Supabase Storage.');
+      setStatus('GeoJSON refreshed from Supabase Storage.');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Map data could not be refreshed from ClickUp.');
+      setError(caught instanceof Error ? caught.message : 'Map data could not be refreshed from Supabase Storage.');
     } finally { setLoading(false); }
   }, [hasUnsavedChanges, post]);
 
@@ -118,7 +115,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
     setSaving(true);
     setSaveError('');
     queuedChangeRef.current = null;
-    setStatus('Saving map to ClickUp...');
+    setStatus('Saving map to Supabase Storage...');
     try {
       if (!isFeatureCollection(change.data)) throw new Error('The editor returned invalid GeoJSON; changes were not saved.');
       const response = await fetch('/api/projects/map-data', {
@@ -130,10 +127,10 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
         queuedChangeRef.current ||= change;
         setHasUnsavedChanges(true);
         setHasConflict(true);
-        const conflictMessage = 'ClickUp has a newer saved version. Reload it to discard your edits, or resolve the conflict before saving again.';
+        const conflictMessage = 'Supabase has a newer saved version. Reload it to discard your edits, or resolve the conflict before saving again.';
         setSaveError(conflictMessage);
         setStatus('Save conflict; your map edits are still here.');
-      } else if (!response.ok) throw new Error(payload.error || 'Map edits could not be saved to ClickUp.');
+      } else if (!response.ok) throw new Error(payload.error || 'Map edits could not be saved to Supabase Storage.');
       else {
         setHasConflict(false);
         dataRef.current = change.data;
@@ -141,9 +138,8 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
         if (queuedChangeRef.current) {
           post({ type: 'atlas:revision', protocolVersion: 1, sessionId: sessionIdRef.current, revision: revisionRef.current });
           setHasUnsavedChanges(true);
-          setStatus('Latest changes are unsaved; save again to write them to ClickUp.');
+          setStatus('Latest changes are unsaved; save again to write them to Supabase Storage.');
         } else {
-          migrationPendingRef.current = false;
           post({ type: 'atlas:saved', protocolVersion: 1, sessionId: sessionIdRef.current, revision: revisionRef.current, changeId: change.changeId });
           setHasUnsavedChanges(false);
           setStatus('GeoJSON file saved to Supabase Storage.');
@@ -169,7 +165,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
       if (!message || message.protocolVersion !== 1 || typeof message.type !== 'string') return;
       if (message.type === 'atlas:ready') { sendInit(); return; }
       if (message.sessionId !== sessionIdRef.current) return;
-      if (message.type === 'atlas:loaded') { setReady(true); setStatus(migrationPendingRef.current ? 'Previous GeoJSON loaded; click Save GeoJSON to move it into Supabase Storage.' : 'Map loaded - editing enabled'); return; }
+      if (message.type === 'atlas:loaded') { setReady(true); setStatus('Map loaded - editing enabled'); return; }
       if (message.type === 'atlas:error') { setStatus(typeof message.message === 'string' ? message.message : 'The map editor reported an error.'); return; }
       if (message.type === 'atlas:save-request') { void persistQueuedChange(); return; }
       if (message.type !== 'atlas:change' || typeof message.changeId !== 'string' || (typeof message.baseRevision !== 'string' && typeof message.baseRevision !== 'number') || !isFeatureCollection(message.data)) return;
@@ -177,7 +173,7 @@ export default function ProjectMapEmbed({ projectName }: { projectName: string }
       queuedChangeRef.current = change;
       setHasUnsavedChanges(true);
       setSaveError('');
-      setStatus('Unsaved map changes; click Save GeoJSON to write them to ClickUp.');
+      setStatus('Unsaved map changes; click Save GeoJSON to write them to Supabase Storage.');
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
