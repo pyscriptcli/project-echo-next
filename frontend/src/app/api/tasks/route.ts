@@ -753,8 +753,8 @@ export async function POST(req: NextRequest) {
       if (action === "project-task-update") {
         if (!body.taskId) return NextResponse.json({ error: "Task ID is required." }, { status: 400 });
         const payload: Record<string, unknown> = {};
-        if (body.dueDate !== undefined) payload.due_date = body.dueDate ? new Date(body.dueDate).getTime() : null;
-        if (body.startDate !== undefined) payload.start_date = body.startDate ? new Date(body.startDate).getTime() : null;
+        if (body.dueDate !== undefined) { payload.due_date = body.dueDate ? new Date(body.dueDate).getTime() : null; payload.due_date_time = false; }
+        if (body.startDate !== undefined) { payload.start_date = body.startDate ? new Date(body.startDate).getTime() : null; payload.start_date_time = false; }
         if (body.status !== undefined) payload.status = String(body.status).trim();
         if (body.description !== undefined) {
           const description = String(body.description);
@@ -788,14 +788,17 @@ export async function POST(req: NextRequest) {
             summary: nextDescription.trim() ? "Updated task remarks" : "Cleared task remarks",
             details: { remarks: nextDescription.slice(0, 1000) },
           });
-          if (payload.due_date !== undefined) {
-            const oldDueDate = previous.dueDate ? new Date(String(previous.dueDate)).getTime() : null;
-            const nextDueDate = payload.due_date ? Number(payload.due_date) : null;
-            if (oldDueDate !== nextDueDate) await recordProjectActivity(req, {
+          for (const dateField of ["start", "due"] as const) {
+            const payloadKey = `${dateField}_date` as "start_date" | "due_date";
+            if (payload[payloadKey] === undefined) continue;
+            const previousValue = previous[`${dateField}Date`];
+            const oldDate = previousValue ? new Date(String(previousValue)).getTime() : null;
+            const nextDate = payload[payloadKey] ? Number(payload[payloadKey]) : null;
+            if (oldDate !== nextDate) await recordProjectActivity(req, {
               folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
               taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-date-moved",
-              summary: `Changed the due date${nextDueDate ? ` to ${new Date(nextDueDate).toLocaleDateString()}` : ""}`,
-              details: { from: previous.dueDate || null, to: nextDueDate ? new Date(nextDueDate).toISOString() : null },
+              summary: `Changed the ${dateField} date${nextDate ? ` to ${new Date(nextDate).toLocaleDateString()}` : ""}`,
+              details: { field: `${dateField}Date`, from: previousValue || null, to: nextDate ? new Date(nextDate).toISOString() : null },
             });
           }
           const oldLinks = new Set((String(previous.description || "").match(/https?:\/\/[^\s)<>]+/g) || []).map((link) => link.replace(/[.,;]+$/, "")));
