@@ -184,17 +184,17 @@ function ProjectActivityFeed({ folderId, lists, fixedListId }: { folderId: strin
   }), [activities, dateFilter, typeFilter]);
 
   return <section aria-label="Project activity" className="border border-slate-200 bg-white">
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
       <div><h2 className="flex items-center gap-2 text-sm font-semibold text-[#003366]"><Activity className="h-4 w-4" />Activity</h2><p className="mt-0.5 text-[10px] text-slate-500">Recent changes across project workspaces</p></div>
-      <div className="flex flex-wrap items-center gap-2">
-        {!fixedListId && <select aria-label="Filter activity by subproject" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs text-[#003366]"><option value="all">All subprojects</option>{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select>}
-        <label className="relative inline-flex h-9 min-w-[170px] cursor-pointer items-center justify-between gap-3 border border-slate-300 bg-white px-3 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-within:outline focus-within:outline-2 focus-within:outline-[#003366]">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {!fixedListId && <select aria-label="Filter activity by subproject" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-8 w-[190px] max-w-full border border-slate-200 bg-white px-2 text-[11px] text-[#003366]"><option value="all">All subprojects</option>{lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}</select>}
+        <label className="relative inline-flex h-9 min-w-[190px] cursor-pointer items-center justify-between gap-3 border border-slate-300 bg-white px-3 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-within:outline focus-within:outline-2 focus-within:outline-[#003366]">
           <span>{dateFilter ? new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${dateFilter}T12:00:00`)) : "All dates"}</span>
           <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
           <input aria-label="Filter activity by date" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
         </label>
-        <select aria-label="Filter activity by type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-9 border border-slate-200 bg-white px-2 text-xs text-[#003366]"><option value="all">All activity types</option>{activityTypes.map((type) => <option key={type} value={type}>{activityTypeLabel(type)}</option>)}</select>
-        <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex h-9 items-center gap-1.5 border border-slate-300 px-2.5 text-[10px] font-semibold text-[#003366] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</button>
+        <select aria-label="Filter activity by type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-8 w-[155px] max-w-full border border-slate-200 bg-white px-2 text-[11px] text-[#003366]"><option value="all">All activity types</option>{activityTypes.map((type) => <option key={type} value={type}>{activityTypeLabel(type)}</option>)}</select>
+        <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex h-8 items-center gap-1 border border-slate-300 px-2 text-[10px] font-semibold text-[#003366] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</button>
       </div>
     </header>
     {error ? <div role="alert" className="m-4 border border-amber-300 bg-[#FBF7E9] px-3 py-3 text-xs text-[#003366]">{error}<p className="mt-1 text-[10px]">Set up the activity table using <code>supabase/project_activity.sql</code>.</p></div>
