@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   ExternalLink,
   FolderKanban,
@@ -225,25 +226,78 @@ function EmptyState({ hasLists }: { hasLists: boolean }) {
   );
 }
 
-function TaskRow({ task }: { task: ProjectTask }) {
-  const content = <>
-    <span className="min-w-0 flex-1">
-      <span className={`block truncate text-sm font-semibold ${task.parentId ? "pl-5 text-slate-700" : "text-[#003366]"}`}>
-        {task.parentId && <span aria-hidden="true" className="mr-2 text-slate-400">↳</span>}{task.name}
-      </span>
-      <span className="mt-1 block truncate text-[11px] text-slate-500">{owners(task)}</span>
-    </span>
-    <span className={`shrink-0 border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusStyle(task)}`}>{task.status}</span>
-    <span className="hidden w-32 shrink-0 text-right text-xs text-slate-600 sm:block">{formatDate(task.dueDate)}</span>
-  </>;
+interface TaskTreeNode { task: ProjectTask; children: TaskTreeNode[] }
 
-  return task.url ? (
-    <a href={task.url} target="_blank" rel="noreferrer" className="flex min-h-16 items-center gap-3 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">
-      {content}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-    </a>
-  ) : <div className="flex min-h-16 items-center gap-3 border-b border-slate-100 px-4 py-3">{content}</div>;
+function taskTree(tasks: ProjectTask[]): TaskTreeNode[] {
+  const ids = new Set(tasks.map((task) => task.id));
+  const order = new Map(tasks.map((task, index) => [task.id, index]));
+  const children = new Map<string, ProjectTask[]>();
+  const roots: ProjectTask[] = [];
+  for (const task of tasks) {
+    if (task.parentId && ids.has(task.parentId)) children.set(task.parentId, [...(children.get(task.parentId) || []), task]);
+    else roots.push(task);
+  }
+  const visited = new Set<string>();
+  const build = (task: ProjectTask): TaskTreeNode | null => {
+    if (visited.has(task.id)) return null;
+    visited.add(task.id);
+    const orderedChildren = (children.get(task.id) || []).slice().sort((a, b) => (order.get(a.id) || 0) - (order.get(b.id) || 0));
+    return { task, children: orderedChildren.map(build).filter((node): node is TaskTreeNode => node !== null) };
+  };
+  const tree = roots.map(build).filter((node): node is TaskTreeNode => node !== null);
+  for (const task of tasks) if (!visited.has(task.id)) { const node = build(task); if (node) tree.push(node); }
+  const phaseOrder = (name: string) => {
+    if (/project brief|site sourcing/i.test(name)) return 0;
+    if (/site negotiation|due diligence/i.test(name)) return 1;
+    if (/site documentation/i.test(name)) return 2;
+    return 3;
+  };
+  return tree
+    .map((node, index) => ({ node, index }))
+    .sort((a, b) => phaseOrder(a.node.task.name) - phaseOrder(b.node.task.name) || a.index - b.index)
+    .map(({ node }) => node);
 }
 
+function TaskRow({ task, depth = 0 }: { task: ProjectTask; depth?: number }) {
+  const content = <>
+    <span className="min-w-0 flex-1"><span className={`block truncate text-[13px] font-medium ${depth ? "text-slate-700" : "text-[#003366]"}`}>{task.name}</span><span className="mt-1 block truncate text-[10px] text-slate-500">{owners(task)}</span></span>
+    <span className={`shrink-0 border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${statusStyle(task)}`}>{task.status}</span>
+    <span className="hidden w-28 shrink-0 text-right text-[11px] text-slate-600 sm:block">{formatDate(task.dueDate)}</span>
+  </>;
+  return task.url ? <a href={task.url} target="_blank" rel="noreferrer" className="flex min-h-12 items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0 transition-colors hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">{content}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400" /></a> : <div className="flex min-h-12 items-center gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">{content}</div>;
+}
+
+function TaskHierarchy({ tasks }: { tasks: ProjectTask[] }) {
+  const tree = useMemo(() => taskTree(tasks), [tasks]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => setCollapsed((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const renderNode = (node: TaskTreeNode, depth: number, phaseIndex: number): ReactNode => {
+    const { task, children } = node;
+    if (!children.length) return <TaskRow key={task.id} task={task} depth={depth} />;
+    const phase = depth === 0, isCollapsed = collapsed.has(task.id);
+    const descendants: ProjectTask[] = [];
+    const collect = (child: TaskTreeNode) => { descendants.push(child.task); child.children.forEach(collect); };
+    children.forEach(collect);
+    const complete = descendants.filter(isComplete).length;
+    return <section key={task.id} className={phase ? "overflow-hidden border border-slate-200 bg-white shadow-[0_2px_8px_rgba(0,51,102,0.04)]" : "relative ml-3 border-l-2 border-[#D9E3EC] pl-3 sm:ml-5 sm:pl-4"}>
+      <button type="button" aria-expanded={!isCollapsed} onClick={() => toggle(task.id)} className={`flex w-full items-center gap-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#003366] ${phase ? "min-h-[66px] bg-[#F7FAFC] px-4 py-3 hover:bg-[#F2F6F9]" : "min-h-12 px-2 py-2 hover:bg-[#F7FAFC]"}`}>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center ${phase ? "bg-[#003366] text-white" : "bg-white text-[#31577D] ring-1 ring-slate-200"}`}><ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} /></span>
+        <span className="min-w-0 flex-1">{phase && <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.16em] text-[#A98611]">Phase {phaseIndex + 1}</span>}<span className={`block truncate ${phase ? "text-sm font-bold text-[#003366] sm:text-[15px]" : "text-[13px] font-semibold text-[#21486D]"}`}>{task.name}</span></span>
+        {/conditional/i.test(task.name) && <span className="hidden border border-[#E6D49A] bg-[#FBF7E9] px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[#725900] sm:inline">Conditional</span>}
+        <span className="shrink-0 text-right text-[10px] text-slate-500"><span className="block font-semibold tabular-nums text-[#31577D]">{complete} / {descendants.length}</span><span className="hidden sm:block">complete</span></span>
+      </button>
+      {phase && <div className="flex h-1 bg-slate-100"><div className="bg-[#C9A84C]" style={{ width: `${descendants.length ? Math.round(complete / descendants.length * 100) : 0}%` }} /></div>}
+      {!isCollapsed && <div className={phase ? "space-y-1 px-3 py-3 sm:px-5 sm:py-4" : "pb-2"}>{children.map((child, index) => renderNode(child, depth + 1, index))}</div>}
+    </section>;
+  };
+  return <div className="space-y-3">{tree.map((node, index) => renderNode(node, 0, index))}</div>;
+}
+function LoadingSkeleton({ variant }: { variant: "gallery" | "project" | "subproject" }) {
+  const bar = (className: string) => <span aria-hidden="true" className={`block animate-pulse bg-slate-200 ${className}`} />;
+  if (variant === "gallery") return <div role="status" aria-label="Loading projects" className="space-y-4" aria-busy="true"><span className="sr-only">Loading projects</span><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="min-h-40 border border-slate-200 bg-white p-4"><div className="flex items-start justify-between">{bar("h-9 w-9")}{bar("h-4 w-4")}</div>{bar("mt-4 h-5 w-3/5")}{bar("mt-2 h-3 w-2/5")}{bar("mt-7 h-3 w-1/3")}</div>)}</div></div>;
+  const isProject = variant === "project";
+  return <div role="status" aria-label={isProject ? "Loading project workspace" : "Loading subproject workspace"} className="space-y-3" aria-busy="true"><span className="sr-only">{isProject ? "Loading project workspace" : "Loading subproject workspace"}</span><div aria-hidden="true" className="border border-slate-200 bg-white p-4">{bar("h-3 w-28")}{bar("mt-3 h-7 w-2/5")}</div>{isProject && <div aria-hidden="true" className="flex gap-3 border-b border-slate-200 py-2">{bar("h-8 w-20")}{bar("h-8 w-20")}</div>}<div aria-hidden="true" className="grid gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-4">{bar("h-3 w-2/5")}{bar("mt-3 h-6 w-3/4")}{bar("mt-4 h-2 w-full")}{bar("mt-3 h-3 w-1/2")}</div>)}</div>{isProject ? <div aria-hidden="true" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-3">{bar("h-4 w-3/4")}{bar("mt-3 h-2 w-full")}{bar("mt-3 h-3 w-2/5")}</div>)}</div> : <div aria-hidden="true" className="space-y-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-4"><div className="flex items-center gap-3">{bar("h-7 w-7")}{bar("h-4 w-2/5")}{bar("ml-auto h-4 w-16")}</div>{bar("mt-4 h-2 w-full")}{bar("mt-4 h-10 w-full")}</div>)}</div>}</div>;
+}
 function ProjectGallery({ projects, selectedProjectIds, loading, error, savingSelection, onRefresh, onOpen, onSaveSelection }: {
   projects: ProjectCardData[];
   selectedProjectIds: string[];
@@ -315,7 +369,7 @@ function ProjectGallery({ projects, selectedProjectIds, loading, error, savingSe
       <button ref={pickerTriggerRef} type="button" onClick={openPicker} className="inline-flex min-h-8 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-[#003366] transition-colors hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><FolderKanban aria-hidden="true" className="h-3.5 w-3.5" />Choose folders</button>
       <ProjectActionButton onClick={onRefresh} disabled={loading}><RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</ProjectActionButton>
     </>} />
-    {loading && !projects.length ? <div role="status" className="flex min-h-52 items-center justify-center gap-3 text-sm text-slate-600"><LoaderCircle className="h-5 w-5 animate-spin text-[#003366]" />Loading project folders from ClickUp</div>
+    {loading && !projects.length ? <LoadingSkeleton variant="gallery" />
       : error && !projects.length ? <div role="alert" className="border border-amber-300 bg-white p-5"><p className="text-sm font-semibold text-[#003366]">Project folders could not be loaded</p><p className="mt-1 text-sm text-slate-600">{error}</p><button type="button" onClick={onRefresh} className="mt-3 min-h-11 border border-[#003366] px-3 text-xs font-semibold text-[#003366]">Try again</button></div>
         : includedProjects.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{includedProjects.map((project) => <button key={project.id} type="button" onClick={() => onOpen(project)} className="group min-h-40 border border-slate-200 bg-white p-4 text-left transition-colors hover:border-[#C9A84C] hover:bg-[#FFFCFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><div className="flex h-full flex-col"><div className="flex items-start justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderKanban aria-hidden="true" className="h-4 w-4" /></span><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-slate-400 transition-colors group-hover:text-[#003366]" /></div><span className="mt-4 text-base font-semibold text-[#003366]">{project.name}</span><span className="mt-1 text-xs text-slate-500">{project.listCount} subproject{project.listCount === 1 ? "" : "s"}</span><span className="mt-auto pt-4 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">Open project</span></div></button>)}</div>
           : <div className="border border-dashed border-slate-300 bg-white px-5 py-12 text-center"><FolderKanban aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">Choose which folders are projects</h2><p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Only folders you select will appear in this shared project gallery.</p><button type="button" onClick={openPicker} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-3 text-xs font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]">Choose folders</button></div>}
@@ -329,8 +383,60 @@ function ProjectGallery({ projects, selectedProjectIds, loading, error, savingSe
   </section>;
 }
 
-function SubprojectWorkspace({ rootName, folderUrl, list, tasks, members, defaultAssignees, onAssign, savingAssignees, onBack, onRefresh }: {
-  rootName: string;
+function projectStage(name: string) {
+  if (/site sourcing|project brief/i.test(name)) return "Site Sourcing";
+  if (/site negotiation|due diligence/i.test(name)) return "Site Negotiation";
+  if (/site documentation/i.test(name)) return "Site Documentation";
+  return null;
+}
+
+function SubprojectStatusCards({ folderId, listId, tasks }: { folderId: string; listId: string; tasks: ProjectTask[] }) {
+  const [actionPlan, setActionPlan] = useState("");
+  const [savedPlan, setSavedPlan] = useState("");
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planError, setPlanError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  const stages = useMemo(() => taskTree(tasks).map((node) => {
+    const leaves = (item: TaskTreeNode): ProjectTask[] => item.children.length ? item.children.flatMap(leaves) : [item.task];
+    return { name: projectStage(node.task.name), tasks: leaves(node) };
+  }).filter((stage): stage is { name: string; tasks: ProjectTask[] } => Boolean(stage.name)), [tasks]);
+  const unfinishedStage = stages.findIndex((stage) => stage.tasks.some((task) => !isComplete(task)));
+  const currentStageIndex = unfinishedStage < 0 ? Math.max(0, stages.length - 1) : unfinishedStage;
+  const currentStage = stages[currentStageIndex];
+  const completedCount = currentStage?.tasks.filter(isComplete).length || 0;
+
+  useEffect(() => {
+    let active = true;
+    setLoadingPlan(true);
+    fetch(`/api/tasks?action=project-action-plan&folderId=${encodeURIComponent(folderId)}&listId=${encodeURIComponent(listId)}`, { cache: "no-store" })
+      .then(async (response) => { const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || "Could not load the action plan."); if (active) { setActionPlan(String(payload.actionPlan || "")); setSavedPlan(String(payload.actionPlan || "")); setPlanError(""); } })
+      .catch((error: unknown) => { if (active) setPlanError(error instanceof Error ? error.message : "Could not load the action plan."); })
+      .finally(() => { if (active) setLoadingPlan(false); });
+    return () => { active = false; };
+  }, [folderId, listId]);
+
+  const saveActionPlan = async () => {
+    setSavingPlan(true); setPlanError(""); setSaveMessage("");
+    try {
+      const response = await fetch("/api/tasks?action=project-action-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId, actionPlan }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Could not save the action plan.");
+      setActionPlan(actionPlan.trim()); setSavedPlan(actionPlan.trim()); setSaveMessage("Saved");
+    } catch (error) { setPlanError(error instanceof Error ? error.message : "Could not save the action plan."); }
+    finally { setSavingPlan(false); }
+  };
+
+  const stageNames = ["Site Sourcing", "Site Negotiation", "Site Documentation"];
+  return <section aria-label="Subproject status" className="grid gap-3 lg:grid-cols-[minmax(220px,0.9fr)_minmax(210px,0.8fr)_minmax(320px,1.5fr)]">
+    <article className="flex min-h-28 flex-col justify-center border border-slate-200 bg-white px-4 py-4 sm:px-5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Current stage</p><h2 className="mt-2 text-lg font-semibold text-[#003366]">{currentStage?.name || "Not started"}</h2></article>
+    <article className="border border-slate-200 bg-white p-4 sm:p-5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Stage tasks completed</p><p className="mt-3 text-3xl font-semibold tabular-nums text-[#003366]">{completedCount}<span className="text-lg font-normal text-slate-400"> / {currentStage?.tasks.length || 0}</span></p><p className="mt-2 text-xs text-slate-500">{currentStage?.name || "Current stage"}</p><div className="mt-4 h-1.5 bg-slate-100"><div className="h-full bg-[#C9A84C]" style={{ width: `${currentStage?.tasks.length ? Math.round(completedCount / currentStage.tasks.length * 100) : 0}%` }} /></div></article>
+    <article className="border border-slate-200 bg-white p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Action plan</p><p className="mt-1 text-[11px] text-slate-500">Briefly describe the current project status.</p></div>{saveMessage && savedPlan === actionPlan.trim() && <span role="status" className="text-[10px] font-semibold text-emerald-700">{saveMessage}</span>}</div><textarea aria-label="Action plan" value={actionPlan} onChange={(event) => { setActionPlan(event.target.value); setSaveMessage(""); }} disabled={loadingPlan} maxLength={2000} rows={2} placeholder={loadingPlan ? "Loading action plan…" : "Current status and next step"} className="mt-3 min-h-16 w-full resize-y border border-slate-200 px-3 py-2 text-xs leading-5 text-[#003366] placeholder:text-slate-400 focus:border-[#003366] focus:outline-none disabled:bg-slate-50" />{planError && <p role="alert" className="mt-1 text-[10px] text-red-700">{planError}</p>}<div className="mt-2 flex items-center justify-between gap-3"><span className="text-[10px] text-slate-400">{actionPlan.length} / 2,000</span><button type="button" onClick={() => void saveActionPlan()} disabled={loadingPlan || savingPlan || actionPlan.trim() === savedPlan.trim()} className="min-h-8 border border-[#003366] bg-[#003366] px-3 text-[10px] font-semibold text-white hover:bg-[#174778] disabled:cursor-not-allowed disabled:opacity-50">{savingPlan ? "Saving…" : "Save action plan"}</button></div></article>
+  </section>;
+}
+
+function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaultAssignees, onAssign, savingAssignees, onBack, onRefresh }: {
+  folderId: string;
   folderUrl: string;
   list: ProjectList;
   tasks: ProjectTask[];
@@ -342,14 +448,12 @@ function SubprojectWorkspace({ rootName, folderUrl, list, tasks, members, defaul
   onRefresh: () => void;
 }) {
   const [view, setView] = useState<"tasks" | "calendar" | "schedule">("tasks");
-  const upcoming = tasks.filter((task) => task.dueDate && !isComplete(task)).slice().sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 4);
   const scheduled = tasks.filter((task) => task.startDate || task.dueDate);
-  const done = tasks.filter(isComplete).length;
   const dateValues = scheduled.flatMap((task) => [task.startDate, task.dueDate]).filter((value): value is string => Boolean(value)).map((value) => new Date(value).getTime()).filter(Number.isFinite);
   const minDate = dateValues.length ? Math.min(...dateValues) : 0;
   const maxDate = dateValues.length ? Math.max(...dateValues) : 0;
   const span = Math.max(86400000, maxDate - minDate);
-  const tabs = [{ id: "tasks", label: "Tasks" }, { id: "calendar", label: "Calendar" }, { id: "schedule", label: "Schedule" }] as const;
+  const tabs = [{ id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }, { id: "schedule", label: "Schedule" }] as const;
 
   const assignedMembers = defaultAssignees.map((id) => members.find((member) => member.id === id)).filter((member): member is ProjectMember => Boolean(member));
 
@@ -358,9 +462,9 @@ function SubprojectWorkspace({ rootName, folderUrl, list, tasks, members, defaul
       <div className="inline-flex h-8 items-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366]" aria-label="Subproject lead"><MemberAvatars members={assignedMembers} emptyLabel="Lead"/><select aria-label="Assign subproject lead" value={defaultAssignees[0] || ""} onChange={(event) => onAssign(event.target.value ? [event.target.value] : [])} disabled={savingAssignees} className="h-full max-w-32 bg-transparent text-[11px] font-semibold text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><option value="">{savingAssignees ? "Saving…" : "Set lead"}</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
       <ProjectActionButton onClick={onRefresh} disabled={savingAssignees} label="Refresh subproject"><RefreshCw aria-hidden="true" className="h-4 w-4" /></ProjectActionButton>
       <ClickUpLink href={list.url || folderUrl} label="Open subproject in ClickUp" />    </>} />
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3"><Metric label="Work items" value={String(tasks.length)} icon={<ListTodo className="h-4 w-4 text-[#31577D]" />} /><Metric label="Completed" value={`${done} / ${tasks.length}`} icon={<CheckCircle2 className="h-4 w-4 text-[#31577D]" />} /><Metric label="Upcoming due" value={String(upcoming.length)} icon={<Clock3 className="h-4 w-4 text-[#31577D]" />} /></div>
+    <SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} />
     <div role="tablist" aria-label={`${list.name} workspace views`} className="flex border-b border-slate-200">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`min-h-11 border-b-2 px-4 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}</button>)}</div>
-    {view === "tasks" ? tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Tasks</h2><span className="text-[10px] text-slate-500">{tasks.length} items</span></header>{tasks.map((task) => <TaskRow key={task.id} task={task} />)}</section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
+    {view === "tasks" ? tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy tasks={tasks} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
       : view === "calendar" ? <CalendarView tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onRefresh={onRefresh} />
          : scheduled.length ? <section className="border border-slate-200 bg-white"><header className="border-b border-slate-100 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Schedule</h2><p className="mt-1 text-xs text-slate-500">Tasks with start or due dates in this subproject.</p></header>{scheduled.map((task) => { const start = new Date(task.startDate || task.dueDate!).getTime(); const end = new Date(task.dueDate || task.startDate!).getTime(); const left = Math.max(0, Math.min(100, ((Math.min(start, end) - minDate) / span) * 100)); const width = Math.max(2, Math.min(100 - left, (Math.max(86400000, Math.abs(end - start)) / span) * 100)); return <div key={task.id} className="grid min-h-14 grid-cols-1 items-center gap-2 border-b border-slate-100 px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(150px,0.8fr)_minmax(180px,2fr)] sm:gap-3"><div className="min-w-0"><p className="truncate text-xs font-semibold text-[#003366]">{task.name}</p><p className="mt-1 truncate text-[10px] text-slate-500">{formatDate(task.startDate || task.dueDate)} to {formatDate(task.dueDate || task.startDate)}</p></div><div className="relative h-5 bg-[#F7FAFC]"><span className={`absolute top-0 h-5 ${isComplete(task) ? "bg-emerald-600" : "bg-[#31577D]"}`} style={{ left: `${left}%`, width: `${width}%` }} /></div></div>; })}</section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No scheduled tasks yet</h2><p className="mt-1 text-xs text-slate-600">Add a start or due date to a task to see it on this schedule.</p></div>}
   </section>;
@@ -572,8 +676,8 @@ export function ProjectWorkspace() {
 
   const activeList = data?.lists.find((list) => list.id === activeListId);
   if (screen === "subproject") {
-    if (data && activeList) return <SubprojectWorkspace rootName={data.folder.name} folderUrl={data.folder.url} list={activeList} tasks={tasksByList.get(activeList.id) || []} members={data.members} defaultAssignees={data.defaultAssignees[activeList.id] || []} onAssign={(ids) => void saveDefaultAssignees(activeList.id, ids)} savingAssignees={savingAssigneeListId === activeList.id} onBack={() => router.push(`/projects/${routeSegment(data.folder.name, data.folder.id, projects)}`)} onRefresh={refreshProject} />;
-    return <div role="status" className="flex min-h-52 items-center justify-center gap-3 text-sm text-slate-600"><LoaderCircle className="h-5 w-5 animate-spin text-[#003366]" />Loading subproject</div>;
+    if (data && activeList) return <SubprojectWorkspace folderId={data.folder.id} folderUrl={data.folder.url} list={activeList} tasks={tasksByList.get(activeList.id) || []} members={data.members} defaultAssignees={data.defaultAssignees[activeList.id] || []} onAssign={(ids) => void saveDefaultAssignees(activeList.id, ids)} savingAssignees={savingAssigneeListId === activeList.id} onBack={() => router.push(`/projects/${routeSegment(data.folder.name, data.folder.id, projects)}`)} onRefresh={refreshProject} />;
+    return <section className="mx-auto w-full max-w-[1440px] space-y-3 pb-8"><LoadingSkeleton variant="subproject" /></section>;
   }
 
   return (
@@ -585,7 +689,7 @@ export function ProjectWorkspace() {
       <div role="tablist" aria-label={`${data?.folder.name || "Project"} workspace views`} className="flex border-b border-slate-200">
         {([{ id: "overview", label: "Overview" }, { id: "calendar", label: "Calendar" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`inline-flex min-h-9 items-center gap-2 border-b-2 px-3 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.id === "calendar" && <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" />}{tab.label}</button>)}
       </div>
-      {loading && !data ? <div role="status" className="flex min-h-72 items-center justify-center gap-3 border border-slate-200 bg-white text-sm text-slate-600"><LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin text-[#003366]" />Loading project from ClickUp�</div>
+      {loading && !data ? <LoadingSkeleton variant="project" />
         : error ? <div role="alert" className="border border-amber-300 bg-[#FFFCFB] p-6"><h2 className="text-sm font-semibold text-[#003366]">Project data could not be loaded</h2><p className="mt-2 text-sm leading-6 text-slate-700">{error}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={refreshProject} className="inline-flex min-h-11 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]">Try again <RefreshCw aria-hidden="true" className="h-4 w-4" /></button><a href="/api/auth/login" className="inline-flex min-h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-xs font-semibold text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">Sign in with ClickUp <ArrowUpRight aria-hidden="true" className="h-4 w-4" /></a></div></div>
         : data && view === "overview" ? <section aria-label="Subprojects" className="border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Subprojects</h2><p className="mt-0.5 text-[11px] text-slate-500">Open a subproject workspace to see its tasks and team schedule.</p></div>
