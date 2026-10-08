@@ -39,6 +39,10 @@ interface ProjectTask {
   statusType: string;
   statusColor?: string | null;
   description?: string;
+  actionPlan?: string;
+  actionPlanFieldAvailable?: boolean;
+  dateCreated?: string | null;
+  dateUpdated?: string | null;
   startDate: string | null;
   dueDate: string | null;
   assignees: Array<{ id: string; name: string; initials: string; profilePicture?: string | null }>;
@@ -593,10 +597,10 @@ function projectStage(name: string) {
   return null;
 }
 
-function SubprojectStatusCards({ folderId, listId, tasks }: { folderId: string; listId: string; tasks: ProjectTask[] }) {
+function SubprojectStatusCards({ folderId, listId, tasks, tasksLoading, onTaskChange }: { folderId: string; listId: string; tasks: ProjectTask[]; tasksLoading: boolean; onTaskChange: (task: ProjectTask) => void }) {
   const [actionPlan, setActionPlan] = useState("");
   const [savedPlan, setSavedPlan] = useState("");
-  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [selectedPlanTaskId, setSelectedPlanTaskId] = useState("");
   const [savingPlan, setSavingPlan] = useState(false);
   const [planError, setPlanError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
@@ -609,31 +613,42 @@ function SubprojectStatusCards({ folderId, listId, tasks }: { folderId: string; 
   const currentStageIndex = unfinishedStage < 0 ? Math.max(0, stages.length - 1) : unfinishedStage;
   const currentStage = stages[currentStageIndex];
   const completedCount = currentStage?.tasks.filter(isComplete).length || 0;
+  const pendingPlanTasks = useMemo(() => tasks
+    .filter((task) => !isComplete(task) && task.actionPlanFieldAvailable)
+    .sort((left, right) => (Date.parse(right.dateUpdated || right.dateCreated || "") || 0) - (Date.parse(left.dateUpdated || left.dateCreated || "") || 0) || left.name.localeCompare(right.name)), [tasks]);
+  const selectedPlanTask = pendingPlanTasks.find((task) => task.id === selectedPlanTaskId) || null;
 
   useEffect(() => {
-    let active = true;
-    setLoadingPlan(true);
-    fetch(`/api/tasks?action=project-action-plan&folderId=${encodeURIComponent(folderId)}&listId=${encodeURIComponent(listId)}`, { cache: "no-store" })
-      .then(async (response) => { const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || "Could not load the action plan."); if (active) { setActionPlan(String(payload.actionPlan || "")); setSavedPlan(String(payload.actionPlan || "")); setUpdatedAt(null); setPlanError(""); } })
-      .catch((error: unknown) => { if (active) setPlanError(error instanceof Error ? error.message : "Could not load the action plan."); })
-      .finally(() => { if (active) setLoadingPlan(false); });
-    return () => { active = false; };
-  }, [folderId, listId]);
+    if (!pendingPlanTasks.some((task) => task.id === selectedPlanTaskId)) setSelectedPlanTaskId(pendingPlanTasks[0]?.id || "");
+  }, [pendingPlanTasks, selectedPlanTaskId]);
+
+  useEffect(() => {
+    setActionPlan(selectedPlanTask?.actionPlan || "");
+    setSavedPlan(selectedPlanTask?.actionPlan || "");
+    setUpdatedAt(null);
+    setPlanError("");
+  }, [selectedPlanTask?.id]);
 
   const saveActionPlan = async () => {
+    if (!selectedPlanTask) return;
     setSavingPlan(true); setPlanError(""); setSaveMessage("");
     try {
-      const response = await fetch("/api/tasks?action=project-action-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId, actionPlan }) });
+      const response = await fetch("/api/tasks?action=project-action-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folderId, listId, taskId: selectedPlanTask.id, taskName: selectedPlanTask.name, taskUrl: selectedPlanTask.url, actionPlan }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Could not save the action plan.");
       setActionPlan(actionPlan.trim()); setSavedPlan(actionPlan.trim()); setUpdatedAt(new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" })); setSaveMessage("Saved");
+      onTaskChange({ ...selectedPlanTask, actionPlan: actionPlan.trim() });
     } catch (error) { setPlanError(error instanceof Error ? error.message : "Could not save the action plan."); }
     finally { setSavingPlan(false); }
   };
 
-  const stageNames = ["Site Sourcing", "Site Negotiation", "Site Documentation"];
   return <section aria-label="Subproject status" className="grid gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,2fr)]">
-    <article className="border border-slate-200 bg-white px-4 py-4 sm:px-5"><div className="min-h-[42px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Current stage</p></div><h2 className="mt-1 text-2xl font-semibold text-[#003366]">{currentStage?.name || "Not started"}</h2><div className="mt-4 flex items-baseline gap-1.5"><span className="text-2xl font-semibold tabular-nums text-[#003366]">{completedCount}</span><span className="text-sm tabular-nums text-slate-500">/ {currentStage?.tasks.length || 0} tasks completed</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-[#C9A84C]" style={{ width: `${currentStage?.tasks.length ? Math.round(completedCount / currentStage.tasks.length * 100) : 0}%` }} /></div></article>    <article className="border border-slate-200 bg-white p-4 sm:p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Action plan</p><p className="mt-1 text-[11px] text-slate-500">Briefly describe the current project status.</p></div><div className="flex shrink-0 items-center gap-3">{updatedAt && savedPlan === actionPlan.trim() && <span role="status" className="text-[10px] text-slate-500">Updated as of {updatedAt}</span>}<button type="button" onClick={() => void saveActionPlan()} disabled={loadingPlan || savingPlan || actionPlan.trim() === savedPlan.trim()} className="min-h-8 border border-[#003366] bg-[#003366] px-3 text-[10px] font-semibold text-white hover:bg-[#174778] disabled:cursor-not-allowed disabled:opacity-50">{savingPlan ? "Saving…" : "Save action plan"}</button></div></div><textarea aria-label="Action plan" value={actionPlan} onChange={(event) => { setActionPlan(event.target.value); setSaveMessage(""); }} disabled={loadingPlan} maxLength={2000} rows={4} placeholder={loadingPlan ? "Loading action plan…" : "Current status and next step"} className="mt-3 min-h-28 w-full resize-y border border-slate-200 px-3 py-2 text-xs leading-5 text-[#003366] placeholder:text-slate-400 focus:border-[#003366] focus:outline-none disabled:bg-slate-50" />{planError && <p role="alert" className="mt-1 text-[10px] text-red-700">{planError}</p>}</article>
+    <article className="border border-slate-200 bg-white px-4 py-4 sm:px-5"><div className="min-h-[42px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Current stage</p></div><h2 className="mt-1 text-2xl font-semibold text-[#003366]">{currentStage?.name || "Not started"}</h2><div className="mt-4 flex items-baseline gap-1.5"><span className="text-2xl font-semibold tabular-nums text-[#003366]">{completedCount}</span><span className="text-sm tabular-nums text-slate-500">/ {currentStage?.tasks.length || 0} tasks completed</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-[#C9A84C]" style={{ width: `${currentStage?.tasks.length ? Math.round(completedCount / currentStage.tasks.length * 100) : 0}%` }} /></div></article>
+    <article className="border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#31577D]">Action plan</p><p className="mt-1 text-[11px] text-slate-500">Briefly describe the current project status.</p></div><div className="flex shrink-0 items-center gap-3">{updatedAt && savedPlan === actionPlan.trim() && <span role="status" className="text-[10px] text-slate-500">Updated as of {updatedAt}</span>}<button type="button" onClick={() => void saveActionPlan()} disabled={tasksLoading || savingPlan || !selectedPlanTask || actionPlan.trim() === savedPlan.trim()} className="min-h-8 border border-[#003366] bg-[#003366] px-3 text-[10px] font-semibold text-white hover:bg-[#174778] disabled:cursor-not-allowed disabled:opacity-50">{savingPlan ? "Saving…" : "Save action plan"}</button></div></div>
+      <label className="mt-3 block"><span className="mb-1 block text-[10px] font-semibold text-slate-600">Pending task</span><select aria-label="Pending task for action plan" value={selectedPlanTask?.id || ""} onChange={(event) => setSelectedPlanTaskId(event.target.value)} disabled={tasksLoading || pendingPlanTasks.length === 0} className="h-9 w-full border border-slate-200 bg-white px-2 text-xs text-[#003366] disabled:bg-slate-50"><option value="">{tasksLoading ? "Loading pending tasks…" : pendingPlanTasks.length ? "Select a pending task" : "No pending tasks with an Action Plan field"}</option>{pendingPlanTasks.map((task) => <option key={task.id} value={task.id}>{task.name} · {task.status}</option>)}</select></label>
+      <textarea aria-label="Action plan" value={actionPlan} onChange={(event) => { setActionPlan(event.target.value); setSaveMessage(""); }} disabled={tasksLoading || !selectedPlanTask} maxLength={2000} rows={4} placeholder={!selectedPlanTask ? "Choose a pending task to load its action plan" : "Current status and next step"} className="mt-3 min-h-28 w-full resize-y border border-slate-200 px-3 py-2 text-xs leading-5 text-[#003366] placeholder:text-slate-400 focus:border-[#003366] focus:outline-none disabled:bg-slate-50" />{planError && <p role="alert" className="mt-1 text-[10px] text-red-700">{planError}</p>}
+    </article>
   </section>;
 }
 
@@ -663,7 +678,7 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
       <ProjectActionButton onClick={onRefresh} disabled={savingAssignees} label="Refresh subproject"><RefreshCw aria-hidden="true" className="h-4 w-4" /></ProjectActionButton>
       <ClickUpLink href={list.url || folderUrl} label="Open subproject in ClickUp" />    </>} />
     {assigneeSyncMessage && <p role="status" className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{assigneeSyncMessage}</p>}
-    <SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} />
+    <SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} tasksLoading={tasksLoading} onTaskChange={onTaskChange} />
     <div role="tablist" aria-label={`${list.name} workspace views`} className="flex border-b border-slate-200">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`min-h-11 border-b-2 px-4 text-xs font-semibold ${view === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}</button>)}</div>
     {view === "tasks" ? tasksLoading ? <section className="space-y-2 border border-slate-200 bg-white p-4" role="status"><span className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading Timeline tasks from ClickUp</span>{[0, 1, 2].map((row) => <div key={row} className="h-11 animate-pulse border border-slate-100 bg-slate-50" />)}</section> : tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy folderId={folderId} listName={list.name} tasks={tasks} statuses={list.statuses || Array.from(new Set(tasks.map((task) => task.status)))} onTaskChange={onTaskChange} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
       : view === "calendar" ? <CalendarView folderId={folderId} tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onTaskChange={onTaskChange} />

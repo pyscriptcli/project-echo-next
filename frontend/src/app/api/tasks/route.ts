@@ -31,11 +31,15 @@ function clickUpDate(value: unknown): string | null {
 }
 
 function serializeProjectTask(task: ClickUpProjectTask, listId: string): ClickUpProjectResponseTask {
+  const actionPlanField = task.custom_fields?.find((field) => String(field.name || "").trim().toLowerCase() === "action plan");
   return {
     id: String(task.id), name: String(task.name || "Untitled task"), url: typeof task.url === "string" ? task.url : null,
     parentId: task.parent ? String(task.parent) : null, listId,
     status: String(task.status?.status || "Open"), statusType: String(task.status?.type || ""), statusColor: typeof task.status?.color === "string" ? task.status.color : null,
     description: String(task.description_text || task.description || ""),
+    actionPlan: typeof actionPlanField?.value === "string" ? actionPlanField.value : "",
+    actionPlanFieldAvailable: Boolean(actionPlanField?.id),
+    dateCreated: clickUpDate(task.date_created), dateUpdated: clickUpDate(task.date_updated),
     startDate: clickUpDate(task.start_date), dueDate: clickUpDate(task.due_date),
     assignees: Array.isArray(task.assignees) ? task.assignees.map((assignee) => ({
       id: String(assignee.id), name: String(assignee.username || assignee.name || "Team member"),
@@ -72,6 +76,10 @@ interface ClickUpProjectTask {
   description_text?: string | null;
   url?: string;
   parent?: string | number | null;
+  date_created?: number | string | null;
+  date_updated?: number | string | null;
+  list?: { id?: number | string } | null;
+  custom_fields?: Array<{ id?: string | number; name?: string; type?: string; value?: unknown }>;
   status?: { status?: string; type?: string; color?: string } | null;
   start_date?: number | string | null;
   due_date?: number | string | null;
@@ -100,6 +108,10 @@ interface ClickUpProjectResponseTask {
   statusType: string;
   statusColor: string | null;
   description: string;
+  actionPlan: string;
+  actionPlanFieldAvailable: boolean;
+  dateCreated: string | null;
+  dateUpdated: string | null;
   startDate: string | null;
   dueDate: string | null;
   assignees: Array<{ id: string; name: string; initials: string; profilePicture?: string | null }>;
@@ -148,12 +160,13 @@ function readActionPlan(content: string) {
   return content.match(/<!-- PROJECT_ECHO_ACTION_PLAN_START -->\r?\n([\s\S]*?)\r?\n<!-- PROJECT_ECHO_ACTION_PLAN_END -->/)?.[1] || "";
 }
 
-function replaceActionPlan(content: string, actionPlan: string) {
-  const block = actionPlan ? `${ACTION_PLAN_START}\n${actionPlan.replace(/<!-- PROJECT_ECHO_ACTION_PLAN_(?:START|END) -->/g, "")}\n${ACTION_PLAN_END}` : "";
-  const start = content.indexOf(ACTION_PLAN_START);
-  const end = start < 0 ? -1 : content.indexOf(ACTION_PLAN_END, start);
-  const remainder = (start >= 0 && end >= 0 ? `${content.slice(0, start)}${content.slice(end + ACTION_PLAN_END.length)}` : content).trim();
-  return [remainder, block].filter(Boolean).join("\n\n");
+function findActionPlanField(task: ClickUpProjectTask) {
+  return task.custom_fields?.find((field) => String(field.name || "").trim().toLowerCase() === "action plan");
+}
+
+function customFieldText(value: unknown) {
+  if (typeof value === "string") return value;
+  return typeof value === "number" ? String(value) : "";
 }
 
 // User-specified workspace status categories
@@ -314,6 +327,17 @@ export async function GET(req: NextRequest) {
       const list = await response.json().catch(() => ({}));
       if (!response.ok) return NextResponse.json({ error: list.err || "Unable to load the subproject action plan." }, { status: response.status });
       if (String(list.folder?.id || "") !== folderId) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
+      const taskId = searchParams.get("taskId") || "";
+      if (taskId) {
+        if (!/^\d+$/.test(taskId)) return NextResponse.json({ error: "A valid task is required." }, { status: 400 });
+        const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${taskId}`);
+        const task = await taskResponse.json().catch(() => ({})) as ClickUpProjectTask;
+        if (!taskResponse.ok) return NextResponse.json({ error: task.name || "Unable to load the selected task." }, { status: taskResponse.status });
+        if (String(task.list?.id || "") !== subprojectListId) return NextResponse.json({ error: "The selected task does not belong to this subproject." }, { status: 403 });
+        const field = findActionPlanField(task);
+        if (!field?.id) return NextResponse.json({ error: "The selected task has no Action Plan field." }, { status: 404 });
+        return NextResponse.json({ actionPlan: customFieldText(field.value), taskId, actionPlanFieldAvailable: true }, { headers: { "Cache-Control": "no-store" } });
+      }
       return NextResponse.json({ actionPlan: readActionPlan(String(list.markdown_content || list.content || "")) }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -695,26 +719,34 @@ export async function POST(req: NextRequest) {
     if (action === "project-action-plan") {
       const folderId = String(body.folderId || "");
       const subprojectListId = String(body.listId || "");
+      const taskId = String(body.taskId || "");
       const actionPlan = String(body.actionPlan || "").trim();
       if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to save this action plan." }, { status: 401 });
       if (!/^\d+$/.test(folderId) || !/^\d+$/.test(subprojectListId)) return NextResponse.json({ error: "A valid project and subproject are required." }, { status: 400 });
+      if (!/^\d+$/.test(taskId)) return NextResponse.json({ error: "Choose a pending task for this action plan." }, { status: 400 });
       if (actionPlan.length > 2_000) return NextResponse.json({ error: "Keep the action plan under 2,000 characters." }, { status: 400 });
       const listUrl = `https://api.clickup.com/api/v2/list/${subprojectListId}`;
-      const currentResponse = await clickUpCalendarFetch(projectToken, listUrl);
-      const currentList = await currentResponse.json().catch(() => ({}));
-      if (!currentResponse.ok) return NextResponse.json({ error: currentList.err || "Unable to load the subproject description." }, { status: currentResponse.status });
+      const listResponse = await clickUpCalendarFetch(projectToken, listUrl);
+      const currentList = await listResponse.json().catch(() => ({}));
+      if (!listResponse.ok) return NextResponse.json({ error: currentList.err || "Unable to load the subproject." }, { status: listResponse.status });
       if (String(currentList.folder?.id || "") !== folderId) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
-      const currentContent = String(currentList.markdown_content || currentList.content || "");
-      const previousActionPlan = readActionPlan(currentContent).trim();
-      const markdown_content = replaceActionPlan(currentContent, actionPlan);
-      const response = await clickUpCalendarFetch(projectToken, listUrl, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markdown_content }) }, [`/list/${subprojectListId}`]);
+      const taskResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${taskId}`);
+      const task = await taskResponse.json().catch(() => ({})) as ClickUpProjectTask;
+      if (!taskResponse.ok) return NextResponse.json({ error: "Unable to load the selected task." }, { status: taskResponse.status });
+      if (String(task.list?.id || "") !== subprojectListId) return NextResponse.json({ error: "The selected task does not belong to this subproject." }, { status: 403 });
+      const actionPlanField = findActionPlanField(task);
+      if (!actionPlanField?.id) return NextResponse.json({ error: "The selected task has no Action Plan field." }, { status: 404 });
+      const previousActionPlan = customFieldText(actionPlanField.value).trim();
+      const response = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${taskId}/field/${actionPlanField.id}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value: actionPlan }),
+      }, [`/list/${subprojectListId}/task`, `/task/${taskId}`]);
       const result = await response.json().catch(() => ({}));
       if (!response.ok) return NextResponse.json({ error: result.err || result.error || "Unable to save the action plan." }, { status: response.status });
       if (previousActionPlan !== actionPlan) await recordProjectActivity(req, {
-        folderId, listId: subprojectListId, listName: String(currentList.name || "Subproject"), eventType: "action-plan-updated",
-        summary: "Updated the project action plan", details: { previous: previousActionPlan, current: actionPlan },
+        folderId, listId: subprojectListId, listName: String(currentList.name || "Subproject"), taskId, taskName: String(body.taskName || task.name || "Task"), taskUrl: String(body.taskUrl || task.url || ""), eventType: "action-plan-updated",
+        summary: `Updated the action plan for ${String(body.taskName || task.name || "a task")}`, details: { previous: previousActionPlan, current: actionPlan },
       });
-      return NextResponse.json({ success: true, actionPlan });
+      return NextResponse.json({ success: true, actionPlan, taskId });
     }
     if (action === "project-task-update" || action === "project-task-create") {
       if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to update this calendar." }, { status: 401 });
