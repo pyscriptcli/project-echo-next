@@ -20,20 +20,19 @@ import { NewDemandModal } from "./demands/NewDemandModal";
 import { EditDemandTrackingModal } from "./demands/EditDemandTrackingModal";
 import { DEMANDS_CLICKUP_LIST_ID, formatDemandClickUpTitle, formatDemandClickUpDescription } from "@/lib/demands/clickupSync";
 import { 
-  Building2, 
-  Table2, 
-  LayoutDashboard, 
+  Building2,
+  Table2,
+  LayoutDashboard,
   FolderArchive, 
   Plus, 
   Download, 
   Search, 
   Calendar, 
-  AlertCircle, 
-  ArrowUpDown, 
+  AlertCircle,
+  ArrowUpDown,
   Layers, 
   RefreshCw,
   ExternalLink, 
-  CheckCircle2,
   MapPin,
   RotateCcw,
   Pencil,
@@ -280,39 +279,28 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   };
 
   return (
-    <div className="max-w-[1680px] mx-auto space-y-6 text-slate-800 antialiased p-2 md:p-6">
+    <div className="mx-auto w-full max-w-[1440px] space-y-5 pb-8 text-slate-800 antialiased">
       
       {/* 1. TOP HEADER & SUBPAGE ROUTE SWITCHER */}
-      <header className="bg-[#FFFCFB] border border-slate-200 shadow-xs p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-[#003366] text-[#C9AB4C]">
-              Mosaic Workspace
-            </span>
-            <span className="text-xs font-semibold text-slate-400">·</span>
-            <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-emerald-600" />
-              Client Requirements
-            </span>
+      <header className="flex min-h-[58px] flex-col justify-between gap-3 border-b border-[#003366]/15 pb-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true" className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-[#C9AB4C]/60 bg-[#FBF7E9] text-[#003366]"><Building2 className="h-4 w-4" /></span>
+          <div className="min-w-0 border-l-2 border-[#C9AB4C] py-0.5 pl-2.5">
+            <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#31577D]">Client requirements</p>
+            <h1 className="truncate text-xl font-semibold tracking-tight text-[#003366]">Demands</h1>
           </div>
-          <h1 className="font-serif text-3xl font-bold text-[#003366] mt-2">
-            Demands Monitoring & Intelligence
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Track client requirements, target areas, and broker follow-up.
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Subpage Pill Switcher */}
-          <div className="inline-flex border border-slate-300 bg-[#FFFCFB] p-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex border border-slate-300 bg-white p-0.5" role="group" aria-label="Filter by demand type">
             <button
               type="button"
+              aria-pressed={activeAssetClass === "all"}
               onClick={() => selectAssetClass("all")}
-              className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`inline-flex min-h-8 items-center gap-1.5 px-2.5 text-[11px] font-semibold transition-colors ${
                 activeAssetClass === "all"
                   ? "bg-[#003366] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-[#FFFCFB]"
+                  : "text-slate-600 hover:text-[#003366] hover:bg-slate-50"
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
@@ -321,11 +309,12 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
 
             <button
               type="button"
+              aria-pressed={activeAssetClass === "retail"}
               onClick={() => selectAssetClass("retail")}
-              className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`inline-flex min-h-8 items-center gap-1.5 px-2.5 text-[11px] font-semibold transition-colors ${
                 activeAssetClass === "retail"
                   ? "bg-[#003366] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-[#FFFCFB]"
+                  : "text-slate-600 hover:text-[#003366] hover:bg-slate-50"
               }`}
             >
               <Building2 className="w-3.5 h-3.5 text-blue-400" />
@@ -334,11 +323,12 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
 
             <button
               type="button"
+              aria-pressed={activeAssetClass === "industrial"}
               onClick={() => selectAssetClass("industrial")}
-              className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`inline-flex min-h-8 items-center gap-1.5 px-2.5 text-[11px] font-semibold transition-colors ${
                 activeAssetClass === "industrial"
                   ? "bg-[#003366] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-[#FFFCFB]"
+                  : "text-slate-600 hover:text-[#003366] hover:bg-slate-50"
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-amber-400" />
@@ -346,10 +336,13 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             </button>
           </div>
 
+          <button type="button" onClick={handleRefreshDemands} disabled={isSyncing} aria-label="Refresh demands" title="Refresh demands" className="inline-flex h-8 min-h-8 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-[#003366] transition-colors hover:border-[#003366] disabled:cursor-wait disabled:opacity-60">
+            <RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />Refresh
+          </button>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 text-xs font-bold bg-[#C9AB4C] hover:bg-[#b5973b] text-[#003366] shadow-xs flex items-center gap-1.5 transition-colors ml-1 cursor-pointer"
+            className="inline-flex h-8 min-h-8 items-center gap-1.5 border border-[#003366] bg-[#003366] px-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
           >
             <Plus className="w-4 h-4" />
             New Demand
@@ -357,8 +350,10 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
         </div>
       </header>
 
-      {/* 2. HORIZON & DATE RANGE PICKER BAR (DEFAULT: LAST MONTH & CURRENT MONTH) */}
-      <div className="bg-[#FFFCFB] border border-slate-200 px-3 py-2 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+
+
+            {/* 2. HORIZON & DATE RANGE PICKER BAR (DEFAULT: LAST MONTH & CURRENT MONTH) */}
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 lg:flex-row lg:items-center lg:justify-between">
         
         {/* Left: Quick Date Presets */}
         <div className="flex flex-wrap items-center gap-3">
@@ -371,21 +366,21 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             <button
               type="button"
               onClick={() => handleSetPreset("last-and-current")}
-              className={`px-3 py-1 text-xs transition-colors ${
+              className={`inline-flex min-h-8 items-center border-r border-slate-200 px-2.5 text-[11px] transition-colors ${
                 filters.preset === "last-and-current"
                   ? "bg-[#003366] text-white font-bold shadow-2xs"
-                  : "text-slate-700 font-medium hover:bg-[#FFFCFB]"
+                  : "text-slate-700 font-medium hover:bg-slate-50"
               }`}
             >
-              May 2026 + current
+              Last + current
             </button>
             <button
               type="button"
               onClick={() => handleSetPreset("last-90")}
-              className={`px-3 py-1 text-xs transition-colors ${
+              className={`inline-flex min-h-8 items-center border-r border-slate-200 px-2.5 text-[11px] transition-colors ${
                 filters.preset === "last-90"
                   ? "bg-[#003366] text-white font-bold shadow-2xs"
-                  : "text-slate-700 font-medium hover:bg-[#FFFCFB]"
+                  : "text-slate-700 font-medium hover:bg-slate-50"
               }`}
             >
               90 days
@@ -393,10 +388,10 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             <button
               type="button"
               onClick={() => handleSetPreset("year")}
-              className={`px-3 py-1 text-xs transition-colors ${
+              className={`inline-flex min-h-8 items-center border-r border-slate-200 px-2.5 text-[11px] transition-colors ${
                 filters.preset === "year"
                   ? "bg-[#003366] text-white font-bold shadow-2xs"
-                  : "text-slate-700 font-medium hover:bg-[#FFFCFB]"
+                  : "text-slate-700 font-medium hover:bg-slate-50"
               }`}
             >
               This year
@@ -404,23 +399,16 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             <button
               type="button"
               onClick={() => handleSetPreset("all")}
-              className={`px-3 py-1 text-xs transition-colors ${
+              className={`inline-flex min-h-8 items-center px-2.5 text-[11px] transition-colors ${
                 filters.preset === "all"
                   ? "bg-[#003366] text-white font-bold shadow-2xs"
-                  : "text-slate-700 font-medium hover:bg-[#FFFCFB]"
+                  : "text-slate-700 font-medium hover:bg-slate-50"
               }`}
             >
               All time
             </button>
           </div>
 
-          {/* Active Date Badge */}
-            <span className="text-[11px] font-mono text-slate-600 bg-[#FFFCFB] px-2 py-1 border border-slate-200 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            {filters.dateStart && filters.dateEnd
-              ? `Horizon: ${filters.dateStart} to ${filters.dateEnd}`
-              : "Horizon: All Historical Records"}
-          </span>
         </div>
 
         {/* Right: Interactive Date Inputs & View Mode Switcher */}
@@ -428,64 +416,65 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
           
           {/* Custom Date Range Inputs */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[#FFFCFB] px-2.5 py-1 border border-slate-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">From</span>
+            <label className="flex h-8 items-center gap-1.5 border border-slate-200 bg-white px-2.5">
+              <span className="text-[10px] uppercase font-semibold text-slate-500">From</span>
               <input
                 type="date"
                 value={filters.dateStart}
                 onChange={(e) => handleCustomDateChange("dateStart", e.target.value)}
-                className="text-xs bg-transparent text-slate-800 focus:outline-none"
+                className="w-[118px] bg-transparent text-[11px] text-slate-800 focus:outline-none"
               />
-            </div>
-            <span className="text-slate-400 text-xs">to</span>
-            <div className="flex items-center gap-1.5 bg-[#FFFCFB] px-2.5 py-1 border border-slate-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">To</span>
+            </label>
+            <label className="flex h-8 items-center gap-1.5 border border-slate-200 bg-white px-2.5">
+              <span className="text-[10px] uppercase font-semibold text-slate-500">To</span>
               <input
                 type="date"
                 value={filters.dateEnd}
                 onChange={(e) => handleCustomDateChange("dateEnd", e.target.value)}
-                className="text-xs bg-transparent text-slate-800 focus:outline-none"
+                className="w-[118px] bg-transparent text-[11px] text-slate-800 focus:outline-none"
               />
-            </div>
+            </label>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="border-l border-slate-200 pl-3 flex items-center gap-1.5">
+          <div role="tablist" aria-label="Demand views" className="flex items-center border-b border-slate-200">
             <button
               type="button"
               onClick={() => setViewMode("dashboard")}
-              className={`px-3 py-1 font-bold text-xs flex items-center gap-1.5 transition-colors ${
+              role="tab" aria-selected={viewMode === "dashboard"}
+              className={`inline-flex min-h-8 items-center gap-1.5 border-b-2 px-2.5 text-[11px] font-semibold transition-colors ${
                 viewMode === "dashboard"
-                  ? "bg-[#003366] text-white"
-                  : "bg-[#FFFCFB] text-slate-700 hover:bg-[#FFFCFB]"
+                  ? "border-[#C9A84C] text-[#003366]"
+                  : "border-transparent text-slate-500 hover:text-[#003366]"
               }`}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              Dashboard
+              Overview
             </button>
             <button
               type="button"
               onClick={() => setViewMode("table")}
-              className={`px-3 py-1 font-bold text-xs flex items-center gap-1.5 transition-colors ${
+              role="tab" aria-selected={viewMode === "table"}
+              className={`inline-flex min-h-8 items-center gap-1.5 border-b-2 px-2.5 text-[11px] font-semibold transition-colors ${
                 viewMode === "table"
-                  ? "bg-[#003366] text-white"
-                  : "bg-[#FFFCFB] text-slate-700 hover:bg-[#FFFCFB]"
+                  ? "border-[#C9A84C] text-[#003366]"
+                  : "border-transparent text-slate-500 hover:text-[#003366]"
               }`}
             >
               <Table2 className="w-3.5 h-3.5" />
-              Data Grid
+              List
             </button>
             <button
               type="button"
               onClick={() => setViewMode("clickup")}
-              className={`px-3 py-1 font-bold text-xs flex items-center gap-1.5 transition-colors ${
+              role="tab" aria-selected={viewMode === "clickup"}
+              className={`inline-flex min-h-8 items-center gap-1.5 border-b-2 px-2.5 text-[11px] font-semibold transition-colors ${
                 viewMode === "clickup"
-                  ? "bg-[#003366] text-white"
-                  : "bg-[#FFFCFB] text-slate-700 hover:bg-[#FFFCFB]"
+                  ? "border-[#C9A84C] text-[#003366]"
+                  : "border-transparent text-slate-500 hover:text-[#003366]"
               }`}
             >
               <FolderArchive className="w-3.5 h-3.5" />
-            Connected Records
+              Records
             </button>
           </div>
 
@@ -501,28 +490,11 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
       )}
 
       {/* REFRESH NOTIFICATION */}
-      {syncStatusMsg && (
-        <div className="bg-emerald-50 border border-emerald-300 p-3.5 text-xs text-emerald-900 flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{syncStatusMsg}</span>
-          </div>
-          <a
-            href={`https://app.clickup.com/9014981136/v/li/${DEMANDS_CLICKUP_LIST_ID}`}
-            target="_blank"
-            rel="noreferrer"
-            className="font-bold underline hover:text-emerald-700 flex items-center gap-1"
-          >
-            Open record list <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      )}
+      {syncStatusMsg && <p role="status" className="text-xs text-slate-500">{syncStatusMsg}</p>}
 
       {/* VIEW 1: EXECUTIVE VISUAL DASHBOARD */}
       {viewMode === "dashboard" && (
-        <div className="space-y-6">
-          
-          {/* Hero Big Numbers Section */}
+        <div className="space-y-3">
           <DemandsSummary
             metrics={metrics}
             statusCounts={[...filteredDemands.reduce((counts, demand) => counts.set(demand.status || "Unspecified", (counts.get(demand.status || "Unspecified") ?? 0) + 1), new Map<string, number>())].sort(([a], [b]) => a.localeCompare(b))}
@@ -536,26 +508,27 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
         <div className="space-y-4">
           
           {/* Table Controls & Filter Toolbar */}
-          <div className="bg-[#FFFCFB] border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white p-3">
+            <div className="flex flex-wrap items-center gap-2">
               
               {/* Search Bar */}
-              <div className="flex items-center gap-1.5 border border-slate-300 bg-[#FFFCFB] px-3 py-1.5">
-                <Search className="w-3.5 h-3.5 text-slate-400" />
+              <label className="flex h-9 items-center gap-2 border border-slate-200 bg-white px-2.5 focus-within:border-[#003366]">
+                <Search aria-hidden="true" className="h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search client, city, broker, or notes..."
+                  aria-label="Search demands"
+                  placeholder="Search demands"
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-56 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+                  className="w-48 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
-              </div>
+              </label>
 
               {/* Type Filter */}
               <select
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="h-8 border border-slate-300 px-2.5 text-xs text-slate-700 bg-[#FFFCFB]"
+                className="h-9 border border-slate-200 bg-white px-2.5 text-xs text-slate-700"
               >
                 <option value="">All Types (CL, CS, INDL)</option>
                 <option value="CL">CL (Commercial Lease)</option>
@@ -567,7 +540,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <select
                 value={filters.region}
                 onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-                className="h-8 border border-slate-300 px-2.5 text-xs text-slate-700 bg-[#FFFCFB]"
+                className="h-9 border border-slate-200 bg-white px-2.5 text-xs text-slate-700"
               >
                 <option value="">All Regions (G.LOC)</option>
                 <option value="MM">MM (Metro Manila)</option>
@@ -581,7 +554,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <select
                 value={filters.priority}
                 onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-                className="h-8 border border-slate-300 px-2.5 text-xs text-slate-700 bg-[#FFFCFB]"
+                className="h-9 border border-slate-200 bg-white px-2.5 text-xs text-slate-700"
               >
                 <option value="">All Priorities</option>
                 <option value="Priority">Priority (Urgent)</option>
@@ -592,7 +565,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="h-8 border border-slate-300 px-2.5 text-xs text-slate-700 bg-[#FFFCFB]"
+                className="h-9 border border-slate-200 bg-white px-2.5 text-xs text-slate-700"
               >
                 <option value="">All Statuses</option>
                 {[...new Set(demands.map((demand) => demand.status).filter(Boolean))].sort().map((status) => <option key={status} value={status}>{status}</option>)}
@@ -601,7 +574,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 hover:bg-[#FFFCFB] flex items-center gap-1 transition-colors cursor-pointer"
+                className="inline-flex h-9 items-center gap-1 border border-slate-200 bg-white px-2.5 text-xs text-slate-600 transition-colors hover:border-[#003366] hover:text-[#003366]"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset
@@ -610,14 +583,14 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs font-mono font-bold text-slate-600 bg-[#FFFCFB] px-2.5 py-1 border border-slate-200">
-                Showing {filteredDemands.length} of {demands.length} records
+              <span className="text-xs tabular-nums text-slate-500">
+                {filteredDemands.length} of {demands.length}
               </span>
 
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="px-3 py-1.5 bg-[#003366] text-white hover:bg-[#002244] text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                className="inline-flex h-9 items-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-[#003366] transition-colors hover:border-[#003366]"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export CSV (Excel)
@@ -626,7 +599,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
           </div>
 
           {/* Table Container */}
-          <div className="bg-[#FFFCFB] border border-slate-200 shadow-xs overflow-x-auto">
+          <div className="overflow-x-auto border border-slate-200 bg-white">
             <table className="w-full text-left text-xs border-collapse font-sans">
               <thead className="bg-[#003366] text-white text-[11px] uppercase tracking-wider select-none">
                 <tr>
@@ -792,9 +765,8 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                 {!isLoadingDemands && filteredDemands.length === 0 && (
                   <tr>
                     <td colSpan={16} className="p-12 text-center text-slate-400">
-                      <Building2 className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                      <p className="font-bold text-slate-600">No corporate demands found matching these filters.</p>
-                      <p className="text-xs text-slate-400 mt-1">Try selecting a broader date horizon or resetting filters.</p>
+                      <p className="font-semibold text-slate-700">No demands found.</p>
+                      <p className="mt-1 text-xs text-slate-500">Change the filters or create a demand.</p>
                     </td>
                   </tr>
                 )}
