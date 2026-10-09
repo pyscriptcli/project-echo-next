@@ -12,15 +12,10 @@ import {
   X, 
   Plus, 
   Trash2, 
-  Building2, 
   Shuffle, 
   Layers, 
   Check, 
   MapPin, 
-  Calendar,
-  AlertCircle,
-  HelpCircle,
-  Sparkles
 } from "lucide-react";
 
 interface NewDemandModalProps {
@@ -47,6 +42,8 @@ export function NewDemandModal({
   const [purpose, setPurpose] = useState("Expansion");
   const [timeline, setTimeline] = useState("2026 Q3 / Q4");
   const [remarks, setRemarks] = useState("");
+  const [status, setStatus] = useState("Active");
+  const [actionTaken, setActionTaken] = useState("");
   
   // Dual-intake mode
   const [fulfillmentMode, setFulfillmentMode] = useState<LocationFulfillmentMode>("rollout");
@@ -58,6 +55,7 @@ export function NewDemandModal({
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -84,6 +82,7 @@ export function NewDemandModal({
     if (!client.trim() || locations.length === 0) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await onSubmit({
         client: client.trim(),
@@ -97,12 +96,14 @@ export function NewDemandModal({
         purpose: purpose.trim() || "Expansion",
         timeline: timeline.trim() || "2026",
         remarks: remarks.trim(),
+        status: status.trim() || "Active",
+        actionTaken: actionTaken.trim(),
         fulfillmentMode,
         locations
       });
       onClose();
     } catch (err) {
-      console.error("Failed to submit new demand", err);
+      setSubmitError(err instanceof Error ? err.message : "Unable to save this demand.");
     } finally {
       setIsSubmitting(false);
     }
@@ -178,7 +179,7 @@ export function NewDemandModal({
             <p className="hidden text-[11px] text-slate-600 leading-relaxed">
               {fulfillmentMode === "rollout" ? (
                 <>
-                  <strong className="text-[#003366]">Multi-Store Rollout Mode:</strong> Client requires a store in <em>each</em> target location (e.g. Puregold 3 sites, KFC 5 sites). Submitting generates <strong>{locations.length} distinct entries</strong> with duplicated company details.
+                  <strong className="text-[#003366]">Multi-Store Rollout:</strong> Client needs a property in each target location. All locations stay under one demand.
                 </>
               ) : (
                 <>
@@ -310,7 +311,7 @@ export function NewDemandModal({
                 </h4>
                 <p className="text-[11px] text-slate-500">
                   {fulfillmentMode === "rollout"
-                    ? "Each row will generate a dedicated record in the monitoring table and ClickUp archive."
+                    ? "Each target location is tracked under this demand."
                     : "Alternative candidate locations where any one satisfies the requirement."}
                 </p>
               </div>
@@ -404,7 +405,6 @@ export function NewDemandModal({
               >
                 <option value="Normal">Normal</option>
                 <option value="Priority">Priority (Urgent)</option>
-                <option value="Shelved">Shelved</option>
                 <option value="Low">Low</option>
               </select>
             </div>
@@ -436,26 +436,45 @@ export function NewDemandModal({
             </div>
           </div>
 
-          {/* Row 5: Remarks & Operational Specifications */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Remarks & Technical Specifications
-            </label>
-            <textarea
-              rows={2}
-              placeholder="e.g. 10m clear ceiling height, 40ft container access, roadside drive-thru, grease trap, heavy power 3-phase..."
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              className="w-full p-2.5 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Status</label>
+              <input
+                type="text"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                placeholder="Enter current status"
+                className="w-full h-9 px-3 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Action Taken</label>
+              <textarea
+                rows={2}
+                value={actionTaken}
+                onChange={(e) => setActionTaken(e.target.value)}
+                placeholder="Add a note about the latest action"
+                className="w-full p-2.5 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Remarks & Technical Specifications</label>
+              <textarea
+                rows={2}
+                placeholder="e.g. 10m clear ceiling height, 40ft container access, roadside drive-thru, grease trap, heavy power 3-phase..."
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#003366] bg-[#FFFCFB]"
+              />
+            </div>
           </div>
+
+          {submitError && <p role="alert" className="text-xs text-rose-700">{submitError}</p>}
 
           {/* Footer Actions */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
             <span className="text-[11px] text-slate-500">
-              {fulfillmentMode === "rollout" 
-                ? `Will generate ${locations.length} demand records.` 
-                : "Will generate 1 consolidated alternative demand record."}
+              Saves one demand with {locations.length} target {locations.length === 1 ? "location" : "locations"}.
             </span>
 
             <div className="flex items-center gap-3">

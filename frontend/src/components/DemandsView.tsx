@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
   DemandRecord, 
@@ -11,46 +11,32 @@ import {
   NewDemandInput 
 } from "@/types/demands";
 import { 
-  INITIAL_DEMANDS, 
   getDefaultHorizonDates, 
   filterDemands, 
   calculateDemandMetrics 
-} from "@/lib/demands/initialDemands";
-import { 
-  BigNumbersHero, 
-  QuarterlyVelocityLineGraph, 
-  SectorDonutChart, 
-  PropertyTypeDonutChart, 
-  SpaceBracketsBarChart, 
-  AssociateLeaderboardBarChart 
-  ,PhilippinesLocationHeatmap
-} from "./demands/DemandsCharts";
-import { DemandsCards } from "./demands/DemandsCards";
+} from "@/lib/demands/demandUtils";
+import { DemandsSummary } from "./demands/DemandsSummary";
 import { NewDemandModal } from "./demands/NewDemandModal";
+import { EditDemandTrackingModal } from "./demands/EditDemandTrackingModal";
 import { DEMANDS_CLICKUP_LIST_ID, formatDemandClickUpTitle, formatDemandClickUpDescription } from "@/lib/demands/clickupSync";
 import { 
   Building2, 
-  TrendingUp, 
   Table2, 
   LayoutDashboard, 
   FolderArchive, 
   Plus, 
   Download, 
   Search, 
-  Filter, 
   Calendar, 
   AlertCircle, 
   ArrowUpDown, 
   Layers, 
-  RefreshCw, 
+  RefreshCw,
   ExternalLink, 
-  Check, 
-  MapPin, 
-  CheckCircle2, 
-  FileText,
-  SlidersHorizontal,
-  RotateCcw
-  ,Sparkles
+  CheckCircle2,
+  MapPin,
+  RotateCcw,
+  Pencil,
 } from "lucide-react";
 
 export interface DemandsViewProps {
@@ -59,24 +45,20 @@ export interface DemandsViewProps {
 
 export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const router = useRouter();
-  const [activeAssetClass, setActiveAssetClass] = useState<DemandAssetClass>(sector || "all");
+  const activeAssetClass: DemandAssetClass = sector;
 
   const selectAssetClass = (assetClass: DemandAssetClass) => {
-    setActiveAssetClass(assetClass);
     router.push(assetClass === "all" ? "/demands" : `/demands/${assetClass}`);
   };
 
-  useEffect(() => {
-    if (sector) setActiveAssetClass(sector);
-  }, [sector]);
-
   const [viewMode, setViewMode] = useState<DemandViewMode>("dashboard");
-  const [demands, setDemands] = useState<DemandRecord[]>(INITIAL_DEMANDS);
+  const [demands, setDemands] = useState<DemandRecord[]>([]);
+  const [isLoadingDemands, setIsLoadingDemands] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [trackingDemand, setTrackingDemand] = useState<DemandRecord | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
-  const [report, setReport] = useState<string | null>(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const defaultHorizon = useMemo(() => getDefaultHorizonDates(), []);
   
@@ -85,6 +67,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     type: "",
     region: "",
     priority: "",
+    status: "",
     dateStart: defaultHorizon.start,
     dateEnd: defaultHorizon.end,
     preset: defaultHorizon.preset
@@ -93,20 +76,64 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const [sortCol, setSortCol] = useState<string>("date");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
+  const requestDemands = useCallback(async () => {
+    const response = await fetch("/api/demands", { cache: "no-store" });
+    const data: { demands?: DemandRecord[]; error?: string } = await response.json();
+    if (!response.ok) throw new Error(data.error || "Unable to load demands.");
+    return Array.isArray(data.demands) ? data.demands : [];
+  }, []);
+
+  const loadDemands = useCallback(async () => {
+    setIsLoadingDemands(true);
+    setLoadError(null);
+    try {
+      setDemands(await requestDemands());
+      return true;
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load demands.");
+      return false;
+    } finally {
+      setIsLoadingDemands(false);
+    }
+  }, [requestDemands]);
+
+  useEffect(() => {
+    let current = true;
+    requestDemands()
+      .then((records) => {
+        if (current) setDemands(records);
+      })
+      .catch((error: unknown) => {
+        if (current) setLoadError(error instanceof Error ? error.message : "Unable to load demands.");
+      })
+      .finally(() => {
+        if (current) setIsLoadingDemands(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [requestDemands]);
+
   const handleSetPreset = (preset: DatePreset) => {
     let start = "";
     let end = "";
+    const now = new Date();
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
     if (preset === "last-and-current") {
-      start = "2026-05-01";
-      const now = new Date();
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      start = formatDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      end = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
     } else if (preset === "last-90") {
-      start = "2026-06-01";
-      end = "2026-09-30";
+      start = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89));
+      end = formatDate(now);
     } else if (preset === "year") {
-      start = "2026-01-01";
-      end = "2026-12-31";
+      start = formatDate(new Date(now.getFullYear(), 0, 1));
+      end = formatDate(new Date(now.getFullYear(), 11, 31));
     } else if (preset === "all") {
       start = "";
       end = "";
@@ -134,6 +161,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
       type: "",
       region: "",
       priority: "",
+      status: "",
       dateStart: defaultHorizon.start,
       dateEnd: defaultHorizon.end,
       preset: defaultHorizon.preset
@@ -143,33 +171,18 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const filteredDemands = useMemo(() => {
     const list = filterDemands(demands, filters, activeAssetClass);
     return list.sort((a, b) => {
-      let valA: any = (a as any)[sortCol] || "";
-      let valB: any = (b as any)[sortCol] || "";
-
-      if (sortCol === "minSqm" || sortCol === "maxSqm") {
-        valA = Number(valA) || 0;
-        valB = Number(valB) || 0;
-      }
-
-      if (valA < valB) return sortAsc ? -1 : 1;
-      if (valA > valB) return sortAsc ? 1 : -1;
-      return 0;
+      const valueA = a[sortCol as keyof DemandRecord];
+      const valueB = b[sortCol as keyof DemandRecord];
+      const comparison = sortCol === "minSqm" || sortCol === "maxSqm"
+        ? (Number(valueA) || 0) - (Number(valueB) || 0)
+        : String(valueA ?? "").localeCompare(String(valueB ?? ""), undefined, { numeric: true, sensitivity: "base" });
+      return sortAsc ? comparison : -comparison;
     });
   }, [demands, filters, activeAssetClass, sortCol, sortAsc]);
 
   const metrics = useMemo(() => {
     return calculateDemandMetrics(filteredDemands, demands);
   }, [filteredDemands, demands]);
-
-  const generateReport = async () => {
-    setIsGeneratingReport(true);
-    try {
-      const res = await fetch("/api/demands/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ demands: filteredDemands, dateStart: filters.dateStart, dateEnd: filters.dateEnd, assetClass: activeAssetClass }) });
-      const data = await res.json();
-      setReport(data.report || data.error || "Unable to generate the report.");
-    } catch { setReport("Unable to generate the report right now."); }
-    finally { setIsGeneratingReport(false); }
-  };
 
   const handleSort = (col: string) => {
     if (sortCol === col) {
@@ -181,42 +194,38 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   };
 
   const handleCreateDemand = async (input: NewDemandInput) => {
-    try {
-      const res = await fetch("/api/demands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.allDemands) {
-          setDemands(data.allDemands);
-        } else if (data.records) {
-          setDemands((prev) => [...data.records, ...prev]);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to post demand to server", e);
+    const response = await fetch("/api/demands", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Unable to save this demand.");
+    if (Array.isArray(data.created) && data.created.length > 0) {
+      setDemands((current) => [...data.created, ...current]);
     }
   };
 
-  const handleBatchSyncClickUp = async () => {
+  const handleSaveTracking = async (demand: DemandRecord, status: string, actionTaken: string) => {
+    const updated = { ...demand, status, actionTaken };
+    const response = await fetch("/api/demands", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    });
+    const data: { demand?: DemandRecord; error?: string } = await response.json();
+    if (!response.ok || !data.demand) throw new Error(data.error || "Unable to update this demand.");
+    setDemands((current) => current.map((record) => record.id === demand.id ? data.demand! : record));
+  };
+
+  const handleRefreshDemands = async () => {
     setIsSyncing(true);
-    setSyncStatusMsg("Archiving demands to ClickUp List 901420989525...");
+    setSyncStatusMsg("Refreshing demands…");
     try {
-      const res = await fetch("/api/demands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "sync-all" })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSyncStatusMsg(`Successfully archived ${data.syncedCount || demands.length} demands to ClickUp List 901420989525!`);
-      } else {
-        setSyncStatusMsg(`Sync completed for ${demands.length} demands to ClickUp List 901420989525.`);
-      }
-    } catch (e) {
-      setSyncStatusMsg(`Archived ${demands.length} demands to ClickUp List 901420989525.`);
+      const refreshed = await loadDemands();
+      setSyncStatusMsg(refreshed ? "Demand records refreshed." : "Unable to refresh demand records.");
+    } catch {
+      setSyncStatusMsg("Unable to refresh demand records.");
     } finally {
       setIsSyncing(false);
       setTimeout(() => setSyncStatusMsg(null), 5000);
@@ -234,12 +243,11 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
       "CLIENT",
       "MIN. REQUIREMENT",
       "MAX. REQUIREMENT",
-      "G.LOC",
-      "CITY",
-      "TARGET LOCATION",
+      "TARGET LOCATIONS",
       "PRIORITY",
       "PURPOSE",
       "STATUS",
+      "ACTION TAKEN",
       "REMARKS"
     ];
 
@@ -253,12 +261,11 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
       `"${(d.client || "").replace(/"/g, '""')}"`,
       d.minSqm,
       d.maxSqm,
-      d.gloc,
-      `"${(d.city || "").replace(/"/g, '""')}"`,
-      `"${(d.location || "").replace(/"/g, '""')}"`,
+      `"${(d.locations?.length ? d.locations.map((location) => `${location.gloc} / ${location.city} / ${location.area}`).join("; ") : `${d.gloc} / ${d.city} / ${d.location}`).replace(/"/g, '""')}"`,
       d.priority,
       `"${(d.purpose || "").replace(/"/g, '""')}"`,
-      d.status || "Active",
+      `"${(d.status || "").replace(/"/g, '""')}"`,
+      `"${(d.actionTaken || "").replace(/"/g, '""')}"`,
       `"${(d.remarks || "").replace(/"/g, '""')}"`
     ]);
 
@@ -285,14 +292,14 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             <span className="text-xs font-semibold text-slate-400">·</span>
             <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
               <Building2 className="w-3 h-3 text-emerald-600" />
-              Corporate Tenant Monitoring
+              Client Requirements
             </span>
           </div>
           <h1 className="font-serif text-3xl font-bold text-[#003366] mt-2">
             Demands Monitoring & Intelligence
           </h1>
           <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Active corporate tenant mandates, target corridors, and ClickUp List (901420989525) archive.
+            Track client requirements, target areas, and broker follow-up.
           </p>
         </div>
 
@@ -478,16 +485,22 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               }`}
             >
               <FolderArchive className="w-3.5 h-3.5" />
-              Archive (ClickUp)
+            Connected Records
             </button>
-            <button type="button" onClick={generateReport} disabled={isGeneratingReport} className="px-3 py-1 font-bold text-xs flex items-center gap-1.5 bg-[#C9AB4C] text-[#003366] disabled:opacity-60"><Sparkles className="w-3.5 h-3.5" />{isGeneratingReport ? "Generating…" : "Generate report"}</button>
           </div>
 
         </div>
 
       </div>
 
-      {/* SYNC NOTIFICATION BANNER IF ACTIVE */}
+      {loadError && (
+        <div role="alert" className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button type="button" onClick={() => void loadDemands()} className="font-semibold underline">Retry</button>
+        </div>
+      )}
+
+      {/* REFRESH NOTIFICATION */}
       {syncStatusMsg && (
         <div className="bg-emerald-50 border border-emerald-300 p-3.5 text-xs text-emerald-900 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
@@ -500,7 +513,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             rel="noreferrer"
             className="font-bold underline hover:text-emerald-700 flex items-center gap-1"
           >
-            Open ClickUp List (901420989525) <ExternalLink className="w-3 h-3" />
+            Open record list <ExternalLink className="w-3 h-3" />
           </a>
         </div>
       )}
@@ -510,28 +523,10 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
         <div className="space-y-6">
           
           {/* Hero Big Numbers Section */}
-          <BigNumbersHero
+          <DemandsSummary
             metrics={metrics}
-            assetClass={activeAssetClass}
-            dateHorizonLabel={`${filters.dateStart || "Start"} to ${filters.dateEnd || "End"}`}
+            statusCounts={[...filteredDemands.reduce((counts, demand) => counts.set(demand.status || "Unspecified", (counts.get(demand.status || "Unspecified") ?? 0) + 1), new Map<string, number>())].sort(([a], [b]) => a.localeCompare(b))}
           />
-
-          {/* Subpage Specialized Cards: Location Coverage, Industry Trend, Timeline */}
-          {report && <section className="border border-[#C9AB4C] bg-[#FFFCFB] p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[#003366]">AI report</h3><button onClick={() => setReport(null)} className="text-xs text-slate-500">Close</button></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{report}</p></section>}
-
-          {/* Row 2: Charts (Velocity Line Graph & Donut Charts) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7">
-              <QuarterlyVelocityLineGraph demands={filteredDemands} />
-            </div>
-            <div className="lg:col-span-5">
-              <SectorDonutChart demands={filteredDemands} />
-            </div>
-          </div>
-
-          <PhilippinesLocationHeatmap demands={filteredDemands} />
-
-          {/* Row 3: Secondary Visual Analytics (Property Types, Size Brackets, Associate Leaderboard) */}
 
         </div>
       )}
@@ -591,8 +586,16 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                 <option value="">All Priorities</option>
                 <option value="Priority">Priority (Urgent)</option>
                 <option value="Normal">Normal</option>
-                <option value="Shelved">Shelved</option>
                 <option value="Low">Low</option>
+              </select>
+
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="h-8 border border-slate-300 px-2.5 text-xs text-slate-700 bg-[#FFFCFB]"
+              >
+                <option value="">All Statuses</option>
+                {[...new Set(demands.map((demand) => demand.status).filter(Boolean))].sort().map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
 
               <button
@@ -649,26 +652,24 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                   <th onClick={() => handleSort("maxSqm")} className="p-3 border-r border-blue-900 cursor-pointer hover:bg-blue-900 transition-colors text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">Max (sqm) <ArrowUpDown className="w-3 h-3 opacity-70" /></div>
                   </th>
-                  <th onClick={() => handleSort("gloc")} className="p-3 border-r border-blue-900 cursor-pointer hover:bg-blue-900 transition-colors text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">G.LOC <ArrowUpDown className="w-3 h-3 opacity-70" /></div>
-                  </th>
-                  <th onClick={() => handleSort("city")} className="p-3 border-r border-blue-900 cursor-pointer hover:bg-blue-900 transition-colors whitespace-nowrap">
-                    <div className="flex items-center gap-1">City <ArrowUpDown className="w-3 h-3 opacity-70" /></div>
-                  </th>
-                  <th className="p-3 border-r border-blue-900 min-w-[220px]">Target Location</th>
+                  <th className="p-3 border-r border-blue-900 min-w-[260px]">Target Locations</th>
                   <th onClick={() => handleSort("priority")} className="p-3 border-r border-blue-900 cursor-pointer hover:bg-blue-900 transition-colors text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">Priority <ArrowUpDown className="w-3 h-3 opacity-70" /></div>
                   </th>
                   <th className="p-3 border-r border-blue-900 whitespace-nowrap">Purpose</th>
                   <th className="p-3 border-r border-blue-900 whitespace-nowrap">Timeline</th>
+                  <th className="p-3 border-r border-blue-900 whitespace-nowrap">Status</th>
+                  <th className="p-3 border-r border-blue-900 whitespace-nowrap">Action Taken</th>
                   <th className="p-3 min-w-[220px]">Remarks / Specifications</th>
+                  <th className="p-3 text-center">Update</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {filteredDemands.map((d, i) => {
+                {isLoadingDemands ? (
+                  <tr><td colSpan={16} className="p-12 text-center text-slate-500">Loading demand records…</td></tr>
+                ) : filteredDemands.map((d, i) => {
                   const isPriority = d.priority === "Priority";
-                  const isShelved = d.priority === "Shelved";
                   const isIndustrial = d.type === "INDL";
                   const isRollout = d.fulfillmentMode === "rollout";
                   const isEither = d.fulfillmentMode === "either";
@@ -732,20 +733,14 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                         {Number(d.maxSqm).toLocaleString()}
                       </td>
 
-                      <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
-                        {d.gloc}
-                      </td>
-
-                      <td className="p-2.5 border-r border-slate-200 text-slate-800 font-semibold whitespace-nowrap">
-                        {d.city}
-                      </td>
-
                       <td className="p-2.5 border-r border-slate-200 text-slate-700">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#C9AB4C] shrink-0" />
-                          <span className="truncate max-w-[200px]" title={d.location}>
-                            {d.location}
-                          </span>
+                        <div className="space-y-1.5">
+                          {(d.locations?.length ? d.locations : [{ gloc: d.gloc, city: d.city, area: d.location }]).map((location, index) => (
+                            <div key={"id" in location ? location.id : index} className="flex items-start gap-1.5">
+                              <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-[#C9AB4C]" />
+                              <span><b>{location.city}</b><span className="text-slate-500"> · {location.gloc} · {location.area}</span></span>
+                            </div>
+                          ))}
                         </div>
                       </td>
 
@@ -754,10 +749,6 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                           <span className="px-2 py-0.5 text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200 inline-flex items-center gap-1">
                             <AlertCircle className="w-2.5 h-2.5 text-rose-600" />
                             PRIORITY
-                          </span>
-                        ) : isShelved ? (
-                          <span className="px-2 py-0.5 text-[9px] font-bold bg-[#FFFCFB] text-slate-500 border border-slate-200">
-                            Shelved
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 text-[9px] font-medium text-slate-600">
@@ -771,7 +762,17 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                       </td>
 
                       <td className="p-2.5 border-r border-slate-200 text-slate-500 whitespace-nowrap">
-                        {d.timeline || "Active"}
+                        {d.timeline || "—"}
+                      </td>
+
+                      <td className="p-2.5 border-r border-slate-200 text-slate-600">
+                        {d.status || "—"}
+                      </td>
+
+                      <td className="p-2.5 border-r border-slate-200 text-slate-600">
+                        <span className="line-clamp-2" title={d.actionTaken}>
+                          {d.actionTaken || "—"}
+                        </span>
                       </td>
 
                       <td className="p-2.5 text-slate-600">
@@ -779,13 +780,18 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                           {d.remarks || "—"}
                         </span>
                       </td>
+                      <td className="p-2.5 text-center">
+                        <button type="button" onClick={() => setTrackingDemand(d)} aria-label={`Update tracking for ${d.client}`} className="inline-flex items-center gap-1 border border-slate-300 px-2 py-1 text-[11px] font-bold text-[#003366] hover:border-[#003366]">
+                          <Pencil className="h-3 w-3" /> Edit
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
 
-                {filteredDemands.length === 0 && (
+                {!isLoadingDemands && filteredDemands.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="p-12 text-center text-slate-400">
+                    <td colSpan={16} className="p-12 text-center text-slate-400">
                       <Building2 className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                       <p className="font-bold text-slate-600">No corporate demands found matching these filters.</p>
                       <p className="text-xs text-slate-400 mt-1">Try selecting a broader date horizon or resetting filters.</p>
@@ -808,11 +814,11 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <div className="flex items-center gap-2">
                 <FolderArchive className="w-5 h-5 text-[#003366]" />
                 <h2 className="font-serif text-2xl font-bold text-[#003366]">
-                  ClickUp Archive Integration
+                  Connected Demand Records
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Synchronized target ClickUp List: <code className="font-mono bg-[#FFFCFB] px-1.5 py-0.5 text-slate-700 font-bold">{DEMANDS_CLICKUP_LIST_ID}</code>
+                Demand records are read from and saved to the connected list.
               </p>
             </div>
 
@@ -824,24 +830,24 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
                 className="px-4 py-2 text-xs font-bold text-[#003366] bg-[#FFFCFB] border border-slate-300 hover:border-[#003366] transition-colors flex items-center gap-1.5"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                View in ClickUp
+                Open connected list
               </a>
 
               <button
                 type="button"
-                onClick={handleBatchSyncClickUp}
+                onClick={handleRefreshDemands}
                 disabled={isSyncing}
                 className="px-5 py-2 text-xs font-bold bg-[#003366] hover:bg-[#002244] text-white shadow-xs flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                {isSyncing ? "Archiving Records..." : "Sync All to ClickUp List 901420989525"}
+                {isSyncing ? "Refreshing…" : "Refresh records"}
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-[#FFFCFB] border border-slate-200">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target List ID</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected list</span>
               <p className="font-mono text-lg font-extrabold text-[#003366] mt-1">{DEMANDS_CLICKUP_LIST_ID}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Demands Monitoring Archive Space</p>
             </div>
@@ -849,7 +855,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
             <div className="p-4 bg-[#FFFCFB] border border-slate-200">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Mandates</span>
               <p className="font-serif text-lg font-extrabold text-slate-900 mt-1">{demands.length} Corporate Demands</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Formatted as structured Markdown tables</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Loaded from the connected demand list</p>
             </div>
 
             <div className="p-4 bg-[#FFFCFB] border border-slate-200">
@@ -857,14 +863,14 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
               <p className="font-mono text-xs font-bold text-slate-800 mt-1 truncate">
                 [Type] Client — Min-Max sqm | City, Target Location (Assoc)
               </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Automated title and priority tags</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Demand details stored with each record</p>
             </div>
           </div>
 
           {/* Sample Markdown Task Card Previews */}
           <div className="space-y-4">
             <h3 className="font-serif text-base font-bold text-[#003366]">
-              Archived Task Formatted Preview (Sample Top Mandates)
+              Current Demand Record Previews
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -899,6 +905,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
         onSubmit={handleCreateDemand}
         defaultAssetClass={activeAssetClass}
       />
+      <EditDemandTrackingModal key={String(trackingDemand?.id ?? "closed")} demand={trackingDemand} onClose={() => setTrackingDemand(null)} onSave={handleSaveTracking} />
 
     </div>
   );

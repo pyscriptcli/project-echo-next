@@ -1,5 +1,5 @@
 export type DemandType = 'CL' | 'CS' | 'INDL';
-export type DemandPriority = 'Priority' | 'Normal' | 'Shelved' | 'Low';
+export type DemandPriority = 'Priority' | 'Normal' | 'Low';
 export type DemandAssetClass = 'all' | 'retail' | 'industrial';
 export type DemandViewMode = 'dashboard' | 'table' | 'clickup';
 export type DatePreset = 'last-and-current' | 'last-90' | 'year' | 'all' | 'custom';
@@ -23,14 +23,21 @@ export interface DemandRecord {
   purpose?: string;
   timeline?: string;
   status: string;
+  actionTaken?: string;
   remarks?: string;
   clickUpTaskId?: string;
   clickUpUrl?: string;
   fulfillmentMode?: LocationFulfillmentMode;
   alternativeLocations?: string[];
+  locations?: DemandLocationRequirement[];
+}
+
+export interface DemandLocationRequirement extends DemandLocationInput {
+  id: string;
 }
 
 export interface DemandLocationInput {
+  id?: string;
   gloc: string;
   city: string;
   area: string;
@@ -49,6 +56,8 @@ export interface NewDemandInput {
   purpose: string;
   timeline: string;
   remarks: string;
+  status: string;
+  actionTaken: string;
   fulfillmentMode: LocationFulfillmentMode;
   locations: DemandLocationInput[];
 }
@@ -58,6 +67,7 @@ export interface DemandsFilterState {
   type: string;
   region: string;
   priority: string;
+  status: string;
   dateStart: string;
   dateEnd: string;
   preset: DatePreset;
@@ -69,8 +79,7 @@ export interface DemandSummaryMetrics {
   averageDealSizeSqm: number;
   priorityDealsCount: number;
   priorityFloorAreaSqm: number;
-  estMonthlyValuePhp: number;
-  estAnnualValuePhp: number;
+  actionRecordedCount: number;
   retailCount: number;
   industrialCount: number;
   historicalTotalDeals: number;
