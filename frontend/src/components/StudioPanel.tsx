@@ -667,8 +667,15 @@ export function StudioPanel({
 
             {/* Error display */}
             {recorder.error && (
-              <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2">
-                {recorder.error}
+              <div
+                role={recorder.error.startsWith("AUDIO_FILTER_WARNING:") ? "status" : "alert"}
+                className={recorder.error.startsWith("AUDIO_FILTER_WARNING:")
+                  ? "text-xs text-amber-900 bg-amber-50 border border-amber-300 px-3 py-2"
+                  : "text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2"}
+              >
+                {recorder.error.startsWith("AUDIO_FILTER_WARNING:")
+                  ? recorder.error.replace("AUDIO_FILTER_WARNING:", "Audio processing note:")
+                  : recorder.error}
               </div>
             )}
 

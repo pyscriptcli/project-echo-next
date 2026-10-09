@@ -241,10 +241,57 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
       // Request persistent browser storage so IndexedDB is never evicted
       void requestPersistentStorage();
 
-      const micConstraints: MediaStreamConstraints = {
-        audio: selectedDeviceId
-          ? { deviceId: { exact: selectedDeviceId } }
-          : true,
+      const selectedDeviceConstraint = selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : {};
+      const rawMicConstraints: MediaStreamConstraints = {
+        audio: {
+          ...selectedDeviceConstraint,
+          noiseSuppression: false,
+          echoCancellation: false,
+          autoGainControl: false,
+        },
+      };
+      const cleanedMicConstraints: MediaStreamConstraints = {
+        audio: {
+          ...selectedDeviceConstraint,
+          noiseSuppression: true,
+          echoCancellation: true,
+          autoGainControl: false,
+        },
+      };
+      let audioProcessingWarning: string | null = null;
+      const useRawMicFallback = (rawStream: MediaStream, reason: string) => {
+        audioProcessingWarning = `AUDIO_FILTER_WARNING: ${reason} Noise suppression may be reduced for this recording.`;
+        console.warn(`[Studio] ${audioProcessingWarning}`);
+        return { stream: rawStream.clone(), suppressionApplied: false };
+      };
+      const getCleanedMicStream = async (rawStream: MediaStream) => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(cleanedMicConstraints);
+          const track = stream.getAudioTracks()[0];
+          const rawDeviceId = rawStream.getAudioTracks()[0]?.getSettings().deviceId;
+          const cleanedDeviceId = track?.getSettings().deviceId;
+          const suppressionSupported = navigator.mediaDevices.getSupportedConstraints?.().noiseSuppression === true;
+          const suppressionApplied = track?.getSettings().noiseSuppression === true
+            || (track?.getSettings().noiseSuppression === undefined && suppressionSupported);
+          if (!track || track.readyState !== "live") {
+            stream.getTracks().forEach((item) => item.stop());
+            return useRawMicFallback(rawStream, "The filtered microphone stream was unavailable.");
+          }
+          if (rawDeviceId && cleanedDeviceId && rawDeviceId !== cleanedDeviceId) {
+            stream.getTracks().forEach((item) => item.stop());
+            return useRawMicFallback(rawStream, "The filtered stream selected a different microphone.");
+          }
+          if (!suppressionApplied) {
+            stream.getTracks().forEach((item) => item.stop());
+            return useRawMicFallback(rawStream, "This browser or microphone did not confirm noise suppression.");
+          }
+          return { stream, suppressionApplied: true };
+        } catch (filterError) {
+          // Keep the recording usable on browsers/devices that don't allow a
+          // second capture of the same microphone. Transcription remains raw.
+          console.warn("[Studio] Filtered mic capture unavailable; saving the raw mic track.", filterError);
+          return useRawMicFallback(rawStream, "A second filtered microphone capture could not be opened.");
+        }
       };
 
       let finalStream: MediaStream;
@@ -267,6 +314,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
               systemAudio: "include",
             } as unknown as DisplayMediaStreamOptions;
             displayStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
+            rawStreamsRef.current = [displayStream];
           } catch (shareError) {
             const cancelled = shareError instanceof DOMException && (shareError.name === "NotAllowedError" || shareError.name === "AbortError");
             setCaptureIssue("share_cancelled");
@@ -278,12 +326,15 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
         const displayAudioTracks = displayStream?.getAudioTracks() || [];
         const hasSystemAudio = displayAudioTracks.length > 0;
 
-        // Get microphone stream
-        const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
+        // Keep one unprocessed mic stream for transcription and a separately
+        // suppressed mic stream for the recording file.
+        const micStream = await navigator.mediaDevices.getUserMedia(rawMicConstraints);
+        const cleanedMic = await getCleanedMicStream(micStream);
+        const cleanedMicStream = cleanedMic.stream;
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
         const hasMicAudio = micStream.getAudioTracks().length > 0;
 
-        rawStreamsRef.current = displayStream ? [displayStream, micStream] : [micStream];
+        rawStreamsRef.current = [...(displayStream ? [displayStream] : []), micStream, cleanedMicStream];
 
         // Format screen and audio details
         const videoTrack = displayStream?.getVideoTracks()[0];
@@ -320,10 +371,12 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
         };
         setScreenInfo(capturedScreenInfo);
 
-        // Mix system and mic audio
+        // Build parallel mixes so transcription receives raw mic audio while
+        // the recording prefers the verified, noise-suppressed mic stream.
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         const ctx = new AudioCtx();
         audioContextRef.current = ctx;
+        if (ctx.state === "suspended") await ctx.resume().catch(() => {});
 
         // Watchdog: auto-resume AudioContext if OS puts it to sleep or headphones change
         ctx.onstatechange = () => {
@@ -333,14 +386,57 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
           }
         };
 
-        const destination = ctx.createMediaStreamDestination();
-        ctx.createMediaStreamSource(micStream).connect(destination);
+        const transcriptionDestination = ctx.createMediaStreamDestination();
+        const recordingDestination = ctx.createMediaStreamDestination();
+        const rawMicSource = ctx.createMediaStreamSource(micStream);
+        const cleanedMicSource = ctx.createMediaStreamSource(cleanedMicStream);
+        const transcribeRawGain = ctx.createGain();
+        const transcribeCleanGain = ctx.createGain();
+        const recordRawGain = ctx.createGain();
+        const recordCleanGain = ctx.createGain();
+        const cleanTrackLive = cleanedMicStream.getAudioTracks().some((track) => track.readyState === "live");
+        const useCleanTrackForRecording = cleanedMic.suppressionApplied && cleanTrackLive;
+        transcribeRawGain.gain.value = 1;
+        transcribeCleanGain.gain.value = 0;
+        recordRawGain.gain.value = useCleanTrackForRecording ? 0 : 1;
+        recordCleanGain.gain.value = useCleanTrackForRecording ? 1 : 0;
+        rawMicSource.connect(transcribeRawGain).connect(transcriptionDestination);
+        cleanedMicSource.connect(transcribeCleanGain).connect(transcriptionDestination);
+        rawMicSource.connect(recordRawGain).connect(recordingDestination);
+        cleanedMicSource.connect(recordCleanGain).connect(recordingDestination);
+
+        const switchGain = (gain: GainNode, value: number) => gain.gain.setTargetAtTime(value, ctx.currentTime, 0.03);
+        const rawMicTrack = micStream.getAudioTracks()[0];
+        const cleanedMicTrack = cleanedMicStream.getAudioTracks()[0];
+        cleanedMicTrack?.addEventListener("ended", () => {
+          if (rawMicTrack?.readyState === "live") {
+            switchGain(recordCleanGain, 0);
+            switchGain(recordRawGain, 1);
+            setError("AUDIO_FILTER_WARNING: Noise suppression stopped. Recording continues with the raw microphone.");
+            void flushChunksToDb();
+          }
+        });
+        rawMicTrack?.addEventListener("ended", () => {
+          if (cleanedMicTrack?.readyState === "live") {
+            switchGain(transcribeRawGain, 0);
+            switchGain(transcribeCleanGain, 1);
+            switchGain(recordRawGain, 0);
+            switchGain(recordCleanGain, 1);
+            setError("AUDIO_FILTER_WARNING: The raw microphone stopped. Using the filtered microphone for recording and transcription.");
+            void flushChunksToDb();
+          }
+        });
 
         if (hasSystemAudio && displayStream) {
-          ctx.createMediaStreamSource(displayStream).connect(destination);
+          const systemAudioSource = ctx.createMediaStreamSource(displayStream);
+          systemAudioSource.connect(transcriptionDestination);
+          systemAudioSource.connect(recordingDestination);
+          displayStream.getAudioTracks().forEach((track) => track.addEventListener("ended", () => {
+            if (statusRef.current === "recording") setError("AUDIO_FILTER_WARNING: Shared system audio stopped. Microphone capture continues.");
+          }));
         }
 
-        const mixedAudioTrack = destination.stream.getAudioTracks()[0];
+        const mixedAudioTrack = recordingDestination.stream.getAudioTracks()[0];
         const isVideo = mediaType === "video";
 
         if (isVideo && videoTrack) {
@@ -353,17 +449,68 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
         } else {
           // Audio only mode — drop video track to conserve resources
           displayStream?.getVideoTracks().forEach((track) => track.stop());
-          finalStream = destination.stream;
+          finalStream = recordingDestination.stream;
         }
 
-        setAudioStream(destination.stream);
+        setAudioStream(transcriptionDestination.stream);
       } else {
-        // In-person mode: mic only
-        const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
+        // In-person mode also transcribes from the raw mic while recording the
+        // suppressed mic stream.
+        const micStream = await navigator.mediaDevices.getUserMedia(rawMicConstraints);
+        const cleanedMic = await getCleanedMicStream(micStream);
+        const cleanedMicStream = cleanedMic.stream;
         micDeviceLabel = micStream.getAudioTracks()[0]?.label || "Default Microphone";
-        rawStreamsRef.current = [micStream];
-        finalStream = micStream;
-        setAudioStream(micStream);
+        rawStreamsRef.current = [micStream, cleanedMicStream];
+
+        // Use the same dual-route graph in in-person mode, retaining raw audio
+        // for transcription and providing a live raw fallback for saved audio.
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioCtx();
+        audioContextRef.current = ctx;
+        ctx.onstatechange = () => {
+          if (ctx.state === "suspended" && statusRef.current === "recording") ctx.resume().catch(() => {});
+        };
+        if (ctx.state === "suspended") await ctx.resume().catch(() => {});
+        const transcriptionDestination = ctx.createMediaStreamDestination();
+        const recordingDestination = ctx.createMediaStreamDestination();
+        const rawSource = ctx.createMediaStreamSource(micStream);
+        const cleanedSource = ctx.createMediaStreamSource(cleanedMicStream);
+        const transcribeRawGain = ctx.createGain();
+        const transcribeCleanGain = ctx.createGain();
+        const recordRawGain = ctx.createGain();
+        const recordCleanGain = ctx.createGain();
+        const useCleanTrackForRecording = cleanedMic.suppressionApplied && cleanedMicStream.getAudioTracks().some((track) => track.readyState === "live");
+        transcribeRawGain.gain.value = 1;
+        transcribeCleanGain.gain.value = 0;
+        recordRawGain.gain.value = useCleanTrackForRecording ? 0 : 1;
+        recordCleanGain.gain.value = useCleanTrackForRecording ? 1 : 0;
+        rawSource.connect(transcribeRawGain).connect(transcriptionDestination);
+        cleanedSource.connect(transcribeCleanGain).connect(transcriptionDestination);
+        rawSource.connect(recordRawGain).connect(recordingDestination);
+        cleanedSource.connect(recordCleanGain).connect(recordingDestination);
+        const switchGain = (gain: GainNode, value: number) => gain.gain.setTargetAtTime(value, ctx.currentTime, 0.03);
+        const rawTrack = micStream.getAudioTracks()[0];
+        const cleanedTrack = cleanedMicStream.getAudioTracks()[0];
+        cleanedTrack?.addEventListener("ended", () => {
+          if (rawTrack?.readyState === "live") {
+            switchGain(recordCleanGain, 0);
+            switchGain(recordRawGain, 1);
+            setError("AUDIO_FILTER_WARNING: Noise suppression stopped. Recording continues with the raw microphone.");
+            void flushChunksToDb();
+          }
+        });
+        rawTrack?.addEventListener("ended", () => {
+          if (cleanedTrack?.readyState === "live") {
+            switchGain(transcribeRawGain, 0);
+            switchGain(transcribeCleanGain, 1);
+            switchGain(recordRawGain, 0);
+            switchGain(recordCleanGain, 1);
+            setError("AUDIO_FILTER_WARNING: The raw microphone stopped. Using the filtered microphone for recording and transcription.");
+            void flushChunksToDb();
+          }
+        });
+        finalStream = recordingDestination.stream;
+        setAudioStream(transcriptionDestination.stream);
 
         capturedScreenInfo = {
           screenName: "Microphone (In-Person)",
@@ -490,6 +637,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
 
       // Request data every 1 second
       recorder.start(1000);
+      if (audioProcessingWarning) setError(audioProcessingWarning);
       setStatus("recording");
       setElapsedSeconds(0);
       elapsedSecondsRef.current = 0;
