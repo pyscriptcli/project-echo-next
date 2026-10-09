@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   description: "Mosaic brings your team’s essential tools into one connected workspace.",
   icons: {
     icon: "/mosaic-app-icon.svg",
-    apple: "/mosaic-app-icon.svg",
+    apple: "/apple-icon.png",
   },
 };
 

@@ -2,19 +2,21 @@
 
 import React from "react";
 import { MosaicBrand } from "@/components/MosaicBrand";
-import { 
-  LayoutDashboard, 
-  FolderArchive, 
-  FileEdit, 
-  ChevronLeft, 
+import {
+  LayoutGrid,
+  Folder,
+  FileText,
+  CalendarDays,
+  Mic,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
   LogOut,
-  CheckSquare,
+  SquareCheck,
   Settings,
   NotebookTabs,
-  Newspaper,
   ClipboardCheck,
-  FolderKanban,
-  FileSearch,
+  ChartNoAxesColumnIncreasing,
 } from "lucide-react";
 
 export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta" | "forms-admin";
@@ -52,6 +54,13 @@ export function Sidebar({
 }: SidebarProps) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
+  const [expandedSections, setExpandedSections] = React.useState({
+    workspaces: true,
+    monitoring: true,
+    knowledge: true,
+    tools: true,
+    meetings: true,
+  });
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = () => {
@@ -77,25 +86,48 @@ export function Sidebar({
   const isOwner = user?.email?.toLowerCase() === "admin@primephilippines.com";
   const isProjectAdmin = isOwner || Boolean(isAdmin);
 
-  // Primary workspace navigation order
   const allNavItems = [
     {
       id: "dashboard" as NavView,
       label: "Dashboard",
-      icon: LayoutDashboard,
+      icon: LayoutGrid,
       badge: null
     },
     {
       id: "project" as NavView,
       label: "Projects",
-      icon: FolderKanban,
+      icon: Folder,
+      badge: null
+    },
+    {
+      id: "delta" as NavView,
+      label: "Contracts",
+      icon: FileText,
       badge: null
     },
     {
       id: "tasks" as NavView,
       label: "Tasks",
-      icon: CheckSquare,
+      icon: SquareCheck,
       badge: null
+    },
+    { id: "demands" as NavView, label: "Demands", icon: ClipboardCheck, badge: null },
+    {
+      id: "market-insights" as NavView,
+      label: "Market Insights",
+      icon: ChartNoAxesColumnIncreasing,
+      badge: null
+    },
+    {
+      id: "meetings" as NavView,
+      label: "Meetings",
+      icon: CalendarDays,
+      badge: null
+    },
+    {
+      id: "minutes" as NavView,
+      label: "Notetaker",
+      icon: Mic,
     },
     {
       id: "notebook" as NavView,
@@ -103,31 +135,6 @@ export function Sidebar({
       icon: NotebookTabs,
       badge: null
     },
-    {
-      id: "market-insights" as NavView,
-      label: "Market Insights",
-      icon: Newspaper,
-      badge: null
-    },
-    { id: "demands" as NavView, label: "Demands", icon: ClipboardCheck, badge: null },
-    {
-      id: "meetings" as NavView,
-      label: "Meetings",
-      icon: FolderArchive,
-      badge: null
-    },
-    {
-      id: "minutes" as NavView,
-      label: "Notetaker",
-      icon: FileEdit,
-      badge: null
-    },
-    {
-      id: "delta" as NavView,
-      label: "Contracts",
-      icon: FileSearch,
-      badge: null
-    }
   ];
 
   const orderIndex = new Map((sidebarOrder || []).map((id, index) => [id, index]));
@@ -139,6 +146,43 @@ export function Sidebar({
     (item.id === "project" && allowedPages?.includes("tasks")) ||
     (item.id === "delta" && (allowedPages?.includes("project") || allowedPages?.includes("tasks")))
   ));
+
+  const navById = new Map(navItems.map((item) => [item.id, item]));
+  const sidebarGroups = [
+    { id: "workspaces" as const, label: "Workspaces", itemIds: ["dashboard", "project", "delta", "tasks"] as NavView[] },
+    { id: "monitoring" as const, label: "Monitoring", itemIds: ["demands", "market-insights"] as NavView[] },
+    { id: "knowledge" as const, label: "Knowledge", itemIds: ["notebook"] as NavView[] },
+  ].map((group) => ({
+    ...group,
+    items: group.itemIds
+      .map((id) => navById.get(id))
+      .filter((item): item is (typeof navItems)[number] => Boolean(item))
+      .sort((a, b) => (orderIndex.get(a.id) ?? allNavItems.length) - (orderIndex.get(b.id) ?? allNavItems.length)),
+  })).filter((group) => group.items.length > 0);
+  const meetingsItem = navById.get("meetings");
+  const notetakerItem = navById.get("minutes");
+  const hasToolsItems = Boolean(meetingsItem || notetakerItem);
+
+  const renderNavItem = (item: (typeof navItems)[number], nested = false) => {
+    const Icon = item.icon;
+    const isActive = currentView === item.id;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onSelectView(item.id)}
+        title={effectiveCollapsed ? item.label : undefined}
+        className={`w-full flex items-center gap-3 ${nested ? "pl-5" : "px-3"} py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+          isActive
+            ? "bg-[#FFFCFB] text-[#003366] border-l-4 border-[#C9A84C]"
+            : "text-[#FFFCFB] hover:bg-[#174778] border-l-4 border-transparent"
+        } ${effectiveCollapsed ? "justify-center !ml-0 !w-full !px-0" : ""}`}
+      >
+        <Icon size={20} className={`shrink-0 ${isActive ? "text-[#C9A84C]" : "text-[#D7E3EF]"}`} />
+        {!effectiveCollapsed && <span className="truncate">{item.label}</span>}
+      </button>
+    );
+  };
 
   return (
     <div
@@ -154,7 +198,7 @@ export function Sidebar({
         }`}
       >
         {/* Mosaic identity stays visible when the navigation is collapsed. */}
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
             <MosaicBrand compact={effectiveCollapsed} size={effectiveCollapsed ? "small" : "medium"} className="text-[#FFFCFB]" />
 
@@ -174,28 +218,79 @@ export function Sidebar({
             )}
           </div>
 
-          {/* Navigation Items (Dashboard, Meetings, Notetaker) */}
-          <nav className="p-3 space-y-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelectView(item.id)}
-                  title={effectiveCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-xs font-normal tracking-wide transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C] shadow-inner"
-                      : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"
-                  } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
-                >
-                  <Icon size={18} className={`shrink-0 ${isActive ? "text-[#FFBF00]" : "text-[#B8CDE0]"}`} />
-                  {!effectiveCollapsed && <span className="truncate">{item.label}</span>}
-                </button>
-              );
-            })}
+          <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+            {sidebarGroups.map((group) => (
+              <section key={group.id}>
+                {!effectiveCollapsed && (
+                  <button
+                    type="button"
+                    aria-expanded={expandedSections[group.id]}
+                    onClick={() => setExpandedSections((sections) => ({ ...sections, [group.id]: !sections[group.id] }))}
+                    className="flex w-full items-center justify-between px-3 pt-4 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9FB8CE] hover:text-[#FFFCFB]"
+                  >
+                    <span>{group.label}</span>
+                    {expandedSections[group.id] ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  </button>
+                )}
+                {(effectiveCollapsed || expandedSections[group.id]) && (
+                  <div className="space-y-1">
+                    {group.items.map((item) => renderNavItem(item))}
+                  </div>
+                )}
+              </section>
+            ))}
+
+            {hasToolsItems && (
+              <section>
+                {!effectiveCollapsed && (
+                  <button
+                    type="button"
+                    aria-expanded={expandedSections.tools}
+                    onClick={() => setExpandedSections((sections) => ({ ...sections, tools: !sections.tools }))}
+                    className="flex w-full items-center justify-between px-3 pt-4 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9FB8CE] hover:text-[#FFFCFB]"
+                  >
+                    <span>Tools</span>
+                    {expandedSections.tools ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  </button>
+                )}
+                {(effectiveCollapsed || expandedSections.tools) && (
+                  <div className="space-y-1">
+                    {meetingsItem && (
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("meetings")}
+                          title={effectiveCollapsed ? "Meetings" : undefined}
+                          className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-sm font-semibold uppercase tracking-[0.16em] transition-colors ${
+                            currentView === "meetings" ? "text-[#FFFCFB]" : "text-[#9FB8CE] hover:text-[#FFFCFB]"
+                          } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
+                        >
+                          <CalendarDays size={20} className="shrink-0" />
+                          {!effectiveCollapsed && <span className="truncate">Meetings</span>}
+                        </button>
+                        {!effectiveCollapsed && notetakerItem && (
+                          <button
+                            type="button"
+                            aria-expanded={expandedSections.meetings}
+                            aria-label={expandedSections.meetings ? "Collapse meeting tools" : "Expand meeting tools"}
+                            onClick={() => setExpandedSections((sections) => ({ ...sections, meetings: !sections.meetings }))}
+                            className="p-2 text-[#9FB8CE] hover:text-[#FFFCFB]"
+                          >
+                            {expandedSections.meetings ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {(effectiveCollapsed || expandedSections.meetings) && notetakerItem && (
+                      <div className={effectiveCollapsed ? "" : "ml-3 border-l border-[#31577D]"}>
+                        {renderNavItem(notetakerItem, true)}
+                      </div>
+                    )}
+                    {!meetingsItem && notetakerItem && renderNavItem(notetakerItem)}
+                  </div>
+                )}
+              </section>
+            )}
           </nav>
         </div>
 
