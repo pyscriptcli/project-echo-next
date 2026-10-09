@@ -172,13 +172,13 @@ export function Sidebar({
         type="button"
         onClick={() => onSelectView(item.id)}
         title={effectiveCollapsed ? item.label : undefined}
-        className={`w-full flex items-center gap-3 ${nested ? "pl-5" : "px-3"} py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+        className={`w-full flex items-center gap-2.5 ${nested ? "pl-4" : "px-2.5"} py-2 text-[13px] font-medium transition-colors cursor-pointer ${
           isActive
             ? "bg-[#FFFCFB] text-[#003366] border-l-4 border-[#C9A84C]"
             : "text-[#FFFCFB] hover:bg-[#174778] border-l-4 border-transparent"
         } ${effectiveCollapsed ? "justify-center !ml-0 !w-full !px-0" : ""}`}
       >
-        <Icon size={20} className={`shrink-0 ${isActive ? "text-[#C9A84C]" : "text-[#D7E3EF]"}`} />
+        <Icon size={18} className={`shrink-0 ${isActive ? "text-[#C9A84C]" : "text-[#D7E3EF]"}`} />
         {!effectiveCollapsed && <span className="truncate">{item.label}</span>}
       </button>
     );
@@ -187,19 +187,19 @@ export function Sidebar({
   return (
     <div
       className={`relative h-full z-40 shrink-0 transition-all duration-300 ease-in-out ${
-        isPinned ? "w-64 min-w-[256px]" : "w-18 min-w-[72px]"
+        isPinned ? "w-56 min-w-[224px]" : "w-16 min-w-[64px]"
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <aside 
         className={`absolute top-0 left-0 h-full flex flex-col justify-between bg-[#003366] text-[#FFFCFB] border-r border-[#31577D] shadow-[4px_0_24px_rgba(0,51,102,0.18)] transition-all duration-300 ease-in-out z-40 select-none overflow-hidden ${
-          effectiveCollapsed ? "w-18 min-w-[72px]" : "w-64 min-w-[256px]"
+          effectiveCollapsed ? "w-16 min-w-[64px]" : "w-56 min-w-[224px]"
         }`}
       >
         {/* Mosaic identity stays visible when the navigation is collapsed. */}
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
+          <div className={`h-14 shrink-0 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-3.5"}`}>
             <MosaicBrand compact={effectiveCollapsed} size={effectiveCollapsed ? "small" : "medium"} className="text-[#FFFCFB]" />
 
             {!effectiveCollapsed && (
@@ -218,7 +218,7 @@ export function Sidebar({
             )}
           </div>
 
-          <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+          <nav className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
             {sidebarGroups.map((group) => (
               <section key={group.id}>
                 {!effectiveCollapsed && (
@@ -226,7 +226,7 @@ export function Sidebar({
                     type="button"
                     aria-expanded={expandedSections[group.id]}
                     onClick={() => setExpandedSections((sections) => ({ ...sections, [group.id]: !sections[group.id] }))}
-                    className="flex w-full items-center justify-between px-3 pt-4 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9FB8CE] hover:text-[#FFFCFB]"
+                    className="flex w-full items-center justify-between px-2.5 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#9FB8CE] hover:text-[#FFFCFB]"
                   >
                     <span>{group.label}</span>
                     {expandedSections[group.id] ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -247,7 +247,7 @@ export function Sidebar({
                     type="button"
                     aria-expanded={expandedSections.tools}
                     onClick={() => setExpandedSections((sections) => ({ ...sections, tools: !sections.tools }))}
-                    className="flex w-full items-center justify-between px-3 pt-4 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9FB8CE] hover:text-[#FFFCFB]"
+                    className="flex w-full items-center justify-between px-2.5 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#9FB8CE] hover:text-[#FFFCFB]"
                   >
                     <span>Tools</span>
                     {expandedSections.tools ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -261,11 +261,11 @@ export function Sidebar({
                           type="button"
                           onClick={() => onSelectView("meetings")}
                           title={effectiveCollapsed ? "Meetings" : undefined}
-                          className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-sm font-semibold uppercase tracking-[0.16em] transition-colors ${
+                          className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition-colors ${
                             currentView === "meetings" ? "text-[#FFFCFB]" : "text-[#9FB8CE] hover:text-[#FFFCFB]"
                           } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
                         >
-                          <CalendarDays size={20} className="shrink-0" />
+                          <CalendarDays size={18} className="shrink-0" />
                           {!effectiveCollapsed && <span className="truncate">Meetings</span>}
                         </button>
                         {!effectiveCollapsed && notetakerItem && (
@@ -274,7 +274,7 @@ export function Sidebar({
                             aria-expanded={expandedSections.meetings}
                             aria-label={expandedSections.meetings ? "Collapse meeting tools" : "Expand meeting tools"}
                             onClick={() => setExpandedSections((sections) => ({ ...sections, meetings: !sections.meetings }))}
-                            className="p-2 text-[#9FB8CE] hover:text-[#FFFCFB]"
+                            className="p-1.5 text-[#9FB8CE] hover:text-[#FFFCFB]"
                           >
                             {expandedSections.meetings ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                           </button>
