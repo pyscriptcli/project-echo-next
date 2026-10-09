@@ -1119,7 +1119,7 @@ export function ProjectWorkspace() {
               const listTasksLoaded = Boolean(data.loadedTaskListIds?.includes(list.id));
               const listDone = listTasks.filter(isComplete).length;
               const listProgress = listTasks.length ? Math.round((listDone / listTasks.length) * 100) : 0;
-              const taskCount = listTasksLoaded ? listTasks.length : list.taskCount;
+              const taskCount = listTasksLoaded ? listTasks.filter((task) => !isComplete(task)).length : list.taskCount;
               const lead = (data.defaultAssignees[list.id] || []).map((id) => data.members.find((member) => member.id === id)).find((member): member is ProjectMember => Boolean(member));
               return <article key={list.id} className="border border-slate-200 bg-white p-3 transition-colors hover:border-[#C9A84C]">
                 <button type="button" onClick={() => openSubproject(list.id)} className="block w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">

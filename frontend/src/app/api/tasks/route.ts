@@ -61,6 +61,19 @@ async function fetchProjectListTasks(token: string, listId: string) {
   return tasks.map((task) => serializeProjectTask(task, listId));
 }
 
+async function fetchOpenProjectListTaskCount(token: string, listId: string) {
+  let count = 0;
+  for (let page = 0; ; page += 1) {
+    const response = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${encodeURIComponent(listId)}/task?subtasks=true&include_closed=false&page=${page}`);
+    if (!response.ok) throw new Error(`Unable to count open tasks for subproject ${listId} (${response.status}).`);
+    const payload = await response.json() as { tasks?: ClickUpProjectTask[] };
+    const batch = Array.isArray(payload.tasks) ? payload.tasks : [];
+    count += batch.length;
+    if (batch.length < 100) break;
+  }
+  return count;
+}
+
 interface ClickUpProjectList {
   id: string | number;
   name?: string;
@@ -272,7 +285,7 @@ export async function GET(req: NextRequest) {
           url: typeof folder.url === "string" ? folder.url : `https://app.clickup.com/9014981136/v/o/f/${encodeURIComponent(folderId)}`,
           spaceName: String(folder.space?.name || ""),
         },
-        lists: rawLists.map((list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), url: list.url || null, taskCount: Number(list.task_count) || 0, statuses: Array.isArray(list.statuses) ? list.statuses.map((item) => String(item.status || "")).filter(Boolean) : [] })),
+        lists: await Promise.all(rawLists.map(async (list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), url: list.url || null, taskCount: await fetchOpenProjectListTaskCount(projectToken, String(list.id)), statuses: Array.isArray(list.statuses) ? list.statuses.map((item) => String(item.status || "")).filter(Boolean) : [] }))),
         tasks: [],
         members,
         defaultAssignees,
