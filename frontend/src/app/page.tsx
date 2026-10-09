@@ -1081,7 +1081,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="font-serif italic text-3xl font-semibold tracking-wide text-[#1b1d1e]">
-              Echo
+              Mosaic
             </span>
             <span className="w-2 h-2 bg-[#C9AB4C]"></span>
           </div>
@@ -1957,7 +1957,7 @@ export default function Home() {
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Meeting Name</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. Acme Corp or Internal Project Echo" 
+                    placeholder="e.g. Acme Corp or Internal Mosaic Project"
                     value={metadata.client_name || ""}
                     onChange={(e) => setMetadata({ ...metadata, client_name: e.target.value })}
                     className="w-full px-2.5 py-1.5 text-xs bg-[#FFFCFB] border border-gray-200 focus:bg-[#FFFCFB] focus:border-[#C9AB4C] outline-none transition-colors rounded-none" 

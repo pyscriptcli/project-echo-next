@@ -9,10 +9,10 @@
   --color-brand-blue-light: rgba(0, 51, 102, 0.12);
   --color-gray-text: #53616a;
   --color-panel-bg: #fffcfb;
-  --color-prime-warm-white: #fffcfb;
-  --color-prime-gray: #181d1e;
-  --color-prime-deep-ink: #0c0c0e;
-  --prime-radius: 0px;
+  --color-mosaic-warm-white: #fffcfb;
+  --color-mosaic-gray: #181d1e;
+  --color-mosaic-deep-ink: #0c0c0e;
+  --mosaic-radius: 0px;
   
   --font-display: var(--font-cormorant), Georgia, serif;
   --font-serif: var(--font-cormorant), Georgia, serif;

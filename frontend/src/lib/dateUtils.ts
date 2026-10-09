@@ -1,5 +1,5 @@
 /**
- * Utility for formatting dates globally across Project Echo
+ * Utility for formatting dates globally across Mosaic
  * Required format: "September 9, 2026"
  */
 

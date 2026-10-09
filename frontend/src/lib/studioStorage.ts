@@ -246,7 +246,7 @@ export async function downloadSession(sessionId: string): Promise<void> {
 }
 
 /**
- * Saves a recording blob directly to the user's local "Documents/Echo Meetings"
+ * Saves a recording blob directly to the user's local "Documents/Mosaic Meetings"
  * folder via the Next.js local save API route.
  * Supports "completed", "checkpoint", and "interrupted" saves.
  */

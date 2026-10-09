@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { MosaicBrand } from "@/components/MosaicBrand";
 import { 
   LayoutDashboard, 
   FolderArchive, 
@@ -131,7 +132,7 @@ export function Sidebar({
     },
     {
       id: "delta" as NavView,
-      label: "DELTA Review",
+      label: "Contracts",
       icon: FileSearch,
       badge: null
     }
@@ -160,16 +161,10 @@ export function Sidebar({
           effectiveCollapsed ? "w-18 min-w-[72px]" : "w-64 min-w-[256px]"
         }`}
       >
-        {/* Top Header & Branding (Text-only Echo, no subheadings/no prime) */}
+        {/* Mosaic identity stays visible when the navigation is collapsed. */}
         <div>
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
-            {!effectiveCollapsed && (
-              <img
-                src="/prime-philippines-sidebar-logo.png"
-                alt="PRIME Philippines"
-                className="h-10 max-w-[180px] w-auto object-contain"
-              />
-            )}
+            <MosaicBrand compact={effectiveCollapsed} size={effectiveCollapsed ? "small" : "medium"} className="text-[#FFFCFB]" />
 
             <button
               type="button"
@@ -219,7 +214,7 @@ export function Sidebar({
               <div className="flex items-center gap-2 overflow-hidden">
                 <span className="w-1.5 h-1.5 bg-[#FFBF00] shrink-0"></span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#FFBF00] truncate">
-                  {user?.workspaceName || "Primephilippines"}
+                  {user?.workspaceName || "Mosaic Workspace"}
                 </span>
               </div>
               <span className="text-[9px] uppercase tracking-widest text-[#9FB8CE] font-semibold shrink-0">
@@ -229,10 +224,10 @@ export function Sidebar({
           ) : (
             <div className="py-2 flex justify-center border-b border-[#31577D]/80">
               <div 
-                title={user?.workspaceName || "Primephilippines"}
+                title={user?.workspaceName || "Mosaic Workspace"}
                 className="w-5 h-5 rounded-none bg-[#174778] border border-[#C9A84C]/50 flex items-center justify-center text-[10px] font-bold text-[#FFBF00]"
               >
-                {(user?.workspaceName || "P")[0].toUpperCase()}
+                {(user?.workspaceName || "M")[0].toUpperCase()}
               </div>
             </div>
           )}

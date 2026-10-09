@@ -49,7 +49,7 @@ export interface StudioSession {
   screenInfo?: ScreenCaptureInfo | null;
   /** Last active heartbeat timestamp for crash detection */
   lastHeartbeat?: string;
-  /** Local disk file path in Documents/Echo Meetings if saved */
+  /** Local disk file path in Documents/Mosaic Meetings if saved */
   localFilePath?: string;
   /** Timestamped notes captured during the session. */
   notes: StudioNote[];

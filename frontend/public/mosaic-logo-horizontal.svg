@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="180" viewBox="0 0 720 180" role="img" aria-labelledby="title desc">
+  <title id="title">Mosaic — horizontal logo</title>
+  <desc id="desc">A compact horizontal Mosaic lockup for light surfaces, with the three-tile symbol, wordmark, and tagline.</desc>
+  <rect width="720" height="180" fill="#FFFCFB"/>
+  <path fill="#C9A84C" d="M58 22h36v36H58z"/>
+  <path fill="#003366" d="M16 66h36v36H16zM100 66h36v36h-36z"/>
+  <text x="174" y="91" fill="#003366" font-family="Montserrat, Arial, Helvetica, sans-serif" font-size="42" font-weight="600" letter-spacing="6">MOSAIC</text>
+  <text x="176" y="128" fill="#003366" font-family="Montserrat, Arial, Helvetica, sans-serif" font-size="12" font-weight="500" letter-spacing="3.5">WORK, CONNECTED</text>
+</svg>

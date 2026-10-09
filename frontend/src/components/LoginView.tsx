@@ -36,14 +36,10 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
 
   return (
     <div className="min-h-screen w-screen flex flex-col md:flex-row select-none">
-      {/* Left Column: App Charcoal (#1b1d1e) with gold border & text */}
-      <div className="w-full md:w-5/12 lg:w-4/12 bg-[#1b1d1e] border-r-2 border-[#C9AB4C] flex items-center justify-center p-8 md:p-12">
-        <div className="flex items-center gap-2">
-          <h1 className="font-serif italic text-3xl md:text-4xl text-[#FAF9F7] tracking-wide font-normal">
-            Echo x ClickUp
-          </h1>
-          <span className="w-2 h-2 bg-[#C9AB4C]"></span>
-        </div>
+      {/* Mosaic identity panel */}
+      <div className="w-full md:w-5/12 lg:w-4/12 bg-[#003366] border-r-2 border-[#C9A84C] flex items-center justify-center p-8 md:p-12">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mosaic-logo.svg" alt="Mosaic — Work, Connected" className="w-52 max-w-full object-contain" />
       </div>
 
       {/* Right Column: App Canvas (#FAF9F7) with Centered White Card */}
@@ -61,7 +57,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           </h2>
 
           <p className="text-xs text-gray-500 mb-8 leading-relaxed">
-            Connect your own ClickUp account to let Echo answer questions using only the work you can access.
+            Connect your ClickUp account to let Mosaic answer questions using only the work you can access.
           </p>
 
           {/* Error Notice */}

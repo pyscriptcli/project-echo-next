@@ -73,7 +73,7 @@ export function EmailMeetingModal({ isOpen, meeting, fromEmail, onClose }: Email
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#001E3C]/50 p-4" role="dialog" aria-modal="true" aria-labelledby="email-meeting-title">
       <div className="w-full max-w-xl border border-slate-200 bg-[#FFFCFB] shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
-          <div><div className="flex items-center gap-2 text-[#003366]"><Mail size={17} className="text-[#C9AB4C]" /><h2 id="email-meeting-title" className="font-serif text-lg font-bold italic">Email meeting minutes</h2></div><p className="mt-1 text-[11px] text-slate-500">Echo opens Outlook with the message ready for your review.</p></div>
+          <div><div className="flex items-center gap-2 text-[#003366]"><Mail size={17} className="text-[#C9AB4C]" /><h2 id="email-meeting-title" className="font-serif text-lg font-bold italic">Email meeting minutes</h2></div><p className="mt-1 text-[11px] text-slate-500">Mosaic opens Outlook with the message ready for your review.</p></div>
           <button type="button" onClick={onClose} disabled={isPreparing} aria-label="Close email dialog" className="text-slate-400 hover:text-[#003366] disabled:opacity-40"><X size={17} /></button>
         </div>
         <div className="space-y-3 p-5">

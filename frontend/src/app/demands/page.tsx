@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Building2 } from "lucide-react";
 
 export const metadata = {
-  title: "Demands Monitoring & Intelligence - Project Echo",
+  title: "Demands Monitoring & Intelligence",
   description: "Executive CRE occupier requirements and ClickUp archive",
 };
 
@@ -18,7 +18,7 @@ export default function DemandsPage() {
             className="text-xs text-slate-300 hover:text-white flex items-center gap-1 font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Project Echo
+            Back to Mosaic
           </Link>
           <span className="text-slate-600">|</span>
           <span className="text-xs text-[#C9AB4C] font-bold uppercase tracking-wider">

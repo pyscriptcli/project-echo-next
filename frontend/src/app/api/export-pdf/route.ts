@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     doc.setFillColor(201, 171, 76);
     doc.rect(0, bannerHeight, pageWidth, 0.8, "F");
 
-    // Header Branding Text: Only "Minutes of the Meeting" (PROJECT ECHO removed)
+    // Header branding text: “Minutes of the Meeting”.
     doc.setTextColor(255, 255, 255);
     doc.setFont("times", "bolditalic");
     doc.setFontSize(12);

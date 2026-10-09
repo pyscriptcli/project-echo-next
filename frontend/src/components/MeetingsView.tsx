@@ -287,7 +287,7 @@ export function MeetingsView({
   const [copiedTranscript, setCopiedTranscript] = useState(false);
   const [localRecordingFiles, setLocalRecordingFiles] = useState<Array<{ name: string; size: number; path: string }>>([]);
 
-  // Fetch local recordings from Echo Meetings folder
+  // Fetch local recordings from Mosaic Meetings folder
   const refreshLocalRecordings = React.useCallback(() => {
     fetch("/api/recordings/save-local")
       .then((res) => res.json())
@@ -420,7 +420,7 @@ export function MeetingsView({
       }
     }
 
-    alert(`No local ${recordingType === "video" ? "video" : "audio"} recording found in Documents/Echo Meetings for this meeting.`);
+    alert(`No local ${recordingType === "video" ? "video" : "audio"} recording found in Documents/Mosaic Meetings for this meeting.`);
   };
 
   const handleDownloadMatchedRecording = () => {
@@ -503,7 +503,7 @@ export function MeetingsView({
   };
 
   const handleDiscardLocalInterruptedFile = async (fileName: string) => {
-    if (!confirm(`Are you sure you want to delete "${fileName}" from Documents/Echo Meetings?`)) {
+    if (!confirm(`Are you sure you want to delete "${fileName}" from Documents/Mosaic Meetings?`)) {
       return;
     }
     try {
@@ -599,7 +599,7 @@ export function MeetingsView({
       });
     }
 
-    // 2. Local interrupted / checkpoint files in Documents/Echo Meetings
+    // 2. Local interrupted / checkpoint files in Documents/Mosaic Meetings
     const knownSessionIds = new Set(interruptedSessions.map((s) => s.sessionId));
     for (const f of localRecordingFiles) {
       const isInterruptedFile = f.name.startsWith("INTERRUPTED_") || f.name.startsWith("CHECKPOINT_");
@@ -1244,9 +1244,9 @@ export function MeetingsView({
                 <div className="text-[11px] text-gray-600 bg-[#FFFCFB] border border-gray-200 p-3">
                   <span className="font-bold text-[#003366]">Storage Location: </span>
                   {activeInterruptedItem.kind === "indexeddb" ? (
-                    <span>Browser IndexedDB (echo_studio_db) & Auto-saved in Documents/Echo Meetings</span>
+                    <span>Browser storage & auto-saved in Documents/Mosaic Meetings</span>
                   ) : (
-                    <span>Local disk in Documents/Echo Meetings ({activeInterruptedItem.fileName})</span>
+                    <span>Local disk in Documents/Mosaic Meetings ({activeInterruptedItem.fileName})</span>
                   )}
                 </div>
 

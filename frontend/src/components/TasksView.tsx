@@ -893,7 +893,7 @@ export default function TasksView({
 
         <div className="flex items-center gap-2 text-[11px] text-[#c9ab4c]">
           <Tag size={12} />
-          <span className="font-mono">Tag: echo</span>
+          <span className="font-mono">Tag: meeting archive</span>
         </div>
       </div>
 
@@ -1001,7 +1001,7 @@ export default function TasksView({
                   </span>
                 </div>
                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                  Choose which list inside your connected ClickUp workspace you would like to view and synchronize with Project Echo.
+                  Choose which list inside your connected ClickUp workspace you would like to view and synchronize with Mosaic.
                 </p>
               </div>
             </div>
@@ -1134,7 +1134,7 @@ export default function TasksView({
                   Connect Your ClickUp Workspace
                 </h3>
                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                  Project Echo synchronizes live tasks with ClickUp. Please sign in with ClickUp or provide a personal API token.
+                  Mosaic synchronizes live tasks with ClickUp. Please sign in with ClickUp or provide a personal API token.
                 </p>
               </div>
             </div>
@@ -1523,7 +1523,7 @@ export default function TasksView({
                     </span>
                   )}
                   <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.2 font-bold">
-                    Tag: echo
+                    Tag: meeting archive
                   </span>
                 </div>
                 <h3 className="font-serif italic font-bold text-xl text-[#003366]">
@@ -1676,7 +1676,7 @@ export default function TasksView({
                     />
                     <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
                       <span>Synchronized with ClickUp task description</span>
-                      <span>Tag: echo</span>
+                      <span>Tag: meeting archive</span>
                     </div>
                   </div>
                 </div>

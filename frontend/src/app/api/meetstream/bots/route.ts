@@ -45,7 +45,7 @@ function appUrl(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const token = getTokenFromRequest(req);
   const user = getUserFromRequest(req);
-  if (!token || !user?.email) return NextResponse.json({ error: "Please sign in before inviting Echo.ai." }, { status: 401 });
+  if (!token || !user?.email) return NextResponse.json({ error: "Please sign in before inviting Mosaic Notetaker." }, { status: 401 });
 
   const apiKey = cleanEnv(process.env.MEETSTREAM_API_KEY);
   if (!apiKey) return NextResponse.json({ error: "Meeting bot setup is not configured yet." }, { status: 503 });
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         meeting_link: parsed.meetingLink,
-        bot_name: "Echo.ai",
-        // Echo is a transcription-first product. Avoid video capture costs and
+        bot_name: "Mosaic Notetaker",
+        // Mosaic Notetaker is a transcription-first product. Avoid video capture costs and
         // bandwidth unless we add an explicit video mode later.
         video_required: false,
         callback_url: webhookUrl,
@@ -78,11 +78,11 @@ export async function POST(req: NextRequest) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       console.error("[MeetStream] create bot rejected", { status: response.status, detail: data.detail || data.message });
-      return NextResponse.json({ error: data.detail || data.message || "Echo.ai could not join this meeting." }, { status: response.status });
+      return NextResponse.json({ error: data.detail || data.message || "Mosaic Notetaker could not join this meeting." }, { status: response.status });
     }
     return NextResponse.json({ botId: data.bot_id, transcriptId: data.transcript_id || null, platform: parsed.platform, status: data.status || "Joining" });
   } catch (error) {
     console.error("[MeetStream] create bot failed", error);
-    return NextResponse.json({ error: "Echo.ai could not join this meeting." }, { status: 502 });
+    return NextResponse.json({ error: "Mosaic Notetaker could not join this meeting." }, { status: 502 });
   }
 }

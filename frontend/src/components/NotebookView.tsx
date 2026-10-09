@@ -600,7 +600,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
             <aside className="lg:col-span-4 space-y-4">
               <div className="bg-[#FFFCFB] border border-gray-200 p-5">
                 <h3 className="text-lg flex items-center gap-2"><FileText size={17} className="text-[#C9AB4C]" /> Source record</h3>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">Edit directly here. Echo keeps the same month parent and daily subtask structure your team already uses in ClickUp.</p>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">Edit directly here. Mosaic keeps the same month parent and daily subtask structure your team already uses in ClickUp.</p>
                 {selectedDayEntries[0]?.url ? (
                   <a href={selectedDayEntries[0].url} target="_blank" rel="noreferrer" className="mt-4 btn-outline !px-4 !py-2 inline-flex items-center gap-2">
                     Open daily log <ExternalLink size={14} />
@@ -821,7 +821,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
               <div className="text-xs uppercase tracking-widest text-[#C9AB4C] font-bold">Completeness rule</div>
               <h3 className="text-2xl text-white mt-3">Clear and non-destructive</h3>
               <p className="text-sm text-gray-300 mt-3 leading-relaxed">A weekday is submitted when at least one of the four existing fields contains content. Empty logs are workdays without any submitted content.</p>
-              <p className="text-sm text-gray-300 mt-3 leading-relaxed">Echo writes only the existing four Daily Log fields and creates the matching month parent and date subtask when needed.</p>
+              <p className="text-sm text-gray-300 mt-3 leading-relaxed">Mosaic writes only the existing four Daily Log fields and creates the matching month parent and date subtask when needed.</p>
             </section>
           </div>
         </div>

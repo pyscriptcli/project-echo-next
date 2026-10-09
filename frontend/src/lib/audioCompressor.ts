@@ -1,5 +1,5 @@
 /**
- * Client-Side Audio Pipeline for Project Echo
+ * Client-Side Audio Pipeline for Mosaic
  * 
  * Provides:
  * 1. Audio format detection

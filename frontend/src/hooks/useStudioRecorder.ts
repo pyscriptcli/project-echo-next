@@ -47,7 +47,7 @@ export interface UseStudioRecorderReturn {
   screenInfo: ScreenCaptureInfo | null;
   /** True if no microphone or system audio detected for extended period (>45s). */
   isSilenceDetected: boolean;
-  /** Path in Documents/Echo Meetings where local file was saved. */
+  /** Path in Documents/Mosaic Meetings where local file was saved. */
   localSavedPath: string | null;
   /** True if another tab is currently recording. */
   hasOtherTabRecording: boolean;
@@ -77,7 +77,7 @@ export interface UseStudioRecorderReturn {
 
 /** Fallback interval (ms) to flush chunks to IndexedDB if event-driven flush hasn't fired. */
 const FLUSH_INTERVAL_MS = 3_000;
-/** How often (seconds) to create a rolling checkpoint file in Documents/Echo Meetings. */
+/** How often (seconds) to create a rolling checkpoint file in Documents/Mosaic Meetings. */
 const CHECKPOINT_INTERVAL_SECONDS = 60;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
     }
   }, []);
 
-  // ── Rolling Checkpoint to Documents/Echo Meetings ─────────────────────
+  // ── Rolling Checkpoint to Documents/Mosaic Meetings ─────────────────────
   const saveRollingCheckpoint = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid || (statusRef.current !== "recording" && statusRef.current !== "paused")) return;
@@ -615,7 +615,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
             const file = new File([blob], `${prefix}-${sid}.${ext}`, { type: fileType });
             setRecordedFile(file);
 
-            // Auto-save completed recording directly to Documents/Echo Meetings
+            // Auto-save completed recording directly to Documents/Mosaic Meetings
             const saveRes = await saveToLocalDocuments(sid, blob, "completed", mediaTypeRef.current, file.name);
             if (saveRes.success && saveRes.filePath) {
               setLocalSavedPath(saveRes.filePath);
@@ -631,7 +631,7 @@ export function useStudioRecorder(): UseStudioRecorderReturn {
           }
         } catch (err) {
           console.error("[Studio] Failed to assemble recording:", err);
-          setError("Failed to assemble recording. Audio is checkpointed in Documents/Echo Meetings.");
+          setError("Failed to assemble recording. Audio is checkpointed in Documents/Mosaic Meetings.");
         }
       };
 

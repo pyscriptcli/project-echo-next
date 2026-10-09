@@ -4,15 +4,27 @@ import path from "path";
 import os from "os";
 
 /**
- * Returns the resolved path to the user's "Documents/Echo Meetings" directory.
+ * Returns the resolved path to the user's "Documents/Mosaic Meetings" directory.
  */
-function getEchoMeetingsDir(): string {
+function getMosaicMeetingsDir(): string {
   const userHome = process.env.USERPROFILE || process.env.HOME || os.homedir();
-  const echoDir = path.join(userHome, "Documents", "Echo Meetings");
-  if (!fs.existsSync(echoDir)) {
-    fs.mkdirSync(echoDir, { recursive: true });
-  }
-  return echoDir;
+  const directory = path.join(userHome, "Documents", "Mosaic Meetings");
+  if (!fs.existsSync(directory)) fs.mkdirSync(directory, { recursive: true });
+  return directory;
+}
+
+function getLegacyEchoMeetingsDir() {
+  const userHome = process.env.USERPROFILE || process.env.HOME || os.homedir();
+  return path.join(userHome, "Documents", "Echo Meetings");
+}
+
+function listFiles(directory: string) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory).flatMap((fileName) => {
+    const filePath = path.join(directory, fileName);
+    const stat = fs.statSync(filePath);
+    return stat.isFile() ? [{ name: fileName, path: filePath, size: stat.size, modifiedAt: stat.mtime.toISOString(), isCheckpoint: fileName.startsWith("CHECKPOINT_") }] : [];
+  });
 }
 
 /**
@@ -31,28 +43,20 @@ function getSafeTimestamp(): string {
 
 export async function GET() {
   try {
-    const echoDir = getEchoMeetingsDir();
-    const files = fs.readdirSync(echoDir).map((fileName) => {
-      const filePath = path.join(echoDir, fileName);
-      const stat = fs.statSync(filePath);
-      return {
-        name: fileName,
-        path: filePath,
-        size: stat.size,
-        modifiedAt: stat.mtime.toISOString(),
-        isCheckpoint: fileName.startsWith("CHECKPOINT_"),
-      };
-    });
+    const directory = getMosaicMeetingsDir();
+    const filesByName = new Map(listFiles(getLegacyEchoMeetingsDir()).map((file) => [file.name, file]));
+    listFiles(directory).forEach((file) => filesByName.set(file.name, file));
+    const files = [...filesByName.values()].sort((a, b) => Date.parse(b.modifiedAt) - Date.parse(a.modifiedAt));
 
     return NextResponse.json({
-      directory: echoDir,
+      directory,
       fileCount: files.length,
       files: files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()),
     });
   } catch (error) {
-    console.error("[Local Save API] Error reading Echo Meetings directory:", error);
+    console.error("[Local Save API] Error reading Mosaic Meetings directory:", error);
     return NextResponse.json(
-      { error: "Could not read Echo Meetings directory" },
+      { error: "Could not read Mosaic Meetings directory" },
       { status: 500 }
     );
   }
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const echoDir = getEchoMeetingsDir();
+    const directory = getMosaicMeetingsDir();
     const ext = mediaType === "video" || file.type.startsWith("video/") ? "webm" : "webm";
     const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -85,12 +89,12 @@ export async function POST(req: NextRequest) {
       finalFileName = customFileName || `INTERRUPTED_${sessionId}_${getSafeTimestamp()}.${ext}`;
     } else {
       // Final completed meeting recording
-      finalFileName = customFileName || `Echo_Meeting_${getSafeTimestamp()}_${sessionId.slice(-6)}.${ext}`;
+      finalFileName = customFileName || `Mosaic_Meeting_${getSafeTimestamp()}_${sessionId.slice(-6)}.${ext}`;
 
       // Clean up previous rolling checkpoints for this session now that completed file is written
       try {
         const checkpointName = `CHECKPOINT_${sessionId}.${ext}`;
-        const checkpointPath = path.join(echoDir, checkpointName);
+        const checkpointPath = path.join(directory, checkpointName);
         if (fs.existsSync(checkpointPath)) {
           fs.unlinkSync(checkpointPath);
         }
@@ -99,14 +103,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const targetPath = path.join(echoDir, finalFileName);
+    const targetPath = path.join(directory, finalFileName);
     fs.writeFileSync(targetPath, buffer);
 
     console.log(`[Local Save API] Saved recording (${status}): ${targetPath} [${buffer.length} bytes]`);
 
     return NextResponse.json({
       success: true,
-      directory: echoDir,
+      directory,
       fileName: finalFileName,
       filePath: targetPath,
       sizeBytes: buffer.length,
@@ -129,11 +133,13 @@ export async function DELETE(req: NextRequest) {
     }
 
     const safeBaseName = path.basename(fileName);
-    const echoDir = getEchoMeetingsDir();
-    const filePath = path.join(echoDir, safeBaseName);
+    const filePaths = [
+      path.join(getMosaicMeetingsDir(), safeBaseName),
+      path.join(getLegacyEchoMeetingsDir(), safeBaseName),
+    ].filter((candidate) => fs.existsSync(/*turbopackIgnore: true*/ candidate));
 
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (filePaths.length) {
+      filePaths.forEach((filePath) => fs.unlinkSync(filePath));
       return NextResponse.json({ success: true, fileName: safeBaseName });
     }
 

@@ -63,7 +63,7 @@ interface EchoMessage {
 }
 
 const ECHO_STORAGE_KEY = "echo_ask_conversation";
-const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m Echo. What would you like to get done today?", timestamp: "Just now" };
+const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m your Mosaic assistant. What would you like to get done today?", timestamp: "Just now" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -284,12 +284,12 @@ export function StudioPanel({
     try {
       const response = await fetch("/api/meetstream/bots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ meetingLink }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Echo.ai could not join this meeting.");
+      if (!response.ok) throw new Error(data.error || "Mosaic Notetaker could not join this meeting.");
       setBotId(data.botId || null);
-      setBotStatus("Echo is joining the meeting… admit Echo.ai if the meeting asks for approval.");
+      setBotStatus("Mosaic is joining the meeting… admit Mosaic Notetaker if the meeting asks for approval.");
       setMeetingLink("");
     } catch (error) {
-      setBotStatus(error instanceof Error ? error.message : "Echo.ai could not join this meeting.");
+      setBotStatus(error instanceof Error ? error.message : "Mosaic Notetaker could not join this meeting.");
     } finally {
       setIsSendingBot(false);
     }
@@ -303,28 +303,28 @@ export function StudioPanel({
       try {
         const response = await fetch(`/api/meetstream/bots/${encodeURIComponent(botId)}`, { cache: "no-store" });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Unable to read Echo meeting status.");
+        if (!response.ok) throw new Error(data.error || "Unable to read Mosaic meeting status.");
         if (cancelled) return;
         const status = String(data.status || "Unknown");
         const messages: Record<string, string> = {
-          Joining: "Echo is joining the meeting…",
-          InWaitingRoom: "Echo is waiting for admission to the meeting.",
-          InMeeting: "Echo is in the meeting and catching up.",
-          Recording: "Echo is recording the meeting.",
-          Leaving: "Echo is leaving the meeting and preparing the recording.",
-          MediaProcessing: "Echo is processing the meeting audio.",
-          Transcribing: "Echo is transcribing the meeting.",
-          Done: "Echo finished processing the meeting.",
-          Completed: "Echo finished processing the meeting.",
-          Denied: "Echo was not admitted to the meeting.",
-          NotAllowed: "Echo was not allowed to join the meeting.",
-          Failed: "Echo could not process the meeting.",
-          Error: "Echo could not process the meeting.",
+          Joining: "Mosaic is joining the meeting…",
+          InWaitingRoom: "Mosaic is waiting for admission to the meeting.",
+          InMeeting: "Mosaic is in the meeting and catching up.",
+          Recording: "Mosaic is recording the meeting.",
+          Leaving: "Mosaic is leaving the meeting and preparing the recording.",
+          MediaProcessing: "Mosaic is processing the meeting audio.",
+          Transcribing: "Mosaic is transcribing the meeting.",
+          Done: "Mosaic finished processing the meeting.",
+          Completed: "Mosaic finished processing the meeting.",
+          Denied: "Mosaic was not admitted to the meeting.",
+          NotAllowed: "Mosaic was not allowed to join the meeting.",
+          Failed: "Mosaic could not process the meeting.",
+          Error: "Mosaic could not process the meeting.",
         };
-        setBotStatus(messages[status] || `Echo status: ${status}`);
+        setBotStatus(messages[status] || `Mosaic status: ${status}`);
         if (terminalStatuses.has(status)) setBotId(null);
       } catch (error) {
-        if (!cancelled) setBotStatus(error instanceof Error ? error.message : "Unable to read Echo meeting status.");
+        if (!cancelled) setBotStatus(error instanceof Error ? error.message : "Unable to read Mosaic meeting status.");
       }
     };
     void readStatus();
@@ -424,7 +424,7 @@ export function StudioPanel({
             {/* Header with live status badge matching Col 2 & 3 */}
             <div className="px-5 py-3.5 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between min-h-[68px]">
               <div>
-                <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Echo Meeting</h3>
+                <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Mosaic Meeting</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Recording controls & details.</p>
               </div>
               <div>
@@ -583,7 +583,7 @@ export function StudioPanel({
                     </div>
                     <div className="text-[10px] text-[#C9A84C] font-medium flex items-center justify-between">
                       <span>{recorder.screenInfo.audioStatusLabel}</span>
-                      <span className="text-[9px] text-slate-300">Auto-saving to Documents/Echo Meetings</span>
+                      <span className="text-[9px] text-slate-300">Auto-saving to Documents/Mosaic Meetings</span>
                     </div>
                   </div>
                 )}
@@ -599,7 +599,7 @@ export function StudioPanel({
                 {recorder.hasOtherTabRecording && (
                   <div className="bg-blue-50 border border-blue-200 p-2 text-blue-800 text-[11px] flex items-center gap-1.5">
                     <AlertCircle size={13} className="text-blue-600 shrink-0" />
-                    <span>Notice: Another Echo tab is currently recording.</span>
+                    <span>Notice: Another Mosaic tab is currently recording.</span>
                   </div>
                 )}
 
@@ -629,7 +629,7 @@ export function StudioPanel({
 
                 {recorder.localSavedPath && (
                   <div className="text-[10px] text-emerald-700 bg-emerald-50/80 border border-emerald-200 p-1.5 truncate">
-                    Saved to Documents/Echo Meetings: <span className="font-mono">{recorder.localSavedPath.split(/[/\\]/).pop()}</span>
+                    Saved to Documents/Mosaic Meetings: <span className="font-mono">{recorder.localSavedPath.split(/[/\\]/).pop()}</span>
                   </div>
                 )}
 
@@ -868,14 +868,14 @@ export function StudioPanel({
             </div>
           )}
 
-          {/* ── Right / Bottom: Ask Echo ─────────────────────── */}
+          {/* ── Right / Bottom: Ask Mosaic ─────────────────────── */}
           <div className={`${isFullscreen ? "w-full lg:w-1/3 lg:flex-1 min-w-0 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 py-3.5 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between min-h-[68px]">
               <div className="flex items-center gap-3">
                 <div>
                   {canAskEcho ? (
                     <div className="flex items-center gap-2.5">
-                      <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>
+                      <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Mosaic</h3>
                       {(isFullscreen || workspaceTab === "echo") && (
                         <button
                           type="button"
@@ -901,18 +901,18 @@ export function StudioPanel({
               {canAskEcho && !isFullscreen && (
                 <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
-                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Mosaic</button>
                 </div>
               )}
               {isFullscreen && canAskEcho && (
-                <div className="flex gap-1 shrink-0" role="tablist" aria-label="Echo workspace">
-                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Ask Echo</button>
+                <div className="flex gap-1 shrink-0" role="tablist" aria-label="Mosaic workspace">
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Ask Mosaic</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Transcript</button>
                 </div>
               )}
             </div>
 
-            {isFullscreen && (!canAskEcho || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-4 space-y-3"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Echo is transcribing…" : liveTranscript.completedBatches > 0 ? `Echo is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Echo is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Echo processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
+            {isFullscreen && (!canAskEcho || workspaceTab === "transcript") ? <div className="flex-1 overflow-y-auto p-4 space-y-3"><div className="mb-3 text-[11px] font-semibold text-[#003366]">{liveTranscript.status === "processing" ? "Mosaic is transcribing…" : liveTranscript.completedBatches > 0 ? `Mosaic is caught up to ${formatTime(Math.min(recorder.elapsedSeconds, liveTranscript.processedSeconds))}` : "Mosaic is transcribing…"}</div><div className="space-y-3 text-sm leading-relaxed text-slate-700">{liveTranscript.segments.length ? liveTranscript.segments.map((segment) => <div key={segment.index}><span className="mr-2 font-mono text-[10px] text-[#003366]">[{formatTime(segment.startedAtSeconds)}]</span>{segment.text}</div>) : <p>Transcript chunks will appear here as Mosaic processes the meeting.</p>}</div></div> : workspaceTab === "notes" && !isFullscreen ? <>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
                 {notes.length === 0 && (
                   <div className="mx-auto mt-6 max-w-xs text-center">
@@ -982,7 +982,7 @@ export function StudioPanel({
                   className="flex items-end border border-[#003366]/35 bg-white focus-within:border-[#003366] shadow-2xs"
                 >
                   <textarea
-                    aria-label="Ask Echo from Meeting Studio"
+                    aria-label="Ask Mosaic from Meeting Studio"
                     rows={1}
                     value={echoInput}
                     onChange={(event) => setEchoInput(event.target.value)}
@@ -999,7 +999,7 @@ export function StudioPanel({
                     type="submit"
                     disabled={!echoInput.trim() || isEchoThinking}
                     className="m-1 p-2 text-[#003366] hover:bg-slate-100 disabled:opacity-30 transition-colors"
-                    aria-label="Ask Echo"
+                    aria-label="Ask Mosaic"
                   >
                     <Send size={15} />
                   </button>

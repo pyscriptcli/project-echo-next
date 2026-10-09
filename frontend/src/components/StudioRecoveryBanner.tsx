@@ -15,7 +15,7 @@ interface StudioRecoveryBannerProps {
 
 /**
  * Banner shown at the top of the page when an interrupted recording session
- * is found in IndexedDB or Documents/Echo Meetings (e.g., after a browser crash or battery cut).
+ * is found in IndexedDB or Documents/Mosaic Meetings (e.g., after a browser crash or battery cut).
  * Offers 1-click Notetaker processing, download, or discard.
  */
 export function StudioRecoveryBanner({
@@ -121,7 +121,7 @@ export function StudioRecoveryBanner({
               {session.startedAt && ` from ${formatDate(session.startedAt)}`}
               {session.elapsedSeconds > 0 && ")"}
               <span className="ml-2 text-[10px] text-amber-700 bg-amber-100/80 px-1.5 py-0.5 border border-amber-200 inline-flex items-center gap-1">
-                <Folder size={10} /> Auto-saved in Documents/Echo Meetings
+                <Folder size={10} /> Auto-saved in Documents/Mosaic Meetings
               </span>
             </div>
           </div>

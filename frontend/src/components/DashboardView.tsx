@@ -401,7 +401,7 @@ export function DashboardView({
           </div>
         </div>
 
-        {/* Right Column (5 cols): Interactive Calendar (Clean, Ask Echo removed as requested) */}
+        {/* Right Column (5 cols): Interactive Calendar (Clean, Mosaic assistant removed as requested) */}
         <div className="lg:col-span-5">
           <div className="bg-[#FFFCFB] border border-gray-200/90 rounded-none p-5 shadow-2xs">
             <div className="flex items-center justify-between mb-4">

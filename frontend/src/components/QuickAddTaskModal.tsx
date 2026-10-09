@@ -319,8 +319,7 @@ export function QuickAddTaskModal({
               {isAlreadyCreated ? "Task Already Tracked in ClickUp!" : "Task Created in ClickUp!"}
             </h4>
             <p className="text-xs text-gray-600 max-w-xs mx-auto">
-              This discussion point is linked to ClickUp with tag{" "}
-              <code className="bg-[#FFFCFB] px-1 font-bold text-purple-700">echo</code>.
+              This discussion point is linked to ClickUp with the meeting workflow tag.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2.5 pt-3">
               {/* OPEN IN TASKS BUTTON */}

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const userData = await userRes.json();
     if (!userData.user?.email?.toLowerCase().endsWith("@primephilippines.com")) {
-      return NextResponse.json({ success: false, error: "Echo is restricted to @primephilippines.com accounts." }, { status: 403 });
+      return NextResponse.json({ success: false, error: "This sign-in method is limited to authorized organization accounts." }, { status: 403 });
     }
     let workspaceName = "Primephilippines";
     try {

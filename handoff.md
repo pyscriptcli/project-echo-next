@@ -4,9 +4,9 @@ This file is the working handoff for the next engineer or AI agent. Read it befo
 
 ## Product identity
 
-Project Echo is a PRIME-branded work assistant. The user-facing assistant is called **Echo** or **Ask Echo**. ClickUp is an implementation detail and data connection, not Echo's identity. Do not describe Echo in the UI as a “ClickUp assistant”, “ClickUp chatbot”, or “ClickUp AI”. Backend logs, route names, and source-page labels may still mention ClickUp where technically useful.
+Mosaic is the connected team workspace. Use the supplied Mosaic lockup, app icon, and **MOSAIC / WORK, CONNECTED** identity for visible product branding. The user-facing assistant is called **Mosaic assistant** or **Ask Mosaic**. ClickUp is a data connection, not the product identity. Keep answers conversational, grounded in the signed-in user's permitted work, and show sources when factual claims are made.
 
-Echo should feel casual, conversational, and useful. Avoid provider language, “intelligence repository”, and corporate jargon. Answers should be grounded in the signed-in user's permitted work and should show sources when factual claims are made.
+The visual system uses deep blue `#003366`, warm white `#FFFCFB`, gold `#C9A84C`, Cormorant Garamond, and Montserrat.
 
 ## Current repository state
 

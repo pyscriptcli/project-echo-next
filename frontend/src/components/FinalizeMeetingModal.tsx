@@ -284,7 +284,7 @@ export function FinalizeMeetingModal({
         setSaveSuccess({
           taskUrl: result.clickup.taskUrl,
           taskTitle: metadata.client_name,
-          listName: result.clickup.listName || "Echo Meetings",
+          listName: result.clickup.listName || "Mosaic Meetings",
           isConfidential: false,
         });
       }
@@ -651,7 +651,7 @@ export function FinalizeMeetingModal({
                       <div>
                         <h4 className="text-xs font-bold text-[#003366]">Select Target ClickUp Space</h4>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Echo will save the meeting into the selected department’s <b>Echo Meetings</b> list.
+                          Mosaic will save the meeting into the selected department’s <b>Mosaic Meetings</b> list.
                         </p>
                       </div>
                       {loadingArchiveSpaces && (
@@ -718,7 +718,7 @@ export function FinalizeMeetingModal({
                                 </option>
                               ))}
                               {!spaceLists.some((l) => /echo meetings|echo meeting/i.test(l.name)) && (
-                                <option value="">+ Create new "Echo Meetings" list in this space</option>
+                                <option value="">+ Create new "Mosaic Meetings" list in this space</option>
                               )}
                             </select>
                             <p className="text-[10px] text-slate-400 mt-1">
@@ -727,7 +727,7 @@ export function FinalizeMeetingModal({
                           </div>
                         ) : (
                           <div className="text-[11px] text-slate-500 py-1">
-                            {loadingSpaceLists ? "Retrieving lists..." : 'Defaulting to "Echo Meetings" in this space.'}
+                            {loadingSpaceLists ? "Retrieving lists..." : 'Defaulting to "Mosaic Meetings" in this space.'}
                           </div>
                         )}
                       </div>
@@ -980,7 +980,7 @@ export function FinalizeMeetingModal({
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-3 shrink-0">
           <span className="text-[10px] text-slate-400">
-            PRIME Philippines • Minutes of the Meeting Engine
+            Mosaic • Minutes of the Meeting
           </span>
           <button
             type="button"

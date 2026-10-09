@@ -21,6 +21,6 @@ export async function GET(req: NextRequest) {
     note:
       !clientId || !clientSecret
         ? "ClickUp OAuth is not configured. Add CLICKUP_CLIENT_ID and CLICKUP_CLIENT_SECRET, then redeploy."
-        : "ClickUp OAuth is ready. Each Echo user will connect their own ClickUp account.",
+        : "ClickUp OAuth is ready. Each Mosaic user will connect their own ClickUp account.",
   });
 }

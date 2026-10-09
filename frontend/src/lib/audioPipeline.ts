@@ -1,5 +1,5 @@
 /**
- * 10-Layer Resilient Client-Side Audio Pipeline for Project Echo
+ * 10-Layer Resilient Client-Side Audio Pipeline for Mosaic
  * 
  * Pipeline Architecture:
  * 1. Upload & Validation

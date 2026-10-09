@@ -3,13 +3,16 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-function getEchoMeetingsDir(): string {
+function getMosaicMeetingsDir(): string {
   const userHome = process.env.USERPROFILE || process.env.HOME || os.homedir();
-  const echoDir = path.join(userHome, "Documents", "Echo Meetings");
-  if (!fs.existsSync(echoDir)) {
-    fs.mkdirSync(echoDir, { recursive: true });
-  }
-  return echoDir;
+  const directory = path.join(userHome, "Documents", "Mosaic Meetings");
+  if (!fs.existsSync(directory)) fs.mkdirSync(directory, { recursive: true });
+  return directory;
+}
+
+function getLegacyEchoMeetingsDir() {
+  const userHome = process.env.USERPROFILE || process.env.HOME || os.homedir();
+  return path.join(userHome, "Documents", "Echo Meetings");
 }
 
 export async function GET(req: NextRequest) {
@@ -21,10 +24,12 @@ export async function GET(req: NextRequest) {
 
     // Prevent directory traversal
     const safeBaseName = path.basename(fileName);
-    const echoDir = getEchoMeetingsDir();
-    const filePath = path.join(echoDir, safeBaseName);
+    const filePath = [
+      path.join(getMosaicMeetingsDir(), safeBaseName),
+      path.join(getLegacyEchoMeetingsDir(), safeBaseName),
+    ].find((candidate) => fs.existsSync(candidate));
 
-    if (!fs.existsSync(filePath)) {
+    if (!filePath) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 

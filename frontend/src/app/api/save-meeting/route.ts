@@ -36,12 +36,13 @@ export async function POST(req: NextRequest) {
       const spaceRes = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}`, { headers }).catch(() => null);
       const spaceData = spaceRes?.ok ? await spaceRes.json().catch(() => ({})) : {};
       spaceName = spaceData.name || meeting_details.space_name || `Space ${spaceId}`;
-      list = (lists.lists || []).find((item: any) => item.name.toLowerCase() === "echo meetings");
+      list = (lists.lists || []).find((item: any) => item.name.toLowerCase() === "mosaic meetings")
+        || (lists.lists || []).find((item: any) => item.name.toLowerCase() === "echo meetings");
       if (!list) {
-        const createList = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { method: "POST", headers, body: JSON.stringify({ name: "Echo Meetings", content: "Echo meeting archive" }) });
+        const createList = await fetch(`https://api.clickup.com/api/v2/space/${spaceId}/list`, { method: "POST", headers, body: JSON.stringify({ name: "Mosaic Meetings", content: "Mosaic meeting archive" }) });
         if (!createList.ok) {
           const detail = await createList.text();
-          throw new Error(`Unable to create Echo Meetings list in ClickUp (${createList.status}): ${detail || createList.statusText}`);
+          throw new Error(`Unable to create Mosaic Meetings list in ClickUp (${createList.status}): ${detail || createList.statusText}`);
         }
         list = await createList.json();
       }
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
       `\n# Full Transcript\n${(transcript || "").substring(0, 20000)}`
     ].join("\n");
     const meetingDate = meeting_details.date || new Date().toISOString().slice(0, 10);
-    const meetingName = meeting_details.client_name || "Echo Meeting";
+    const meetingName = meeting_details.client_name || "Mosaic Meeting";
     // Detect available statuses for this list to match the workspace workflow
     let availableStatuses: { status: string; type?: string }[] = Array.isArray(list.statuses) ? list.statuses : [];
     if (!availableStatuses.length) {

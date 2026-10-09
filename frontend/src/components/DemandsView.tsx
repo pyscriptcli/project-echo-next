@@ -259,7 +259,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Prime_Philippines_Demands_${activeAssetClass.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `Mosaic_Demands_${activeAssetClass.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -273,7 +273,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-[#003366] text-[#C9AB4C]">
-              Prime Philippines CRE
+              Mosaic Workspace
             </span>
             <span className="text-xs font-semibold text-slate-400">·</span>
             <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200 flex items-center gap-1">

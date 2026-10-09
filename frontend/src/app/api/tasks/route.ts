@@ -628,7 +628,7 @@ export async function GET(req: NextRequest) {
 
     const members = Array.from(membersMap.values());
 
-    // Map tasks to Project Echo standardized format
+    // Map tasks to Mosaic standardized format
     const tasks = rawTasks.map((t: any) => {
       // Check for meeting tag (supports both 'echo' and 'echo-meeting')
       const isMeetingTask = (t.tags || []).some((tag: any) => {
@@ -905,7 +905,7 @@ export async function POST(req: NextRequest) {
       const topic = body.topic || "Discussion Point";
       const discussion = body.discussion || body.description || "N/A";
       const evidence = body.evidence || "";
-      const meetingTitle = body.meetingTitle || "Echo Meeting";
+      const meetingTitle = body.meetingTitle || "Mosaic Meeting";
       const meetingDate = body.meetingDate ? formatEchoDate(body.meetingDate) : formatEchoDate(new Date());
 
       description = [

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Industrial & Logistics Demands - Project Echo",
+  title: "Industrial & Logistics Demands",
   description: "Executive industrial occupier requirements, 40ft logistics corridors, and warehouse pipelines",
 };
 

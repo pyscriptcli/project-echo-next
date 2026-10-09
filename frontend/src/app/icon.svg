@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Mosaic app icon</title>
+  <desc id="desc">The three-tile Mosaic symbol centered on a deep blue square.</desc>
+  <rect width="160" height="160" fill="#003366"/>
+  <path fill="#C9A84C" d="M60 32h40v40H60z"/>
+  <path fill="#FFFCFB" d="M24 80h40v40H24zM96 80h40v40H96z"/>
+</svg>

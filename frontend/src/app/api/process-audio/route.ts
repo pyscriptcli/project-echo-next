@@ -105,7 +105,7 @@ async function transcribeWithGroq(buffer: Buffer, fileName: string, mimeType: st
   formData.append("response_format", "verbose_json");
   formData.append("timestamp_granularities[]", "segment");
   formData.append("temperature", "0");
-  formData.append("prompt", process.env.GROQ_WHISPER_PROMPT || "PRIME Philippines meeting. Preserve English and Filipino code-switching, names, numbers, decisions, and action items.");
+  formData.append("prompt", process.env.GROQ_WHISPER_PROMPT || "Mosaic team meeting. Preserve English and Filipino code-switching, names, numbers, decisions, and action items.");
 
   const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
@@ -236,7 +236,7 @@ async function transcribeWithOpenRouter(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://project-echo.app",
-        "X-Title": "Project Echo Audio Transcriber",
+        "X-Title": "Mosaic Audio Transcriber",
       },
       body: JSON.stringify({
         model: process.env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3",

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="300" viewBox="0 0 260 300" role="img" aria-labelledby="title desc">
+  <title id="title">Mosaic — Work, Connected</title>
+  <desc id="desc">A centered Mosaic logo on a deep blue field, with a Gold tile above two Warm White tiles and the Work, Connected tagline.</desc>
+  <rect width="260" height="300" fill="#003366"/>
+  <path fill="#C9A84C" d="M104 8h52v52h-52z"/>
+  <path fill="#FFFCFB" d="M42 70h52v52H42zM166 70h52v52h-52z"/>
+  <text x="130" y="200" fill="#FFFCFB" text-anchor="middle" font-family="Montserrat, Arial, Helvetica, sans-serif" font-size="32" font-weight="600" letter-spacing="5">MOSAIC</text>
+  <text x="130" y="244" fill="#FFFCFB" text-anchor="middle" font-family="Montserrat, Arial, Helvetica, sans-serif" font-size="11" font-weight="500" letter-spacing="3.2">WORK, CONNECTED</text>
+</svg>

@@ -119,7 +119,7 @@ export function Topbar({
     { id: "demands", name: "Demands", description: "Demand pipeline, table & coverage", icon: ClipboardCheck },
     { id: "minutes", name: "Notetaker Studio", description: "Transcribe audio & synthesize notes", icon: Mic },
     { id: "forms", name: "Forms", description: "Submit, track & approve requests", icon: ClipboardList },
-    { id: "forms-admin", name: "Settings", description: "Configure Echo access and routing", icon: ClipboardList },
+    { id: "forms-admin", name: "Settings", description: "Configure Mosaic access and routing", icon: ClipboardList },
   ];
 
   const matchedPages = query
@@ -374,7 +374,7 @@ export function Topbar({
         )}
       </div>
 
-      {/* Right Controls: "New Meeting" (transparent fill + gold border + mic + upload) and "Ask Echo" */}
+      {/* Right Controls: New Meeting and Mosaic assistant */}
       <div className="flex items-center gap-2.5 shrink-0">
         
         {/* New Meeting Integrated Control Group */}
@@ -395,7 +395,7 @@ export function Topbar({
         </div>
         )}
 
-        {/* Ask Echo Trigger Button (#1b1d1e deep charcoal) */}
+        {/* Mosaic assistant trigger */}
         {askEchoEnabled && (!allowedFeatures || allowedFeatures.includes("ask-echo")) && (!allowedPages || allowedPages.includes("minutes")) && (
           <button
             type="button"
@@ -403,7 +403,7 @@ export function Topbar({
             className="flex items-center gap-1.5 bg-[#003366] text-[#FFFCFB] hover:bg-[#174778] border border-[#C9A84C]/60 hover:border-[#C9A84C] px-3.5 py-1.5 rounded-none text-xs font-semibold tracking-wide shadow-2xs transition-all group"
           >
             <Sparkles size={13} className="text-[#FFBF00] group-hover:rotate-12 transition-transform" />
-            <span>Ask Echo</span>
+            <span>Ask Mosaic</span>
           </button>
         )}
       </div>

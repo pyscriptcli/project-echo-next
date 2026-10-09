@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const isSearchQuery = Boolean(query && query.trim() && query.trim() !== "all important topics");
 
-    const systemPrompt = `You are an elite corporate meeting intelligence engine for PRIME Philippines.
+    const systemPrompt = `You are an elite corporate meeting intelligence engine for Mosaic.
 Analyze the transcript to ${isSearchQuery ? `search for and extract specific discussion topics matching the query "${query}"` : "discover critical discussion topics that are missing from the current minutes"}.
 
 For EVERY discovered topic, you MUST extract complete, high-quality, professional details matching the executive Minutes of the Meeting (MoM) discussion matrix:

@@ -22,8 +22,15 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Project Echo | PRIME Philippines",
-  description: "PRIME Philippines meeting intelligence and advisory workspace.",
+  title: {
+    default: "Mosaic — Work, Connected",
+    template: "%s | Mosaic",
+  },
+  description: "Mosaic brings your team’s essential tools into one connected workspace.",
+  icons: {
+    icon: "/mosaic-app-icon.svg",
+    apple: "/mosaic-app-icon.svg",
+  },
 };
 
 export default function RootLayout({

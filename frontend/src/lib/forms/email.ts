@@ -235,7 +235,7 @@ export async function sendApproverNotification({
       </div>
 
       <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
-        Sign in through Echo with your ClickUp account to approve or request revisions through the secure portal link above.<br/>
+        Sign in to Mosaic with your ClickUp account to approve or request revisions through the secure portal link above.<br/>
         Task ID: #${taskId}
       </p>
     </div>

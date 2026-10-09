@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
 
     // 4. Post audit comment
     const auditComment = isConfidential
-      ? `Echo archive relocated to Personal/Private List: ${destinationListName || "Personal List"}.`
-      : `Echo archive relocated to ${destinationSpaceName || "Space"} › ${destinationListName || "List"}.`;
+      ? `Mosaic archive relocated to Personal/Private List: ${destinationListName || "Personal List"}.`
+      : `Mosaic archive relocated to ${destinationSpaceName || "Space"} › ${destinationListName || "List"}.`;
 
     await fetch(`https://api.clickup.com/api/v2/task/${meetingId}/comment`, {
       method: "POST",
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       meeting: {
         id: meetingId,
         clickup_list_id: String(destinationListId),
-        clickup_list_name: destinationListName || (isConfidential ? "Personal List" : "Echo Meetings"),
+        clickup_list_name: destinationListName || (isConfidential ? "Personal List" : "Mosaic Meetings"),
         clickup_space_id: destinationSpaceId || (isConfidential ? "__personal__" : ""),
         clickup_space_name: destinationSpaceName || (isConfidential ? "Personal List" : "Workspace"),
         is_confidential: Boolean(isConfidential),

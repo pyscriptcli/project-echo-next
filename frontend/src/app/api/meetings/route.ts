@@ -97,7 +97,7 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
     ? "Personal List"
     : (spaceName && spaceName !== "All Spaces" ? spaceName : (task.space?.name || "Workspace"));
   const taskListId = list?.id ? String(list.id) : (task.list?.id ? String(task.list.id) : "");
-  const taskListName = list?.name || task.list?.name || (isConfidential ? "Personal List" : "Echo Meetings");
+  const taskListName = list?.name || task.list?.name || (isConfidential ? "Personal List" : "Mosaic Meetings");
   
   const startMatch = description.match(/\*\*Start(?: Time)?:\*\*\s*(.*)/i);
   const endMatch = description.match(/\*\*End(?: Time)?:\*\*\s*(.*)/i);
@@ -124,7 +124,7 @@ function parseMeetingTask(task: any, spaceId: string, spaceName: string, list: a
   return {
     id: String(task.id),
     meeting_id: String(task.id),
-    title: match?.[2] || task.name || "Echo Meeting",
+    title: match?.[2] || task.name || "Mosaic Meeting",
     date: match?.[1] || (task.date_created ? new Date(Number(task.date_created)).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
     meeting_type: "Internal",
     start_time: startTime,
@@ -454,7 +454,7 @@ export async function POST(req: NextRequest) {
       method: "PUT",
       headers,
       body: JSON.stringify({
-        name: `${meeting.date || new Date().toISOString().slice(0, 10)} — ${meeting.title || "Echo Meeting"}`,
+        name: `${meeting.date || new Date().toISOString().slice(0, 10)} — ${meeting.title || "Mosaic Meeting"}`,
         description: meetingDescription(meeting)
       }),
     });
@@ -463,7 +463,7 @@ export async function POST(req: NextRequest) {
     const audit = await fetch(`https://api.clickup.com/api/v2/task/${meeting.id}/comment`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ comment_text: `Echo archive updated: ${changeSummary(body.previousMeeting, meeting)}.`, notify_all: false }),
+      body: JSON.stringify({ comment_text: `Mosaic archive updated: ${changeSummary(body.previousMeeting, meeting)}.`, notify_all: false }),
     });
     if (!audit.ok) console.warn("ClickUp audit comment failed:", await audit.text());
 

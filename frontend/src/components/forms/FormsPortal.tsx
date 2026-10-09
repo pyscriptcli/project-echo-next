@@ -501,7 +501,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           <nav className="mt-2 space-y-1">
             {(["rbac", "navigation", "configurations", "email", "ai", "telemetry"] as const).map((item) => (
               <button key={item} type="button" onClick={() => setSettingsTab(item)} className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${settingsTab === item ? "bg-[#174778] text-[#FFBF00] border-l-2 border-[#C9A84C]" : "text-[#D7E3EF] hover:bg-[#174778] hover:text-[#FFFCFB]"}`}>
-                <span className="truncate">{item === "rbac" ? "Users & Access" : item === "navigation" ? "Workspace Sidebar" : item === "configurations" ? "Forms & Routing" : item === "email" ? "Email & Notifications" : item === "ai" ? "Ask Echo" : "System Health"}</span>
+                <span className="truncate">{item === "rbac" ? "Users & Access" : item === "navigation" ? "Workspace Sidebar" : item === "configurations" ? "Forms & Routing" : item === "email" ? "Email & Notifications" : item === "ai" ? "Ask Mosaic" : "System Health"}</span>
               </button>
             ))}
           </nav>
@@ -711,7 +711,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
       <section className={`space-y-4 ${settingsTab !== "ai" ? "hidden" : ""}`}>
         <div className="panel">
           <div className="flex items-start justify-between gap-4">
-            <div><h2 className="text-lg font-serif italic text-[#003366]">Ask Echo</h2><p className="mt-1 text-xs text-[#181D1E]/65">Choose the model and keep usage within comfortable limits.</p></div>
+            <div><h2 className="text-lg font-serif italic text-[#003366]">Ask Mosaic</h2><p className="mt-1 text-xs text-[#181D1E]/65">Choose the model and keep usage within comfortable limits.</p></div>
             <span className={`text-[10px] uppercase tracking-widest ${aiUsage?.credentialConfigured ? "text-[#003366]" : "text-red-700"}`}>{aiUsage?.credentialConfigured ? "Ready" : "API key missing"}</span>
           </div>
           <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1264,7 +1264,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
         </div>
         {formsSubtab === "features" ? <div className="space-y-3">
           <div><h2 className="text-lg font-bold text-slate-800">Form Features</h2><p className="text-xs text-gray-500 mt-1">Turn form capabilities on or off for all users.</p></div>
-          <label className="flex items-center justify-between gap-4 border border-[#C9AB4C] bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">Ask Echo availability</span><span className="block text-xs text-gray-500 mt-1">Show or hide Ask Echo throughout Project Echo. Transcription remains available when disabled.</span></span><input type="checkbox" checked={config.features?.askEchoEnabled !== false} onChange={(e) => { setConfig({ ...config, features: { ...(config.features || { askEchoEnabled: true }), askEchoEnabled: e.target.checked } }); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>
+          <label className="flex items-center justify-between gap-4 border border-[#C9AB4C] bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">Ask Mosaic availability</span><span className="block text-xs text-gray-500 mt-1">Show or hide Ask Mosaic throughout Mosaic. Transcription remains available when disabled.</span></span><input type="checkbox" checked={config.features?.askEchoEnabled !== false} onChange={(e) => { setConfig({ ...config, features: { ...(config.features || { askEchoEnabled: true }), askEchoEnabled: e.target.checked } }); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>
           {([["rfpAutofill", "RFP Autofill", "Allow requestors to prefill RFP fields from uploaded documents or demo data."], ["pdfPreview", "PDF Preview", "Allow users to generate a PDF preview before submitting."], ["emailNotifications", "Email Notifications", "Send automated request status emails to requestors."]] as const).map(([key, label, description]) => { const enabled = config.formFeatures?.[key] ?? true; return <label key={key} className="flex items-center justify-between gap-4 border border-gray-200 bg-[#FFFCFB] p-4 cursor-pointer"><span><span className="block text-sm font-bold text-[#003366]">{label}</span><span className="block text-xs text-gray-500 mt-1">{description}</span></span><input type="checkbox" checked={enabled} onChange={(e) => { const next = { ...config, formFeatures: { ...(config.formFeatures || DEFAULT_CONFIG.formFeatures!), [key]: e.target.checked } }; setConfig(next); setNotice("Unsaved feature changes"); }} className="h-4 w-4 accent-[#003366]" /></label>; })}
         </div> : <>
         <h2 className="text-lg font-bold text-slate-800 mb-1">Department Forms &amp; ClickUp Destinations</h2>
