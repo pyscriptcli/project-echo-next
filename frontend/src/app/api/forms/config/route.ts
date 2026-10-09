@@ -35,14 +35,14 @@ const DEFAULT_CONFIG: FormsConfigData = {
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
   mappings: REPOSITORY_FORM_MAPPINGS,
   pagePermissions: [],
-  defaultPageAccess: ["forms", "market-insights"],
-  sidebarOrder: ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"],
+  defaultPageAccess: ["forms", "market-insights", "delta"],
+  sidebarOrder: ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta"],
   emailTemplates: [],
   allowedSignInDomains: ["primephilippines.com"],
   aiPolicy: DEFAULT_AI_POLICY,
 };
 
-const ALL_APP_PAGES = ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms"];
+const ALL_APP_PAGES = ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta"];
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, max-age=0" };
 
 function isOwnerOrAdmin(req: NextRequest, config: any) {

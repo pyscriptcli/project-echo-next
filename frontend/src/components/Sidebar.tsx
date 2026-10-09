@@ -12,12 +12,13 @@ import {
   ClipboardList,
   Settings,
   NotebookTabs,
-  Newspaper
-  ,ClipboardCheck,
-  FolderKanban
+  Newspaper,
+  ClipboardCheck,
+  FolderKanban,
+  FileSearch,
 } from "lucide-react";
 
-export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "forms-admin";
+export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -127,6 +128,12 @@ export function Sidebar({
       label: "Forms",
       icon: ClipboardList,
       badge: null
+    },
+    {
+      id: "delta" as NavView,
+      label: "DELTA Review",
+      icon: FileSearch,
+      badge: null
     }
   ];
 
@@ -134,7 +141,11 @@ export function Sidebar({
   const navItems = allNavItems.slice().sort((a, b) => {
     const fallback = allNavItems.length;
     return (orderIndex.get(a.id) ?? fallback) - (orderIndex.get(b.id) ?? fallback);
-  }).filter((item) => Boolean(allowedPages?.includes(item.id) || (item.id === "project" && allowedPages?.includes("tasks"))));
+  }).filter((item) => Boolean(
+    allowedPages?.includes(item.id) ||
+    (item.id === "project" && allowedPages?.includes("tasks")) ||
+    (item.id === "delta" && (allowedPages?.includes("project") || allowedPages?.includes("tasks")))
+  ));
 
   return (
     <div

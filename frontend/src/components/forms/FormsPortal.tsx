@@ -37,7 +37,7 @@ import { ALL_FEATURES, FEATURE_CATALOG, type FeatureId } from "@/lib/access-cont
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
 export type FormType = "rfp" | "po" | "pcv";
-export type AppPage = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms";
+export type AppPage = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta";
 
 export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> = [
   { id: "dashboard", label: "Dashboard", desc: "Executive overview & meeting metrics" },
@@ -49,6 +49,7 @@ export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> 
   { id: "meetings", label: "Meetings", desc: "Archived meetings & transcripts" },
   { id: "minutes", label: "Notetaker", desc: "Studio, live recording & minutes synthesis" },
   { id: "forms", label: "Forms", desc: "Submit, track & approve company requests" },
+  { id: "delta", label: "DELTA Review", desc: "Compare lease drafts and export a local review register" },
 ];
 
 export const OWNER_EMAIL = "admin@primephilippines.com";
@@ -126,7 +127,7 @@ const DEFAULT_CONFIG: FormsConfig = {
   departments: ["Finance", "Procurement", "Operations", "Human Resources", "Marketing", "IT", "General"],
   mappings: REPOSITORY_FORM_MAPPINGS,
   pagePermissions: [],
-  defaultPageAccess: ["forms"],
+  defaultPageAccess: ["forms", "delta"],
   defaultFeatureAccess: ALL_FEATURES,
   sidebarOrder: APP_PAGE_LIST.map((page) => page.id),
   emailTemplates: [],
