@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Montserrat, Bebas_Neue } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
+const cormorant = localFont({
+  src: "../../public/fonts/cormorant-garamond-italic-latin.woff2",
   variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["italic"],
+  weight: "400 700",
+  style: "italic",
+  display: "swap",
 });
 
-const montserrat = Montserrat({
+const montserrat = localFont({
+  src: "../../public/fonts/montserrat-latin.woff2",
   variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
-const bebas = Bebas_Neue({
+const bebas = localFont({
+  src: "../../public/fonts/bebas-neue-latin.woff2",
   variable: "--font-bebas",
-  subsets: ["latin"],
-  weight: ["400"],
+  weight: "400",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
