@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
-import { AlertCircle, Check, Download, FileText, FolderOpen, LoaderCircle, MessageSquareText, Save, Trash2, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Download, FileText, FolderOpen, LoaderCircle, MessageSquareText, Plus, RefreshCw, Save, Trash2, Upload } from "lucide-react";
 import { compareSections, readWordSections, type DeltaEntry, type DeltaSection } from "@/lib/delta/compare";
-import { chooseReviewFolder, deleteReview, listReviews, saveReview, type SavedDeltaReview } from "@/lib/delta/localStore";
+import { chooseReviewFolder, deleteReview, hasChosenFolder, listReviews, saveReview, type SavedDeltaReview } from "@/lib/delta/localStore";
 
 const controlClass = "inline-flex min-h-10 items-center justify-center gap-2 border border-slate-300 bg-white px-3 text-xs font-semibold text-[#003366] transition-colors hover:border-[#003366] hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003366] disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -73,6 +73,12 @@ function cleanExplanation(value: string) {
     .trim();
 }
 
+function reviewMatchesContext(review: SavedDeltaReview, contextId?: string, contextName?: string) {
+  if (!contextId) return true;
+  if (review.contextId) return review.contextId === contextId;
+  return Boolean(contextName && (review.contextName?.toLocaleLowerCase() === contextName.toLocaleLowerCase() || review.title.toLocaleLowerCase().startsWith(`${contextName} contract review`.toLocaleLowerCase())));
+}
+
 function createRegisterDocument(review: SavedDeltaReview) {
   const rows = review.entries.flatMap((entry) => [
     new TableRow({ children: [
@@ -107,16 +113,16 @@ function createRegisterDocument(review: SavedDeltaReview) {
   ] }] });
 }
 
-export function DeltaReview({ contextName }: { contextName?: string }) {
-  const [originalFile, setOriginalFile] = useState<File | undefined>();
-  const [revisedFile, setRevisedFile] = useState<File | undefined>();
-  const [title, setTitle] = useState(contextName ? `${contextName} contract review` : "Contract review");
-  const [entries, setEntries] = useState<DeltaEntry[]>([]);
+export function DeltaReview({ contextName, contextId, initialReview, onBack }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void }) {
+  const [originalFile, setOriginalFile] = useState<File | undefined>(() => initialReview?.originalFile);
+  const [revisedFile, setRevisedFile] = useState<File | undefined>(() => initialReview?.revisedFile);
+  const [title, setTitle] = useState(() => initialReview?.title || (contextName ? `${contextName} contract review` : "Contract review"));
+  const [entries, setEntries] = useState<DeltaEntry[]>(() => initialReview?.entries || []);
   const [originalSections, setOriginalSections] = useState<DeltaSection[]>([]);
   const [revisedSections, setRevisedSections] = useState<DeltaSection[]>([]);
   const [reviewTab, setReviewTab] = useState<"register" | "compare">("register");
-  const [reviewId, setReviewId] = useState("");
-  const [savedAt, setSavedAt] = useState("");
+  const [reviewId, setReviewId] = useState(() => initialReview?.id || "");
+  const [savedAt, setSavedAt] = useState(() => initialReview?.savedAt || "");
   const [savedReviews, setSavedReviews] = useState<SavedDeltaReview[]>([]);
   const [folderReady, setFolderReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -127,6 +133,13 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
   const commentsFound = useMemo(() => entries.some((entry) => entry.comments.length > 0), [entries]);
   const canCompare = Boolean(originalFile && revisedFile && !busy);
 
+  useEffect(() => {
+    if (!initialReview?.originalFile || !initialReview.revisedFile) return;
+    Promise.all([readWordSections(initialReview.originalFile), readWordSections(initialReview.revisedFile)])
+      .then(([original, revised]) => { setOriginalSections(original); setRevisedSections(revised); })
+      .catch(() => { setOriginalSections([]); setRevisedSections([]); });
+  }, [initialReview]);
+
   const chooseFolder = async () => {
     setBusy(true); setError(""); setNotice(""); setBusyLabel("Opening Documents");
     try {
@@ -134,7 +147,7 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
       setFolderReady(true);
       setNotice("DELTA Reviews folder is ready in Documents. Your review files stay on this device.");
       const reviews = await listReviews();
-      setSavedReviews(reviews);
+      setSavedReviews(reviews.filter((review) => reviewMatchesContext(review, contextId, contextName)));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The local save folder could not be created.");
     } finally { setBusy(false); setBusyLabel(""); }
@@ -144,7 +157,7 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
     setBusy(true); setError(""); setBusyLabel("Reading saved reviews");
     try {
       const reviews = await listReviews();
-      setSavedReviews(reviews); setFolderReady(true);
+      setSavedReviews(reviews.filter((review) => reviewMatchesContext(review, contextId, contextName))); setFolderReady(true);
       setNotice(reviews.length ? `${reviews.length} saved review${reviews.length === 1 ? "" : "s"} found in Documents.` : "No saved reviews in the DELTA Reviews folder yet.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Saved reviews could not be read.");
@@ -175,6 +188,8 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
     savedAt: savedAt || new Date().toISOString(),
     originalName: originalFile?.name || "original.docx",
     revisedName: revisedFile?.name || "reviewed.docx",
+    ...(contextId ? { contextId } : {}),
+    ...(contextName ? { contextName } : {}),
     entries,
     commentsFound,
     ...(includeFiles ? { originalFile, revisedFile } : {}),
@@ -188,7 +203,7 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
       const registerFile = await Packer.toBlob(createRegisterDocument(review));
       await saveReview({ ...review, registerFile });
       setReviewId(review.id); setSavedAt(review.savedAt); setFolderReady(true);
-      setSavedReviews(await listReviews());
+      setSavedReviews((await listReviews()).filter((review) => reviewMatchesContext(review, contextId, contextName)));
       setNotice("Review, register, and both source Word files saved in Documents / DELTA Reviews.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The review could not be saved locally.");
@@ -255,10 +270,13 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
   return (
     <section className="mx-auto w-full max-w-[1440px] space-y-5 pb-10 text-[#181D1E]">
       <header className="flex flex-col justify-between gap-3 border-b border-[#003366]/15 pb-4 md:flex-row md:items-end">
-        <div className="border-l-4 border-[#C9A84C] pl-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#31577D]">Contract review / DELTA</p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#003366]">Review a revised lease</h1>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">Compare two Word drafts by section, keep the original and revised wording together, and export a review register.</p>
+        <div className="flex items-start gap-3">
+          {onBack && <button type="button" onClick={onBack} aria-label="Back to contract reviews" title="Back to contract reviews" className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center border border-slate-300 bg-white text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></button>}
+          <div className="border-l-4 border-[#C9A84C] pl-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#31577D]">Contract review / DELTA</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#003366]">Review a revised lease</h1>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">Compare two Word drafts by section, keep the original and revised wording together, and export a review register.</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={controlClass} onClick={chooseFolder} disabled={busy}><FolderOpen aria-hidden="true" className="h-4 w-4" />Choose Documents folder</button>
@@ -308,6 +326,61 @@ export function DeltaReview({ contextName }: { contextName?: string }) {
       </section>}
     </section>
   );
+}
+
+export function DeltaReviewList({ contextName, contextId, onStart, onOpen }: { contextName: string; contextId: string; onStart: () => void; onOpen: (review: SavedDeltaReview) => void }) {
+  const [reviews, setReviews] = useState<SavedDeltaReview[]>([]);
+  const [folderReady, setFolderReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const scopedReviews = useMemo(() => reviews.filter((review) => reviewMatchesContext(review, contextId, contextName)), [contextId, contextName, reviews]);
+
+  const refresh = async () => {
+    setLoading(true); setError("");
+    try {
+      const saved = await listReviews();
+      setReviews(saved); setFolderReady(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Saved comparisons could not be read.");
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    let active = true;
+    hasChosenFolder().then(async (chosen) => {
+      if (!active) return;
+      setFolderReady(chosen);
+      if (chosen) {
+        try { setReviews(await listReviews()); }
+        catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "Saved comparisons could not be read."); }
+      }
+    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : "The local save folder could not be checked."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const chooseFolder = async () => {
+    setLoading(true); setError("");
+    try { await chooseReviewFolder(); await refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The Documents folder could not be opened."); setLoading(false); }
+  };
+
+  const remove = async (review: SavedDeltaReview) => {
+    if (!window.confirm(`Delete ${review.title} and its source Word files from Documents / DELTA Reviews?`)) return;
+    setLoading(true); setError("");
+    try { await deleteReview(review.id); setReviews((current) => current.filter((item) => item.id !== review.id)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The comparison could not be deleted."); }
+    finally { setLoading(false); }
+  };
+
+  return <section className="space-y-4">
+    <header className="flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31577D]">Contract review / DELTA</p><h2 className="mt-1 text-lg font-semibold text-[#003366]">Comparisons</h2><p className="mt-1 text-xs text-slate-600">Saved locally for {contextName}.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void onStart()} className="inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-3 text-xs font-semibold text-white hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"><Plus aria-hidden="true" className="h-4 w-4" />New comparison</button>{folderReady ? <button type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh comparisons" title="Refresh comparisons" className="inline-flex h-10 w-10 items-center justify-center border border-slate-300 bg-white text-[#003366] hover:border-[#003366] disabled:opacity-50"><RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button> : <button type="button" onClick={() => void chooseFolder()} disabled={loading} className={controlClass}><FolderOpen aria-hidden="true" className="h-4 w-4" />Choose Documents folder</button>}</div></header>
+    {error && <p role="alert" className="border border-red-300 bg-white px-3 py-2 text-xs text-red-900">{error}</p>}
+    {loading && <p role="status" className="flex items-center gap-2 border border-slate-200 bg-white p-4 text-xs text-slate-600"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading comparisons</p>}
+    {!loading && folderReady && scopedReviews.length > 0 && <ul className="divide-y divide-slate-200 border border-slate-200 bg-white">{scopedReviews.map((review) => <li key={review.id} className="flex items-center gap-3 p-4"><button type="button" onClick={() => onOpen(review)} className="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><span className="block truncate text-sm font-semibold text-[#003366]">{review.title}</span><span className="mt-1 block text-[11px] text-slate-500">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(review.savedAt))} · {review.entries.length} changes</span><span className="mt-1 block truncate text-[10px] text-slate-500">{review.originalName} → {review.revisedName}</span></button><button type="button" aria-label={`Delete ${review.title}`} title="Delete comparison and its local Word files" onClick={() => void remove(review)} disabled={loading} className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-slate-300 text-slate-500 hover:border-red-500 hover:text-red-800 disabled:opacity-50"><Trash2 aria-hidden="true" className="h-4 w-4" /></button></li>)}</ul>}
+    {!loading && folderReady && scopedReviews.length === 0 && <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><FileText aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h3 className="mt-3 text-sm font-semibold text-[#003366]">No comparisons saved for this subproject</h3><p className="mt-1 text-xs text-slate-600">Start a comparison and save it to keep it in this list.</p><button type="button" onClick={onStart} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-[#003366] px-3 text-xs font-semibold text-[#003366] hover:bg-[#F7FAFC]"><Plus aria-hidden="true" className="h-4 w-4" />New comparison</button></div>}
+    {!loading && !folderReady && <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><FolderOpen aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h3 className="mt-3 text-sm font-semibold text-[#003366]">Choose a local save folder</h3><p className="mt-1 text-xs text-slate-600">Saved comparisons stay in Documents / DELTA Reviews on this device.</p><button type="button" onClick={() => void chooseFolder()} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-[#003366] px-3 text-xs font-semibold text-[#003366] hover:bg-[#F7FAFC]"><FolderOpen aria-hidden="true" className="h-4 w-4" />Choose Documents folder</button></div>}
+  </section>;
 }
 
 function ComparePreview({ entries, originalSections, revisedSections, originalName, revisedName }: { entries: DeltaEntry[]; originalSections: DeltaSection[]; revisedSections: DeltaSection[]; originalName?: string; revisedName?: string }) {

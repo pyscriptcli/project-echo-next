@@ -3,6 +3,8 @@ import type { DeltaEntry } from "./compare";
 export interface SavedDeltaReview {
   id: string;
   title: string;
+  contextId?: string;
+  contextName?: string;
   savedAt: string;
   originalName: string;
   revisedName: string;
