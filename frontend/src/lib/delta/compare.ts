@@ -22,6 +22,11 @@ export interface DeltaEntry {
   revisedText: string;
   summary: string;
   explanation?: string;
+  approval?: "approved";
+  amendment?: {
+    comment?: string;
+    wording?: string;
+  };
 }
 
 const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
