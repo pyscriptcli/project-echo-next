@@ -7,10 +7,8 @@ import {
   FolderArchive, 
   FileEdit, 
   ChevronLeft, 
-  ChevronRight, 
   LogOut,
   CheckSquare,
-  ClipboardList,
   Settings,
   NotebookTabs,
   Newspaper,
@@ -125,12 +123,6 @@ export function Sidebar({
       badge: null
     },
     {
-      id: "forms" as NavView,
-      label: "Forms",
-      icon: ClipboardList,
-      badge: null
-    },
-    {
       id: "delta" as NavView,
       label: "Contracts",
       icon: FileSearch,
@@ -166,18 +158,20 @@ export function Sidebar({
           <div className={`h-16 flex items-center border-b border-[#31577D] ${effectiveCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
             <MosaicBrand compact={effectiveCollapsed} size={effectiveCollapsed ? "small" : "medium"} className="text-[#FFFCFB]" />
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsPinned(!isPinned);
-                if (onToggleCollapse) onToggleCollapse();
-              }}
-              aria-label={isPinned ? "Unpin sidebar (auto-collapse)" : "Pin sidebar expanded"}
-              title={isPinned ? "Unpin sidebar (auto-collapse on leave)" : "Pin sidebar expanded"}
-              className="p-1.5 rounded-none hover:bg-[#174778] text-[#D7E3EF] hover:text-[#FFBF00] transition-colors cursor-pointer"
-            >
-              {effectiveCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
+            {!effectiveCollapsed && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPinned(!isPinned);
+                  if (onToggleCollapse) onToggleCollapse();
+                }}
+                aria-label={isPinned ? "Unpin sidebar (auto-collapse)" : "Pin sidebar expanded"}
+                title={isPinned ? "Unpin sidebar (auto-collapse on leave)" : "Pin sidebar expanded"}
+                className="p-1.5 rounded-none hover:bg-[#174778] text-[#D7E3EF] hover:text-[#FFBF00] transition-colors cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
           </div>
 
           {/* Navigation Items (Dashboard, Meetings, Notetaker) */}

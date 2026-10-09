@@ -275,7 +275,7 @@ export async function askEcho(
   });
 
   if (!res.ok) {
-    let errMsg = "Mosaic assistant request failed.";
+    let errMsg = "Ask Echo request failed.";
     try {
       const err = await res.json();
       errMsg = err.error || errMsg;

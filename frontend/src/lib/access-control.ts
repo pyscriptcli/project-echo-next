@@ -13,7 +13,7 @@ export type AccessConfig = {
 export const ALL_APP_PAGES: AppPage[] = ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta"];
 export const ALL_FEATURES: FeatureId[] = ["ask-echo", "notetaker-record", "notetaker-upload", "meetings-export", "forms-rfp-autofill", "forms-pdf-preview", "forms-submit"];
 export const FEATURE_CATALOG: Record<FeatureId, { label: string; requiredPage?: AppPage; global?: "askEchoEnabled" | "rfpAutofill" | "pdfPreview" }> = {
-  "ask-echo": { label: "Ask Mosaic", global: "askEchoEnabled" },
+  "ask-echo": { label: "Ask Echo", global: "askEchoEnabled" },
   "notetaker-record": { label: "Record meetings", requiredPage: "minutes" },
   "notetaker-upload": { label: "Upload meeting material", requiredPage: "minutes" },
   "meetings-export": { label: "Export meeting minutes", requiredPage: "meetings" },

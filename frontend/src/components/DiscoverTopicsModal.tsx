@@ -190,7 +190,7 @@ export function DiscoverTopicsModal({
               <Sparkles size={28} className="mx-auto text-[#c9ab4c] mb-2.5 opacity-80" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#003366]">No Uncaptured Topics Flagged</h3>
               <p className="text-[11px] text-gray-500 mt-1.5 max-w-md mx-auto leading-relaxed">
-                Mosaic analyzes the meeting transcript for uncaptured action items and decisions. Type a keyword into <strong>Search Topic</strong> above or click <strong>Auto-Discover</strong> to find unminuted points.
+                Ask Echo analyzes the meeting transcript for uncaptured action items and decisions. Type a keyword into <strong>Search Topic</strong> above or click <strong>Auto-Discover</strong> to find unminuted points.
               </p>
               <div className="mt-4 flex items-center justify-center gap-2">
                 <button

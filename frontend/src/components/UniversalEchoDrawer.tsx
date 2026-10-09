@@ -21,7 +21,7 @@ interface UniversalEchoDrawerProps {
   onOpenSource?: (page: string, recordId: string, url?: string) => void;
 }
 
-const STARTER: Message = { role: "assistant", content: "Hi — I’m your Mosaic assistant. What would you like to get done today?", timestamp: "Just now" };
+const STARTER: Message = { role: "assistant", content: "Hi — I’m Echo. What would you like to get done today?", timestamp: "Just now" };
 const STORAGE_KEY = "echo_ask_conversation";
 
 export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: UniversalEchoDrawerProps) {
@@ -97,12 +97,12 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-      <button aria-label="Close Mosaic assistant" onClick={onClose} className="fixed inset-0 bg-[#003366]/30 backdrop-blur-[2px]" />
-      <section aria-label="Mosaic assistant" className={`relative h-full bg-[#FFFCFB] border-l border-[#C9A84C] shadow-2xl flex flex-col transition-[width] duration-300 ${expanded ? "w-full" : "w-full max-w-xl"}`}>
+      <button aria-label="Close Ask Echo" onClick={onClose} className="fixed inset-0 bg-[#003366]/30 backdrop-blur-[2px]" />
+      <section aria-label="Ask Echo" className={`relative h-full bg-[#FFFCFB] border-l border-[#C9A84C] shadow-2xl flex flex-col transition-[width] duration-300 ${expanded ? "w-full" : "w-full max-w-xl"}`}>
         <header className="min-h-20 px-5 bg-[#003366] text-[#FFFCFB] flex items-center justify-between border-b border-[#C9A84C]">
           <div className="flex items-center gap-3">
             <MosaicBrand size="small" className="text-[#FFFCFB]" />
-            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Assistant</h2><p className="text-xs font-normal text-[#FFFCFB]/70">{userName ? `Here for you, ${userName}` : "Your work, made clearer"}</p></div>
+            <div className="border-l border-[#C9A84C] pl-3"><h2 className="font-serif italic text-xl">Ask Echo</h2><p className="text-xs font-normal text-[#FFFCFB]/70">{userName ? `Here for you, ${userName}` : "Your work, made clearer"}</p></div>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={reset} aria-label="Reset conversation" title="Reset conversation" className="flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-[#174778]"><RotateCcw size={14} /> Reset</button>
@@ -131,12 +131,12 @@ export function UniversalEchoDrawer({ isOpen, onClose, onOpenSource }: Universal
         </div>
 
         <footer className="p-4 bg-[#FFFCFB] border-t border-[#C9A84C]/50">
-          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">Mosaic uses the work you’re allowed to access</div>
+          <div className="mb-2 text-[10px] font-medium tracking-[0.18em] uppercase text-[#003366]/70">Ask Echo uses the work you’re allowed to access</div>
           <form onSubmit={(event) => { event.preventDefault(); send(); }} className="flex items-end border border-[#003366]/35 focus-within:border-[#003366]">
-            <textarea aria-label="Message Mosaic assistant" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about your tasks, daily log, meetings, or deadlines…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
+            <textarea aria-label="Message Ask Echo" rows={1} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about your tasks, daily log, meetings, or deadlines…" disabled={isThinking} className="min-h-11 max-h-32 flex-1 resize-y bg-[#FFFCFB] px-3 py-3 text-sm text-[#181D1E] outline-none" />
             {isThinking ? <button type="button" onClick={() => abortRef.current?.abort()} aria-label="Stop response" className="m-1.5 p-2 text-[#003366]"><Square size={15} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Send message" className="m-1.5 p-2 text-[#003366] disabled:opacity-30"><Send size={16} /></button>}
           </form>
-          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Mosaic matches “me” and “my” to your signed-in profile.</p>
+          <p className="mt-2 text-center text-[10px] text-[#181D1E]/50">Ask Echo matches “me” and “my” to your signed-in profile.</p>
         </footer>
       </section>
     </div>

@@ -74,7 +74,7 @@ export async function recordUsage(entry: { userEmail: string; model: string; sta
   const client = db();
   if (!client) return;
   const { error } = await client.from("echo_ai_usage").insert({ user_email: entry.userEmail, model: entry.model, status: entry.status, latency_ms: entry.latencyMs, input_tokens: entry.inputTokens, output_tokens: entry.outputTokens, total_tokens: entry.totalTokens });
-  if (error) console.warn("[Ask Mosaic] Usage could not be recorded:", error.message);
+  if (error) console.warn("[Ask Echo] Usage could not be recorded:", error.message);
 }
 
 export async function getUsageSummary() {

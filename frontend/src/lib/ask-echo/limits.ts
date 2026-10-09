@@ -41,10 +41,10 @@ export interface UsageSnapshot {
 }
 
 export function checkUsagePolicy(policy: AiPolicy, usage: UsageSnapshot): { allowed: true } | { allowed: false; reason: string } {
-  if (usage.concurrentRequests >= policy.concurrentRequestsPerUser) return { allowed: false, reason: "You already have an Ask Mosaic reply in progress." };
+  if (usage.concurrentRequests >= policy.concurrentRequestsPerUser) return { allowed: false, reason: "You already have an Ask Echo reply in progress." };
   if (usage.requestsLastMinute >= policy.requestsPerMinute) return { allowed: false, reason: "You’re asking a little too quickly. Please wait a minute and try again." };
-  if (usage.userTokensToday >= policy.dailyTokensPerUser) return { allowed: false, reason: "You’ve reached today’s Ask Mosaic limit. Try again tomorrow." };
-  if (usage.organizationTokensThisMonth >= policy.monthlyOrganizationTokens) return { allowed: false, reason: "Ask Mosaic has reached this month’s shared limit. Please contact an admin." };
+  if (usage.userTokensToday >= policy.dailyTokensPerUser) return { allowed: false, reason: "You’ve reached today’s Ask Echo limit. Try again tomorrow." };
+  if (usage.organizationTokensThisMonth >= policy.monthlyOrganizationTokens) return { allowed: false, reason: "Ask Echo has reached this month’s shared limit. Please contact an admin." };
   return { allowed: true };
 }
 

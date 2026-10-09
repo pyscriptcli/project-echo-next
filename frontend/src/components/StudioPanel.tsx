@@ -63,7 +63,7 @@ interface EchoMessage {
 }
 
 const ECHO_STORAGE_KEY = "echo_ask_conversation";
-const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m your Mosaic assistant. What would you like to get done today?", timestamp: "Just now" };
+const ECHO_STARTER: EchoMessage = { role: "assistant", content: "Hi — I’m Echo. What would you like to get done today?", timestamp: "Just now" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -868,14 +868,14 @@ export function StudioPanel({
             </div>
           )}
 
-          {/* ── Right / Bottom: Ask Mosaic ─────────────────────── */}
+          {/* ── Right / Bottom: Ask Echo ───────────────────────── */}
           <div className={`${isFullscreen ? "w-full lg:w-1/3 lg:flex-1 min-w-0 h-full min-h-0" : "flex-1 border-t border-[#D9E1EA]"} flex flex-col min-h-0 bg-[#FFFCFB]`}>
             <div className="px-5 py-3.5 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between min-h-[68px]">
               <div className="flex items-center gap-3">
                 <div>
                   {canAskEcho ? (
                     <div className="flex items-center gap-2.5">
-                      <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Mosaic</h3>
+                      <h3 className="text-lg font-semibold tracking-tight text-[#003366]">Ask Echo</h3>
                       {(isFullscreen || workspaceTab === "echo") && (
                         <button
                           type="button"
@@ -901,12 +901,12 @@ export function StudioPanel({
               {canAskEcho && !isFullscreen && (
                 <div className="flex gap-1" role="tablist" aria-label="Meeting workspace">
                   <button type="button" role="tab" aria-selected={workspaceTab === "notes"} onClick={() => setWorkspaceTab("notes")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "notes" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Plus size={13} /> Notes</button>
-                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Mosaic</button>
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}><Sparkles size={13} /> Ask Echo</button>
                 </div>
               )}
               {isFullscreen && canAskEcho && (
-                <div className="flex gap-1 shrink-0" role="tablist" aria-label="Mosaic workspace">
-                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Ask Mosaic</button>
+                <div className="flex gap-1 shrink-0" role="tablist" aria-label="Ask Echo workspace">
+                  <button type="button" role="tab" aria-selected={workspaceTab === "echo"} onClick={() => setWorkspaceTab("echo")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "echo" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Ask Echo</button>
                   <button type="button" role="tab" aria-selected={workspaceTab === "transcript"} onClick={() => setWorkspaceTab("transcript")} className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${workspaceTab === "transcript" ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-400 hover:text-[#003366]"}`}>Transcript</button>
                 </div>
               )}
@@ -982,7 +982,7 @@ export function StudioPanel({
                   className="flex items-end border border-[#003366]/35 bg-white focus-within:border-[#003366] shadow-2xs"
                 >
                   <textarea
-                    aria-label="Ask Mosaic from Meeting Studio"
+                    aria-label="Ask Echo from Meeting Studio"
                     rows={1}
                     value={echoInput}
                     onChange={(event) => setEchoInput(event.target.value)}
@@ -999,7 +999,7 @@ export function StudioPanel({
                     type="submit"
                     disabled={!echoInput.trim() || isEchoThinking}
                     className="m-1 p-2 text-[#003366] hover:bg-slate-100 disabled:opacity-30 transition-colors"
-                    aria-label="Ask Mosaic"
+                    aria-label="Ask Echo"
                   >
                     <Send size={15} />
                   </button>
