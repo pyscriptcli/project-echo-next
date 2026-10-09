@@ -545,9 +545,11 @@ function LoadingSkeleton({ variant }: { variant: "gallery" | "project" | "subpro
   const isProject = variant === "project";
   return <div role="status" aria-label={loadingLabel} className="space-y-3" aria-busy="true"><span className="sr-only">{loadingLabel}</span>{loadingIndicator}<div aria-hidden="true" className="border border-slate-200 bg-white p-4">{bar("h-3 w-28")}{bar("mt-3 h-7 w-2/5")}</div>{isProject && <div aria-hidden="true" className="flex gap-3 border-b border-slate-200 py-2">{bar("h-8 w-20")}{bar("h-8 w-20")}</div>}<div aria-hidden="true" className="grid gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-4">{bar("h-3 w-2/5")}{bar("mt-3 h-6 w-3/4")}{bar("mt-4 h-2 w-full")}{bar("mt-3 h-3 w-1/2")}</div>)}</div>{isProject ? <div aria-hidden="true" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-3">{bar("h-4 w-3/4")}{bar("mt-3 h-2 w-full")}{bar("mt-3 h-3 w-2/5")}</div>)}</div> : <div aria-hidden="true" className="space-y-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="border border-slate-200 bg-white p-4"><div className="flex items-center gap-3">{bar("h-7 w-7")}{bar("h-4 w-2/5")}{bar("ml-auto h-4 w-16")}</div>{bar("mt-4 h-2 w-full")}{bar("mt-4 h-10 w-full")}</div>)}</div>}</div>;
 }
-function ProjectGallery({ projects, selectedProjectIds, loading, error, savingSelection, onRefresh, onOpen, onSaveSelection }: {
+function ProjectGallery({ projects, selectedProjectIds, selectionLoaded, selectionError, loading, error, savingSelection, onRefresh, onOpen, onSaveSelection }: {
   projects: ProjectCardData[];
   selectedProjectIds: string[];
+  selectionLoaded: boolean;
+  selectionError: string | null;
   loading: boolean;
   error: string | null;
   savingSelection: boolean;
@@ -613,10 +615,12 @@ function ProjectGallery({ projects, selectedProjectIds, loading, error, savingSe
 
   return <section className="mx-auto w-full max-w-[1440px] space-y-5 pb-8">
     <ProjectPageHeader eyebrow="Project portfolio" title="Projects" subtitle={`Choose ClickUp folders to include · ${spaceName}`} actions={<>
-      <button ref={pickerTriggerRef} type="button" onClick={openPicker} className="inline-flex min-h-8 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-[#003366] transition-colors hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><FolderKanban aria-hidden="true" className="h-3.5 w-3.5" />Choose folders</button>
+      <button ref={pickerTriggerRef} type="button" onClick={openPicker} disabled={!selectionLoaded || Boolean(selectionError)} className="inline-flex min-h-8 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-[#003366] transition-colors hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366] disabled:cursor-wait disabled:opacity-50"><FolderKanban aria-hidden="true" className="h-3.5 w-3.5" />Choose folders</button>
       <ProjectActionButton onClick={onRefresh} disabled={loading}><RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</ProjectActionButton>
     </>} />
-    {loading && !projects.length ? <LoadingSkeleton variant="gallery" />
+    {!selectionLoaded ? <LoadingSkeleton variant="gallery" />
+      : selectionError ? <div role="alert" className="border border-amber-300 bg-white p-5"><p className="text-sm font-semibold text-[#003366]">Project selection could not be loaded</p><p className="mt-1 text-sm text-slate-600">{selectionError}</p><button type="button" onClick={onRefresh} className="mt-3 min-h-11 border border-[#003366] px-3 text-xs font-semibold text-[#003366]">Try again</button></div>
+      : loading && !projects.length ? <LoadingSkeleton variant="gallery" />
       : error && !projects.length ? <div role="alert" className="border border-amber-300 bg-white p-5"><p className="text-sm font-semibold text-[#003366]">Project folders could not be loaded</p><p className="mt-1 text-sm text-slate-600">{error}</p><button type="button" onClick={onRefresh} className="mt-3 min-h-11 border border-[#003366] px-3 text-xs font-semibold text-[#003366]">Try again</button></div>
         : includedProjects.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{includedProjects.map((project) => <button key={project.id} type="button" onClick={() => onOpen(project)} className="group min-h-40 border border-slate-200 bg-white p-4 text-left transition-colors hover:border-[#C9A84C] hover:bg-[#FFFCFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><div className="flex h-full flex-col"><div className="flex items-start justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderKanban aria-hidden="true" className="h-4 w-4" /></span><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-slate-400 transition-colors group-hover:text-[#003366]" /></div><span className="mt-4 text-base font-semibold text-[#003366]">{project.name}</span><span className="mt-1 text-xs text-slate-500">{project.listCount} subproject{project.listCount === 1 ? "" : "s"}</span><span className="mt-auto pt-4 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">Open project</span></div></button>)}</div>
           : <div className="border border-dashed border-slate-300 bg-white px-5 py-12 text-center"><FolderKanban aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">Choose which folders are projects</h2><p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Only folders you select will appear in this shared project gallery.</p><button type="button" onClick={openPicker} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-3 text-xs font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]">Choose folders</button></div>}
@@ -774,6 +778,7 @@ export function ProjectWorkspace() {
   const [projects, setProjects] = useState<ProjectCardData[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [selectionLoaded, setSelectionLoaded] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [savingSelection, setSavingSelection] = useState(false);
   const [screen, setScreen] = useState<"gallery" | "project" | "subproject">("gallery");
   const [activeFolderId, setActiveFolderId] = useState("");
@@ -785,21 +790,30 @@ export function ProjectWorkspace() {
   const [savingAssigneeListId, setSavingAssigneeListId] = useState<string | null>(null);
   const [assigneeSyncMessage, setAssigneeSyncMessage] = useState("");
   const galleryRequest = useRef<Promise<ProjectCardData[]> | null>(null);
+  const selectionRequestId = useRef(0);
+
+  const loadProjectSelection = useCallback(async () => {
+    const requestId = ++selectionRequestId.current;
+    setSelectionLoaded(false);
+    setSelectionError(null);
+    try {
+      const response = await fetch("/api/projects/selection", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Project selection could not be loaded.");
+      if (requestId !== selectionRequestId.current) return;
+      setSelectedProjectIds(Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : []);
+    } catch (loadError) {
+      if (requestId !== selectionRequestId.current) return;
+      setSelectionError(loadError instanceof Error ? loadError.message : "Project selection could not be loaded.");
+    } finally {
+      if (requestId === selectionRequestId.current) setSelectionLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    fetch("/api/projects/selection", { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || "Project selection could not be loaded.");
-        if (active) setSelectedProjectIds(Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : []);
-      })
-      .catch((loadError: unknown) => {
-        if (active) setError(loadError instanceof Error ? loadError.message : "Project selection could not be loaded.");
-      })
-      .finally(() => { if (active) setSelectionLoaded(true); });
-    return () => { active = false; };
-  }, []);
+    void loadProjectSelection();
+    return () => { selectionRequestId.current += 1; };
+  }, [loadProjectSelection]);
 
   const fetchGallery = useCallback(async (force = false) => {
     if (force) galleryRequest.current = null;
@@ -963,6 +977,7 @@ export function ProjectWorkspace() {
   const refreshGallery = () => {
     setLoading(true);
     setError(null);
+    void loadProjectSelection();
     fetchGallery(true)
       .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load projects."))
       .finally(() => setLoading(false));
@@ -980,6 +995,8 @@ export function ProjectWorkspace() {
       if (!response.ok) throw new Error(payload.error || "Project selection could not be saved.");
       const savedIds = Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : [];
       setSelectedProjectIds(savedIds);
+      setSelectionError(null);
+      setSelectionLoaded(true);
       if (activeFolderId && !savedIds.includes(activeFolderId)) router.replace("/projects");
     } finally {
       setSavingSelection(false);
@@ -1069,7 +1086,7 @@ export function ProjectWorkspace() {
   }, [data]);
 
   const tasks = data?.tasks || [];
-  if (screen === "gallery") return <ProjectGallery projects={projects} selectedProjectIds={selectedProjectIds} loading={loading || !selectionLoaded} error={error} savingSelection={savingSelection} onRefresh={refreshGallery} onOpen={openProject} onSaveSelection={saveProjectSelection} />;
+  if (screen === "gallery") return <ProjectGallery projects={projects} selectedProjectIds={selectedProjectIds} selectionLoaded={selectionLoaded} selectionError={selectionError} loading={loading} error={error} savingSelection={savingSelection} onRefresh={refreshGallery} onOpen={openProject} onSaveSelection={saveProjectSelection} />;
 
   const activeList = data?.lists.find((list) => list.id === activeListId);
   if (screen === "subproject") {
