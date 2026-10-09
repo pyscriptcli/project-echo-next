@@ -39,7 +39,7 @@ import { Topbar } from "@/components/Topbar";
 import { UniversalEchoDrawer } from "@/components/UniversalEchoDrawer";
 import { DashboardView } from "@/components/DashboardView";
 import { ProjectWorkspace } from "@/components/ProjectWorkspace";
-import { DeltaReview } from "@/components/DeltaReview";
+import { ContractsWorkspace } from "@/components/ContractsWorkspace";
 import { MeetingsView } from "@/components/MeetingsView";
 import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { NotebookView } from "@/components/NotebookView";
@@ -1336,7 +1336,7 @@ export default function Home() {
             )}
 
             {currentView === "project" && <ProjectWorkspace />}
-            {currentView === "delta" && <DeltaReview />}
+            {currentView === "delta" && <ContractsWorkspace />}
 
             {/* VIEW: TASKS (CLICKUP PORTAL) */}
             {currentView === "tasks" && (

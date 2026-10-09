@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { AlertCircle, ArrowLeft, Check, Download, FileText, FolderOpen, LoaderCircle, MessageSquareText, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
@@ -122,7 +122,7 @@ function createRegisterDocument(review: SavedDeltaReview) {
   ] }] });
 }
 
-export function DeltaReview({ contextName, contextId, initialReview, onBack }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void }) {
+export function DeltaReview({ contextName, contextId, initialReview, onBack, renderContractGallery }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void; renderContractGallery?: (actions: { compareFiles: (original: File, revised: File) => void }) => ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isStandaloneWorkspace = !contextId;
@@ -131,7 +131,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
   const [revisedFile, setRevisedFile] = useState<File | undefined>(() => initialReview?.revisedFile);
   const [title, setTitle] = useState(() => initialReview?.title || (contextName ? `${contextName} contract review` : "Contract review"));
   const [entries, setEntries] = useState<DeltaEntry[]>(() => initialReview?.entries || []);
-  const [workspaceTab, setWorkspaceTab] = useState<"contracts" | "review">(() => initialReview || reviewRouteActive ? "review" : "contracts");
+  const [workspaceTab, setWorkspaceTab] = useState<"contracts" | "history" | "review">(() => initialReview || reviewRouteActive ? "review" : "contracts");
   const [amendmentEntryId, setAmendmentEntryId] = useState("");
   const [amendmentComment, setAmendmentComment] = useState("");
   const [amendmentWording, setAmendmentWording] = useState("");
@@ -152,7 +152,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
     if (isStandaloneWorkspace) setWorkspaceTab(reviewRouteActive ? "review" : "contracts");
   }, [isStandaloneWorkspace, reviewRouteActive]);
 
-  const selectWorkspaceTab = (tab: "contracts" | "review") => {
+  const selectWorkspaceTab = (tab: "contracts" | "history" | "review") => {
     setWorkspaceTab(tab);
     if (isStandaloneWorkspace) router.push(tab === "review" ? "/contracts/review" : "/contracts");
   };
@@ -212,14 +212,15 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
     } finally { setBusy(false); setBusyLabel(""); }
   };
 
-  const compare = async () => {
-    if (!originalFile || !revisedFile) return;
+  const runComparison = async (originalDocument = originalFile, revisedDocument = revisedFile) => {
+    if (!originalDocument || !revisedDocument) return;
+    setOriginalFile(originalDocument); setRevisedFile(revisedDocument);
     setBusy(true); setError(""); setNotice(""); setBusyLabel("Reading both Word documents");
     try {
-      if (!originalFile.name.toLowerCase().endsWith(".docx") || !revisedFile.name.toLowerCase().endsWith(".docx")) {
+      if (!originalDocument.name.toLowerCase().endsWith(".docx") || !revisedDocument.name.toLowerCase().endsWith(".docx")) {
         throw new Error("Choose two .docx Word documents. Older .doc files are not supported.");
       }
-      const [original, revised] = await Promise.all([readWordSections(originalFile), readWordSections(revisedFile)]);
+      const [original, revised] = await Promise.all([readWordSections(originalDocument), readWordSections(revisedDocument)]);
       const result = compareSections(original, revised);
       setEntries(result); setReviewId(crypto.randomUUID()); setSavedAt(new Date().toISOString()); setAmendmentEntryId("");
       setWorkspaceTab("review");
@@ -228,6 +229,8 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
       setEntries([]); setError(cause instanceof Error ? cause.message : "The Word documents could not be compared.");
     } finally { setBusy(false); setBusyLabel(""); }
   };
+
+  const compare = () => runComparison();
 
   const makeReview = (includeFiles = true): SavedDeltaReview => ({
     id: reviewId || crypto.randomUUID(),
@@ -319,11 +322,11 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
     <section className="mx-auto w-full max-w-[1440px] space-y-5 pb-10 text-[#181D1E]">
       <header className="flex flex-col justify-between gap-3 border-b border-[#003366]/15 pb-4 md:flex-row md:items-end">
         <div className="flex items-start gap-3">
-          {onBack && <button type="button" onClick={onBack} aria-label="Back to contract reviews" title="Back to contract reviews" className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center border border-slate-300 bg-white text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></button>}
+          {onBack && <button type="button" onClick={onBack} aria-label="Back to contracts" title="Back to contracts" className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center border border-slate-300 bg-white text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><ArrowLeft aria-hidden="true" className="h-4 w-4" /></button>}
           <div className="border-l-4 border-[#C9A84C] pl-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#31577D]">Contract review / DELTA</p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#003366]">Contract review</h1>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">Add contract drafts, review the differences by section, and record decisions against each change.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#31577D]">{contextId ? "Project contracts" : "Contract review / DELTA"}</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-[#003366]">{contextName || "Contract review"}</h1>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">{contextId ? "Add contract drafts, review saved comparisons, and record decisions against each change." : "Add contract drafts, review the differences by section, and record decisions against each change."}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -335,11 +338,11 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
       {notice && <div role="status" className="flex items-start gap-2 border border-emerald-300 bg-white p-3 text-sm text-emerald-900"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /><p>{notice}</p></div>}
       {busy && <div role="status" className="flex items-center gap-2 text-xs text-slate-600"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />{busyLabel}</div>}
 
-      <div role="tablist" aria-label="Contract review workspace" className="flex border-b border-slate-200 bg-white">
-        {([{ id: "contracts", label: "Contracts" }, { id: "review", label: "Review" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={workspaceTab === tab.id} onClick={() => selectWorkspaceTab(tab.id)} className={`min-h-11 border-b-2 px-5 text-xs font-semibold ${workspaceTab === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}{tab.id === "review" && entries.length > 0 ? <span className="ml-2 text-slate-400">{entries.length}</span> : null}</button>)}
+      <div role="tablist" aria-label="Contract workspace" className="flex border-b border-slate-200 bg-white">
+        {(contextId ? [{ id: "contracts", label: "Contract gallery" }, { id: "history", label: "Contract history" }, { id: "review", label: "Contract review" }] as const : [{ id: "contracts", label: "Contracts" }, { id: "review", label: "Review" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={workspaceTab === tab.id} onClick={() => selectWorkspaceTab(tab.id)} className={`min-h-11 border-b-2 px-5 text-xs font-semibold ${workspaceTab === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}{tab.id === "review" && entries.length > 0 ? <span className="ml-2 text-slate-400">{entries.length}</span> : null}</button>)}
       </div>
 
-      {workspaceTab === "contracts" && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(290px,0.65fr)]">
+      {workspaceTab === "contracts" && contextId && renderContractGallery ? renderContractGallery({ compareFiles: (original, revised) => { void runComparison(original, revised); } }) : workspaceTab === "contracts" && <div className={contextId ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(290px,0.65fr)]"}>
         <section className="border border-slate-200 bg-[#FFFCFB]">
           <div className="border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Add contract documents</h2><p className="mt-1 text-xs text-slate-600">Select the original and revised Word files. They are read in this browser and are not uploaded.</p></div>
           <div className="grid gap-4 p-4 md:grid-cols-2">
@@ -352,15 +355,17 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
           </div>
         </section>
 
-        <aside className="border border-[#C9A84C]/60 bg-[#FFFCFB]">
+        {!contextId && <aside className="border border-[#C9A84C]/60 bg-[#FFFCFB]">
           <div className="border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Saved on this device</h2><p className="mt-1 text-xs leading-5 text-slate-600">{storageMode === "browser" ? <>DELTA saves in a private browser folder. The register and both Word files stay on this device.</> : storageMode === "indexeddb" ? <>DELTA saves in local browser storage on this device.</> : <>Choose Documents once. DELTA creates a <strong>DELTA Reviews</strong> folder there and stores the register with both Word files.</>}</p></div>
           <div className="p-4">
             <div className="mb-3 flex justify-end"><button type="button" className={controlClass} onClick={refreshSavedReviews} disabled={busy}><RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />Refresh list</button></div>
             {folderReady && !savedReviews.length && <p className="text-xs leading-5 text-slate-600">No saved reviews yet. Save a completed review to keep it with its source documents.</p>}
             {savedReviews.length > 0 && <ul className="divide-y divide-slate-100">{savedReviews.map((review) => <li key={review.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"><button type="button" onClick={() => openReview(review)} className="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><span className="block truncate text-sm font-semibold text-[#003366]">{review.title}</span><span className="mt-1 block text-[11px] text-slate-500">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(review.savedAt))} · {review.entries.length} entries</span></button><button type="button" aria-label={`Delete ${review.title}`} title="Delete saved review and its Word files" onClick={() => void removeReview(review)} disabled={busy} className="inline-flex min-h-9 min-w-9 items-center justify-center border border-slate-300 text-slate-600 hover:border-red-500 hover:text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366] disabled:opacity-50"><Trash2 aria-hidden="true" className="h-4 w-4" /></button></li>)}</ul>}
           </div>
-        </aside>
+        </aside>}
       </div>}
+
+      {workspaceTab === "history" && contextId && <DeltaReviewList contextName={contextName || "Project"} contextId={contextId} onStart={() => selectWorkspaceTab("contracts")} onOpen={openReview} />}
 
       {workspaceTab === "review" && entries.length > 0 && <section className="border border-slate-200 bg-[#FFFCFB]">
         <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center"><div><h2 className="text-sm font-semibold text-[#003366]">Change register <span className="ml-1 font-normal text-slate-500">{entries.length} entries</span></h2><p className="mt-1 text-xs text-slate-600">Review aid only. Verify each entry against the source documents.</p></div><div className="flex flex-wrap gap-2"><button type="button" className={controlClass} onClick={exportRegister} disabled={busy}><Download aria-hidden="true" className="h-4 w-4" />Export Word</button><button type="button" className={controlClass} onClick={saveCurrentReview} disabled={busy || !originalFile || !revisedFile}><Save aria-hidden="true" className="h-4 w-4" />Save locally</button></div></div>

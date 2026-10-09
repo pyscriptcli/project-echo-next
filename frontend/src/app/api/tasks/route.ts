@@ -44,6 +44,7 @@ function serializeProjectTask(task: ClickUpProjectTask, listId: string): ClickUp
     assignees: Array.isArray(task.assignees) ? task.assignees.map((assignee) => ({
       id: String(assignee.id), name: String(assignee.username || assignee.name || "Team member"),
       initials: String(assignee.initials || assignee.username?.[0] || "?").slice(0, 2),
+      profilePicture: assignee.profilePicture || assignee.profile_picture || null,
     })) : [],
   };
 }
@@ -108,6 +109,8 @@ interface ClickUpProjectTask {
     username?: string;
     name?: string;
     initials?: string;
+    profilePicture?: string | null;
+    profile_picture?: string | null;
   }>;
 }
 
@@ -781,6 +784,17 @@ export async function POST(req: NextRequest) {
           if (description.length > 10_000) return NextResponse.json({ error: "Keep task remarks under 10,000 characters." }, { status: 400 });
           payload.description = description;
         }
+        const previous = body.previous && typeof body.previous === "object" ? body.previous as Record<string, unknown> : {};
+        const previousAssigneeIds: string[] = Array.isArray(previous.assignees) ? previous.assignees.map((id: unknown) => String(id)) : [];
+        const nextAssigneeIds: string[] | null = Array.isArray(body.assignees)
+          ? Array.from(new Set(body.assignees.map(Number).filter(Number.isFinite).map((id: number) => String(id))))
+          : null;
+        if (nextAssigneeIds) {
+          payload.assignees = {
+            add: nextAssigneeIds.filter((id) => !previousAssigneeIds.includes(id)).map(Number),
+            rem: previousAssigneeIds.filter((id) => !nextAssigneeIds.includes(id)).map(Number),
+          };
+        }
         if (payload.status === "") return NextResponse.json({ error: "Task status cannot be empty." }, { status: 400 });
         const response = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/task/${encodeURIComponent(String(body.taskId))}`, {
           method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
@@ -790,7 +804,6 @@ export async function POST(req: NextRequest) {
         const folderId = String(body.folderId || "");
         const taskName = String(body.taskName || result.name || "Task");
         const listName = String(body.listName || "Subproject");
-        const previous = body.previous && typeof body.previous === "object" ? body.previous as Record<string, unknown> : {};
         const oldStatus = String(previous.status || "");
         const nextStatus = String(payload.status || "");
         if (/^\d+$/.test(folderId)) {
@@ -802,6 +815,12 @@ export async function POST(req: NextRequest) {
           });
           const oldDescription = String(previous.description || "");
           const nextDescription = typeof payload.description === "string" ? payload.description : oldDescription;
+          if (nextAssigneeIds && (nextAssigneeIds.length !== previousAssigneeIds.length || nextAssigneeIds.some((id) => !previousAssigneeIds.includes(id)))) await recordProjectActivity(req, {
+            folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
+            taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-assignees-changed",
+            summary: nextAssigneeIds.length ? `Updated assignees to ${(result.assignees || []).map((assignee: { username?: string; name?: string }) => assignee.username || assignee.name).filter(Boolean).join(", ")}` : "Removed all task assignees",
+            details: { from: previousAssigneeIds, to: nextAssigneeIds, assignees: (result.assignees || []).map((assignee: { username?: string; name?: string }) => assignee.username || assignee.name).filter(Boolean) },
+          });
           if (nextDescription !== oldDescription) await recordProjectActivity(req, {
             folderId, listId: String(body.listId || ""), listName, taskId: String(body.taskId), taskName,
             taskUrl: typeof result.url === "string" ? result.url : null, eventType: "task-remarks-updated",
@@ -835,13 +854,8 @@ export async function POST(req: NextRequest) {
       const payload: Record<string, unknown> = { name: String(body.name).trim(), status: body.status || "to do" };
       if (body.description) payload.description = String(body.description);
       if (body.priority) payload.priority = priorityToNumber(body.priority);
-      const config = await loadAdminConfig().catch(() => null);
-      const defaults = config?.projectDefaultAssignees && typeof config.projectDefaultAssignees === "object"
-        ? config.projectDefaultAssignees as Record<string, string[]>
-        : {};
-      const leadIds = (defaults[String(body.listId)] || []).slice(0, 1).map(Number).filter(Number.isFinite);
       const requestedAssignees = Array.isArray(body.assignees) ? body.assignees : [];
-      const assigneeIds = Array.from(new Set([...leadIds, ...requestedAssignees.map(Number).filter(Number.isFinite)]));
+      const assigneeIds = Array.from(new Set(requestedAssignees.map(Number).filter(Number.isFinite)));
       if (assigneeIds.length) payload.assignees = assigneeIds;
       payload.notify_all = false;
       if (body.dueDate) { payload.due_date = new Date(body.dueDate).getTime(); payload.due_date_time = false; }
