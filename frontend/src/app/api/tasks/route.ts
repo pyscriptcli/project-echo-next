@@ -58,7 +58,14 @@ async function fetchProjectListTasks(token: string, listId: string) {
     tasks.push(...batch);
     if (batch.length < 100) break;
   }
-  return tasks.map((task) => serializeProjectTask(task, listId));
+  return tasks
+    .filter((task) => {
+      const description = task.description_text || task.description || "";
+      return task.name?.trim().toLocaleLowerCase() !== "sites"
+        && !description.includes("MOSAIC_SITES_STORAGE:")
+        && !description.includes("MOSAIC_SITE_RECORD:");
+    })
+    .map((task) => serializeProjectTask(task, listId));
 }
 
 async function fetchOpenProjectListTaskCount(token: string, listId: string) {

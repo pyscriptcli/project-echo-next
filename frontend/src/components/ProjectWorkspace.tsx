@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { DeltaReview, DeltaReviewList } from "@/components/DeltaReview";
 import type { SavedDeltaReview } from "@/lib/delta/localStore";
+import { sitesForSubproject } from "@/lib/projectSites";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -707,14 +708,14 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
   tasksLoading: boolean;
   onTaskChange: (task: ProjectTask) => void;
   basePath: string;
-  initialView: "dashboard" | "tasks" | "calendar" | "contract-review";
+  initialView: "dashboard" | "tasks" | "calendar" | "contract-review" | "sites" | "documentation";
   initialReviewId?: string;
 }) {
   const router = useRouter();
-  const [view, setView] = useState<"dashboard" | "tasks" | "calendar" | "contract-review">(initialView);
+  const [view, setView] = useState<"dashboard" | "tasks" | "calendar" | "contract-review" | "sites" | "documentation">(initialView);
   const [showDelta, setShowDelta] = useState(initialReviewId === "new");
   const [selectedReview, setSelectedReview] = useState<SavedDeltaReview | null>(null);
-  const tabs = [{ id: "dashboard", label: "Dashboard" }, { id: "tasks", label: "Timeline" }, { id: "calendar", label: "Calendar" }, { id: "contract-review", label: "Contract review" }] as const;
+  const tabs = [{ id: "dashboard", label: "Dashboard" }, { id: "sites", label: "Sites" }, { id: "calendar", label: "Calendar" }, { id: "tasks", label: "Timeline" }, { id: "contract-review", label: "Contracts" }, { id: "documentation", label: "Documentation" }] as const;
 
   useEffect(() => {
     setView(initialView);
@@ -759,7 +760,193 @@ function SubprojectWorkspace({ folderId, folderUrl, list, tasks, members, defaul
     {view === "dashboard" ? <div className="space-y-5"><SubprojectStatusCards folderId={folderId} listId={list.id} tasks={tasks} tasksLoading={tasksLoading} onTaskChange={onTaskChange} /><ProjectActivityFeed folderId={folderId} lists={[list]} fixedListId={list.id} /></div>
       : view === "tasks" ? tasksLoading ? <section className="space-y-2 border border-slate-200 bg-white p-4" role="status"><span className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading Timeline tasks from ClickUp</span>{[0, 1, 2].map((row) => <div key={row} className="h-11 animate-pulse border border-slate-100 bg-slate-50" />)}</section> : tasks.length ? <section className="border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><h2 className="text-sm font-semibold text-[#003366]">Timeline</h2><p className="mt-0.5 text-[10px] text-slate-500">Phases, workstreams, and activities</p></div><span className="text-[10px] text-slate-500">{tasks.length} items</span></header><div className="p-3 sm:p-4"><TaskHierarchy folderId={folderId} listName={list.name} tasks={tasks} statuses={list.statuses || Array.from(new Set(tasks.map((task) => task.status)))} onTaskChange={onTaskChange} /></div></section> : <div className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center"><h2 className="text-sm font-semibold text-[#003366]">No tasks in this subproject</h2><p className="mt-1 text-xs text-slate-600">Create tasks in ClickUp, then refresh this workspace.</p><button type="button" onClick={onRefresh} className="mt-3 min-h-10 border border-slate-300 px-3 text-xs font-semibold text-[#003366]">Refresh</button></div>
       : view === "calendar" ? <CalendarView folderId={folderId} tasks={tasks} lists={[list]} members={members} defaultAssignees={{ [list.id]: defaultAssignees }} onTaskChange={onTaskChange} />
+        : view === "sites" ? <SubprojectSites folderId={folderId} listId={list.id} listName={list.name} />
         : view === "contract-review" ? contractReviewContent : null}
+  </section>;
+}
+
+const siteColumns = ["Site No", "Site Name", "P/S", "Lessor", "Status", "Monthly Rate", "PF Structure", "Amount"] as const;
+type SiteRow = ReturnType<typeof sitesForSubproject>[number] & {
+  taskId?: string | null;
+  lessor?: string;
+  status?: string;
+  monthlyRate?: string;
+  pfStructure?: string;
+  amount?: string;
+};
+type EditableSiteField = "lessor" | "status" | "monthlyRate" | "pfStructure" | "amount";
+const editableSiteFieldLabels: Record<EditableSiteField, string> = {
+  lessor: "Lessor",
+  status: "Status",
+  monthlyRate: "Monthly Rate",
+  pfStructure: "PF Structure",
+  amount: "Amount",
+};
+
+function SubprojectSites({ folderId, listId, listName }: { folderId: string; listId: string; listName: string }) {
+  const [syncing, setSyncing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncError, setSyncError] = useState("");
+  const [saveState, setSaveState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; message: string }>({ kind: "idle", message: "" });
+  const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const pendingSaves = useRef(new Map<string, () => Promise<void>>());
+  const saveVersions = useRef(new Map<string, number>());
+  const mounted = useRef(true);
+  const sourceSites = useMemo(() => sitesForSubproject(listName), [listName]);
+  const [siteRows, setSiteRows] = useState<SiteRow[]>([]);
+  const [columnWidths, setColumnWidths] = useState([110, 280, 72, 170, 140, 150, 170, 140]);
+  const resizingColumn = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
+
+  const resizeColumn = (index: number, width: number) => {
+    setColumnWidths((current) => current.map((value, columnIndex) => columnIndex === index ? Math.max(72, width) : value));
+  };
+
+  const startColumnResize = (event: React.PointerEvent<HTMLSpanElement>, index: number) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizingColumn.current = { index, startX: event.clientX, startWidth: columnWidths[index] };
+  };
+
+  const moveColumnResize = (event: React.PointerEvent<HTMLSpanElement>) => {
+    const resize = resizingColumn.current;
+    if (resize) resizeColumn(resize.index, resize.startWidth + event.clientX - resize.startX);
+  };
+
+  const stopColumnResize = () => { resizingColumn.current = null; };
+
+  const loadSiteRows = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ folderId, listId, listName });
+      const response = await fetch(`/api/projects/sites?${params}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json().catch(() => ({}));
+      if (Array.isArray(payload.sites)) setSiteRows(payload.sites as SiteRow[]);
+    } catch {
+      // The imported source rows remain available if ClickUp cannot be reached.
+    } finally {
+      setLoading(false);
+    }
+  }, [folderId, listId, listName]);
+
+  useEffect(() => { void loadSiteRows(); }, [loadSiteRows]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      saveTimers.current.forEach(clearTimeout);
+      for (const save of pendingSaves.current.values()) void save();
+    };
+  }, []);
+  const sites: SiteRow[] = siteRows.length ? siteRows : sourceSites.map((site) => ({ ...site, status: "Not imported" }));
+
+  const updateSiteField = (site: SiteRow, field: EditableSiteField, value: string) => {
+    setSiteRows((rows) => rows.map((row) => row.taskId === site.taskId ? { ...row, [field]: value } : row));
+    if (!site.taskId) {
+      setSaveState({ kind: "error", message: "Set up the site tasks before editing these fields." });
+      return;
+    }
+    const key = `${site.taskId}:${field}`;
+    const version = (saveVersions.current.get(key) || 0) + 1;
+    saveVersions.current.set(key, version);
+    const previousTimer = saveTimers.current.get(key);
+    if (previousTimer) clearTimeout(previousTimer);
+    setSaveState({ kind: "saving", message: "Saving edits…" });
+    const persist = async () => {
+      saveTimers.current.delete(key);
+      if (pendingSaves.current.get(key) !== persist) return;
+      pendingSaves.current.delete(key);
+      try {
+        const response = await fetch("/api/projects/sites", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderId, listId, taskId: site.taskId, field, value }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "This site field could not be saved.");
+        if (mounted.current && saveVersions.current.get(key) === version) setSaveState({ kind: "saved", message: "Saved" });
+      } catch (error) {
+        if (mounted.current && saveVersions.current.get(key) === version) setSaveState({ kind: "error", message: error instanceof Error ? error.message : "This site field could not be saved." });
+      }
+    };
+    pendingSaves.current.set(key, persist);
+    const timer = setTimeout(() => void persist(), 600);
+    saveTimers.current.set(key, timer);
+  };
+
+  const flushSiteField = (site: SiteRow, field: EditableSiteField) => {
+    if (!site.taskId) return;
+    const key = `${site.taskId}:${field}`;
+    const timer = saveTimers.current.get(key);
+    if (timer) clearTimeout(timer);
+    void pendingSaves.current.get(key)?.();
+  };
+
+  const createClosedTasks = async () => {
+    setSyncing(true);
+    setSyncMessage("");
+    setSyncError("");
+    try {
+      const response = await fetch("/api/projects/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId, mode: "all" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Site tasks could not be created.");
+      const parts = [`${payload.createdSites || 0} closed site task${payload.createdSites === 1 ? "" : "s"} created`];
+      if (payload.existingSites) parts.push(`${payload.existingSites} already present`);
+      if (payload.totalFailures) parts.push(`${payload.totalFailures} failed`);
+      if (Array.isArray(payload.missingFields) && payload.missingFields.length) parts.push(`ClickUp fields not set up: ${payload.missingFields.join(", ")}`);
+      setSyncMessage(`${parts.join(" · ")}.`);
+      void loadSiteRows();
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Site tasks could not be created.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return <section className="border border-slate-200 bg-white">
+    <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 px-4 py-3">
+      <div><h2 className="text-sm font-semibold text-[#003366]">Sites</h2><p className="mt-0.5 text-[10px] text-slate-500">{sites.length} site records{loading ? " · refreshing from ClickUp" : ""} · fields not included in the source are left blank.</p><p className={`mt-1 text-[10px] ${saveState.kind === "error" ? "text-red-700" : saveState.kind === "saving" ? "text-amber-700" : "text-slate-500"}`} aria-live="polite">{saveState.message || "Edits to Lessor, Status, Monthly Rate, PF Structure, and Amount save automatically."}</p></div>
+      <button type="button" onClick={() => void createClosedTasks()} disabled={syncing || loading} className="min-h-9 border border-[#003366] bg-[#003366] px-3 text-[11px] font-semibold text-white hover:bg-[#174778] disabled:cursor-wait disabled:opacity-60">{syncing ? "Creating site tasks…" : "Create site tasks for all subprojects"}</button>
+    </header>
+    {syncMessage && <p role="status" className="border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-900">{syncMessage}</p>}
+    {syncError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-800">{syncError}</p>}
+    {sites.length ? <div className="overflow-x-auto"><table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-xs"><colgroup>{columnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{siteColumns.map((column, index) => <th key={column} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{column}<span
+        role="separator"
+        aria-label={`Resize ${column} column`}
+        aria-orientation="vertical"
+        tabIndex={0}
+        onPointerDown={(event) => startColumnResize(event, index)}
+        onPointerMove={moveColumnResize}
+        onPointerUp={stopColumnResize}
+        onPointerCancel={stopColumnResize}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") { event.preventDefault(); resizeColumn(index, columnWidths[index] - 16); }
+          if (event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, columnWidths[index] + 16); }
+        }}
+        className="absolute right-0 top-0 z-10 h-full w-2 translate-x-1/2 cursor-col-resize touch-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#C9A33B]"
+      ><span className="mx-auto block h-full w-px bg-slate-300/60 opacity-0 transition-opacity hover:opacity-100 focus:opacity-100" /></span></th>)}</tr></thead><tbody>{sites.map((site, index) => <tr key={`${site.tradeArea}-${site.siteNo}`} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
+      <td className="whitespace-nowrap border border-slate-200/60 px-3 py-2.5 font-medium tabular-nums text-[#003366]">{site.siteNo}</td>
+      <td className="truncate border border-slate-200/60 px-3 py-2.5 text-slate-800" title={site.siteName}>{site.siteName}</td>
+      <td className={`whitespace-nowrap border border-slate-200/60 px-3 py-2.5 font-semibold ${site.priority.toLowerCase() === "priority" ? "text-[#14532D]" : site.priority.toLowerCase() === "secondary" ? "text-[#854D0E]" : "text-slate-600"}`}>{site.priority}</td>
+      {(["lessor", "status", "monthlyRate", "pfStructure", "amount"] as const).map((field) => <td key={field} className="border border-slate-200/60 px-2 py-1.5">
+        <input
+          type="text"
+          aria-label={`${editableSiteFieldLabels[field]} for site ${site.siteNo}`}
+          value={site[field] || ""}
+          placeholder=""
+          maxLength={2_000}
+          disabled={!site.taskId}
+          onChange={(event) => updateSiteField(site, field, event.currentTarget.value)}
+          onBlur={() => flushSiteField(site, field)}
+          className="w-full border border-transparent bg-transparent px-1.5 py-1 text-xs text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B] disabled:cursor-not-allowed disabled:text-slate-500"
+        />
+      </td>)}
+    </tr>)}</tbody></table></div> : <div className="px-4 py-8 text-center"><h3 className="text-sm font-semibold text-[#003366]">No site records mapped to this subproject</h3><p className="mt-1 text-xs text-slate-500">The imported file currently covers Commonwealth, Katipunan, North Harbour, Mandaluyong D. Guevara, and Buendia Filmore.</p></div>}
   </section>;
 }
 
@@ -1092,7 +1279,7 @@ export function ProjectWorkspace() {
   if (screen === "subproject") {
     const routeSegments = pathname.split("/").filter(Boolean).slice(1);
     const routedTab = routeSegments[2];
-    const initialView = routedTab === "tasks" || routedTab === "calendar" || routedTab === "contract-review" ? routedTab : "dashboard";
+    const initialView = routedTab === "tasks" || routedTab === "calendar" || routedTab === "contract-review" || routedTab === "sites" || routedTab === "documentation" ? routedTab : "dashboard";
     const initialReviewId = routedTab === "contract-review" ? routeSegments[3] : undefined;
     const basePath = data && activeList ? `/projects/${routeSegment(data.folder.name, data.folder.id)}/${routeSegment(activeList.name, activeList.id)}` : "";
     if (data && activeList) return <SubprojectWorkspace folderId={data.folder.id} folderUrl={data.folder.url} list={activeList} tasks={tasksByList.get(activeList.id) || []} members={data.members} defaultAssignees={data.defaultAssignees[activeList.id] || []} onAssign={(ids) => void saveDefaultAssignees(activeList.id, ids)} savingAssignees={savingAssigneeListId === activeList.id} assigneeSyncMessage={assigneeSyncMessage} onBack={() => router.push(`/projects/${routeSegment(data.folder.name, data.folder.id)}`)} onRefresh={refreshProject} tasksLoading={tasksLoading} onTaskChange={updateProjectTask} basePath={basePath} initialView={initialView} initialReviewId={initialReviewId} />;

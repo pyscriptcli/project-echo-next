@@ -1,0 +1,584 @@
+[
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "1",
+        "siteName":  "Blocked commercial building by the MRT Line 7 station construction",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "2",
+        "siteName":  "Country Builder\u0027s Bank; BDO",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "3",
+        "siteName":  "New Era Hospital Property (1)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "4",
+        "siteName":  "New Era Hospital Property (2)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "5",
+        "siteName":  "Strip of small commercial shops: Vape, Motortrade etc.",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "6",
+        "siteName":  "Old Vacant Psbank Building (potential site for MI)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "7",
+        "siteName":  "Jollibee, commercial shops: pawnshops, medical supplies",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "8",
+        "siteName":  "Chowking",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "9",
+        "siteName":  "7-Eleven; Thrift Shop",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "10",
+        "siteName":  "Super8",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "11",
+        "siteName":  "Commercial shanties \u0026 bldg",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point A) Commonwealth T. Sora-Luzon",
+        "siteNo":  "12",
+        "siteName":  "Commercial bldg (ukay-ukay)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "13",
+        "siteName":  "Hardware, commercial spaces (with waiting shed)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "14",
+        "siteName":  "Shanties",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "15",
+        "siteName":  "Vacant lot, shanties",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "16",
+        "siteName":  "Commercial shanties",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "17",
+        "siteName":  "Vacant lot, old house",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "18",
+        "siteName":  "Commercial building",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "19",
+        "siteName":  "Commercial stalls, gen. Merchandise, pawnshops",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "20",
+        "siteName":  "Bedrock Bldg. (CK, MCD)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "21",
+        "siteName":  "Puregold Commonwealth (JB, RR)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "22",
+        "siteName":  "Gas station, Mitsubishi",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "23",
+        "siteName":  "Izusu, Gen. Malvar Hospital",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "(Focal Point B) Commonwealth T. Sora-Luzon",
+        "siteNo":  "24",
+        "siteName":  "Commercial \u0026 office bldg. (RCBC, Bank Of Commerce, 711)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "1",
+        "siteName":  "Vacant Lot (Old Agcor Building), The Marketplace, Dormitoryana",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "2",
+        "siteName":  "Vista Pointe Condominium, Burgundy Place Condominium, Fire Station, Regis Center",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "3",
+        "siteName":  "KFC, Mercury, BPI, Xanland Place, Torres Building, Dunkin, Gino\u0027s, Tyler\u0027s Café, Dimsum Treats, Reasonate Coffee, Oracle Hotel \u0026 Residence, FBR Arcade, Cello\u0027s Doughnuts, MSA, PS Bank, Storage Mart, Sweet Inspirations, Vista 309 Katipunan, One Burgundy Plaza, Prince David Condominium, Kenny Rogers, Seattle\u0027s Best, Jollibee Katipunan, BDO, Army Navy, National Bookstore, Torre Lorenzo Katipunan Showroom",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "4",
+        "siteName":  "Shakey\u0027s Katipunan",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "5",
+        "siteName":  "MCD Katipunan",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Katipunan, Quezon City",
+        "siteNo":  "6",
+        "siteName":  "CCA, Alcal Building",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "1",
+        "siteName":  "Pier 4 Parking Area",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "2",
+        "siteName":  "2GO Port Area (1)",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "3",
+        "siteName":  "Philippine Port Authority Zaragoza Gate and North Port Passenger Terminal",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "4",
+        "siteName":  "2GO Port Area (2)",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "5",
+        "siteName":  "Part of Port Area with shanties and junk shop in front",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "6",
+        "siteName":  "Private Property for Sale",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "7",
+        "siteName":  "Part of Rosauro Almario Elementary School",
+        "priority":  "Institution"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "8",
+        "siteName":  "Jollibee North Harbour Drive Thru Entrance",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "9",
+        "siteName":  "Jollibee North Harbour Zaragoza Street Entrance",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "10",
+        "siteName":  "Private Properties (1)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "11",
+        "siteName":  "Private Properties (2)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "North Harbour, Manila",
+        "siteNo":  "12",
+        "siteName":  "Private Properties (3)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "1",
+        "siteName":  "2EZ Driving School / Uncommon Salon / Onward Café / Washmore",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "2",
+        "siteName":  "DMCI / DCFI",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "3",
+        "siteName":  "Residential (1)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "4",
+        "siteName":  "Palawan Express/ Chooks To Go/ Garden Scent / Ramen House / Zarap",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "5",
+        "siteName":  "Hiromitsu/ Mr. Liempo / Golden Weaves Furnishing",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "6",
+        "siteName":  "Commercial Building / Robinsons Bank",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "7",
+        "siteName":  "Eastwest Bank",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "8",
+        "siteName":  "Residential / Flash Express",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "9",
+        "siteName":  "BPI / Barber Shop / Gym",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "10",
+        "siteName":  "Residential (2)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "11",
+        "siteName":  "PNB / AUB / Royal Plaza",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "12",
+        "siteName":  "Commercial Space for Lease / LBC / Tambunting / Goldilocks / Baliwag",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "13",
+        "siteName":  "Watson\u0027s / Jollibee",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "14",
+        "siteName":  "Mercury / Gordo\u0027s / Andoks / Dunkin",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "15",
+        "siteName":  "Sierra Heights Place",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "16",
+        "siteName":  "BDO / Chinabank",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "17",
+        "siteName":  "Residential / Barbershop / RELX",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "18",
+        "siteName":  "Residential / Metrobank",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "19",
+        "siteName":  "Coffee Shop / Hi-Precision / Norkis / Liberty Prime Building",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "20",
+        "siteName":  "EPC Events / Starbucks",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "21",
+        "siteName":  "ASSI Fresh Plaza / LTO Renewal Office",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "22",
+        "siteName":  "Mr. DIY/ Uncle John\u0027s / King\u0027s Bakeshop / Chowking (STO)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "23",
+        "siteName":  "Pan De Manila / Binalot / Black Scoop / LBC / Post Office / McDonald\u0027s",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "24",
+        "siteName":  "Dental Clinic / Unionbank / Mercury Drug",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Mandaluyong D. Guevara",
+        "siteNo":  "25",
+        "siteName":  "Robinsons Supermarket",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "1",
+        "siteName":  "Cash \u0026 Carry Mall Parking (1)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "2",
+        "siteName":  "Cash \u0026 Carry Mall Parking (2)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "3",
+        "siteName":  "Cash \u0026 Carry Mall Parking (3)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "4",
+        "siteName":  "Cash \u0026 Carry Mall Parking (4)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "5",
+        "siteName":  "Cash \u0026 Carry Mall Parking (5)",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "6",
+        "siteName":  "Starbucks - Power Mac",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "7",
+        "siteName":  "Savory - Bonchon - French Baker",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "8",
+        "siteName":  "Yellow Cab - Red Ribbon",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "9",
+        "siteName":  "Jollibee - National Book Store",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "10",
+        "siteName":  "Mercury Drug - BDO",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "11",
+        "siteName":  "KFC",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "12",
+        "siteName":  "Paragon (1)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "13",
+        "siteName":  "Paragon (2)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "14",
+        "siteName":  "Burger King",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "15",
+        "siteName":  "MRDC Building",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "16",
+        "siteName":  "Dunkin - Unioil",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "17",
+        "siteName":  "Residential - Casa Grato",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "18",
+        "siteName":  "Vacant Lot (1)",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "19",
+        "siteName":  "Queen Bank",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "20",
+        "siteName":  "Vacant Building",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "21",
+        "siteName":  "Solid Steel Machinery",
+        "priority":  "Secondary"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "22",
+        "siteName":  "Vacant Lot - BDO",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "23",
+        "siteName":  "Tiomix Autoworks - Amber",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "24",
+        "siteName":  "BF Casim Corp - Herby\u0027s",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "25",
+        "siteName":  "Commercial Building Under Construction",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "26",
+        "siteName":  "Gayle\u0027s Bakery - Avocadoria",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "27",
+        "siteName":  "Vape Shop - Anytime Fitness",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "28",
+        "siteName":  "Hayin Snack House - Spavenue",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "29",
+        "siteName":  "A-Plus Laundry - Inno Moto Cycle Parts",
+        "priority":  "Priority"
+    },
+    {
+        "tradeArea":  "Buendia Filmore",
+        "siteNo":  "30",
+        "siteName":  "Autoshop - Residential",
+        "priority":  "Secondary"
+    }
+]
