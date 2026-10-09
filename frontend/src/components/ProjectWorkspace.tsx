@@ -910,8 +910,14 @@ function SubprojectSites({ folderId, listId, listName }: { folderId: string; lis
 
   return <section className="border border-slate-200 bg-white">
     <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 px-4 py-3">
-      <div><h2 className="text-sm font-semibold text-[#003366]">Sites</h2><p className="mt-0.5 text-[10px] text-slate-500">{sites.length} site records{loading ? " · refreshing from ClickUp" : ""} · fields not included in the source are left blank.</p><p className={`mt-1 text-[10px] ${saveState.kind === "error" ? "text-red-700" : saveState.kind === "saving" ? "text-amber-700" : "text-slate-500"}`} aria-live="polite">{saveState.message || "Edits to Lessor, Status, Monthly Rate, PF Structure, and Amount save automatically."}</p></div>
-      <button type="button" onClick={() => void createClosedTasks()} disabled={syncing || loading} className="min-h-9 border border-[#003366] bg-[#003366] px-3 text-[11px] font-semibold text-white hover:bg-[#174778] disabled:cursor-wait disabled:opacity-60">{syncing ? "Creating site tasks…" : "Create site tasks for all subprojects"}</button>
+      <div>
+        <h2 className="text-sm font-semibold text-[#003366]">Sites</h2>
+        <p className="mt-0.5 text-[10px] text-slate-500">{sites.length} site records{loading ? " · refreshing from ClickUp" : ""} · fields not included in the source are left blank.</p>
+        {saveState.message && <p className={`mt-1 text-[10px] ${saveState.kind === "error" ? "text-red-700" : saveState.kind === "saving" ? "text-amber-700" : "text-slate-500"}`} aria-live="polite">{saveState.message}</p>}
+      </div>
+      {sites.length > 0 && !sites.every((site) => Boolean(site.taskId)) && (
+        <button type="button" onClick={() => void createClosedTasks()} disabled={syncing || loading} className="min-h-9 border border-[#003366] bg-[#003366] px-3 text-[11px] font-semibold text-white hover:bg-[#174778] disabled:cursor-wait disabled:opacity-60">{syncing ? "Creating site tasks…" : "Create site tasks for all subprojects"}</button>
+      )}
     </header>
     {syncMessage && <p role="status" className="border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-900">{syncMessage}</p>}
     {syncError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-800">{syncError}</p>}
