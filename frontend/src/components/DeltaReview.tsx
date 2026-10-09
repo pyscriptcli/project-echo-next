@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { AlertCircle, ArrowLeft, Check, Download, FileText, FolderOpen, LoaderCircle, MessageSquareText, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { compareSections, readWordSections, type DeltaEntry } from "@/lib/delta/compare";
@@ -122,11 +123,15 @@ function createRegisterDocument(review: SavedDeltaReview) {
 }
 
 export function DeltaReview({ contextName, contextId, initialReview, onBack }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isStandaloneWorkspace = !contextId;
+  const reviewRouteActive = Boolean(pathname?.startsWith("/contracts/review"));
   const [originalFile, setOriginalFile] = useState<File | undefined>(() => initialReview?.originalFile);
   const [revisedFile, setRevisedFile] = useState<File | undefined>(() => initialReview?.revisedFile);
   const [title, setTitle] = useState(() => initialReview?.title || (contextName ? `${contextName} contract review` : "Contract review"));
   const [entries, setEntries] = useState<DeltaEntry[]>(() => initialReview?.entries || []);
-  const [workspaceTab, setWorkspaceTab] = useState<"contracts" | "review">(() => initialReview ? "review" : "contracts");
+  const [workspaceTab, setWorkspaceTab] = useState<"contracts" | "review">(() => initialReview || reviewRouteActive ? "review" : "contracts");
   const [amendmentEntryId, setAmendmentEntryId] = useState("");
   const [amendmentComment, setAmendmentComment] = useState("");
   const [amendmentWording, setAmendmentWording] = useState("");
@@ -142,6 +147,15 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
 
   const commentsFound = useMemo(() => entries.some((entry) => entry.comments.length > 0), [entries]);
   const canCompare = Boolean(originalFile && revisedFile && !busy);
+
+  useEffect(() => {
+    if (isStandaloneWorkspace) setWorkspaceTab(reviewRouteActive ? "review" : "contracts");
+  }, [isStandaloneWorkspace, reviewRouteActive]);
+
+  const selectWorkspaceTab = (tab: "contracts" | "review") => {
+    setWorkspaceTab(tab);
+    if (isStandaloneWorkspace) router.push(tab === "review" ? "/contracts/review" : "/contracts");
+  };
 
   const updateEntry = (entryId: string, update: Partial<DeltaEntry>) => {
     setEntries((current) => current.map((entry) => entry.id === entryId ? { ...entry, ...update } : entry));
@@ -322,7 +336,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
       {busy && <div role="status" className="flex items-center gap-2 text-xs text-slate-600"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />{busyLabel}</div>}
 
       <div role="tablist" aria-label="Contract review workspace" className="flex border-b border-slate-200 bg-white">
-        {([{ id: "contracts", label: "Contracts" }, { id: "review", label: "Review" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={workspaceTab === tab.id} onClick={() => setWorkspaceTab(tab.id)} className={`min-h-11 border-b-2 px-5 text-xs font-semibold ${workspaceTab === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}{tab.id === "review" && entries.length > 0 ? <span className="ml-2 text-slate-400">{entries.length}</span> : null}</button>)}
+        {([{ id: "contracts", label: "Contracts" }, { id: "review", label: "Review" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={workspaceTab === tab.id} onClick={() => selectWorkspaceTab(tab.id)} className={`min-h-11 border-b-2 px-5 text-xs font-semibold ${workspaceTab === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}{tab.id === "review" && entries.length > 0 ? <span className="ml-2 text-slate-400">{entries.length}</span> : null}</button>)}
       </div>
 
       {workspaceTab === "contracts" && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(290px,0.65fr)]">
@@ -362,7 +376,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
         </li>)}</ol>
         <p className="border-t border-slate-200 px-4 py-3 text-[11px] leading-5 text-slate-500">AI explanations are optional and sent only when you request them. Confirm all comparisons against the source documents.</p>
       </section>}
-      {workspaceTab === "review" && entries.length === 0 && <section className="border border-slate-200 bg-[#FFFCFB] px-6 py-12 text-center"><FileText aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">{reviewId && originalFile && revisedFile ? "No differences found" : "No review to show yet"}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-600">{reviewId && originalFile && revisedFile ? "No wording, numbering, or comment changes were found between these documents." : "Add the original and revised Word documents under Contracts, then choose Review documents to see the changes here."}</p><button type="button" onClick={() => setWorkspaceTab("contracts")} className="mt-4 inline-flex min-h-10 items-center border border-[#003366] px-4 text-xs font-semibold text-[#003366] hover:bg-[#F7FAFC]">Go to Contracts</button></section>}
+      {workspaceTab === "review" && entries.length === 0 && <section className="border border-slate-200 bg-[#FFFCFB] px-6 py-12 text-center"><FileText aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">{reviewId && originalFile && revisedFile ? "No differences found" : "No review to show yet"}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-600">{reviewId && originalFile && revisedFile ? "No wording, numbering, or comment changes were found between these documents." : "Add the original and revised Word documents under Contracts, then choose Review documents to see the changes here."}</p><button type="button" onClick={() => selectWorkspaceTab("contracts")} className="mt-4 inline-flex min-h-10 items-center border border-[#003366] px-4 text-xs font-semibold text-[#003366] hover:bg-[#F7FAFC]">Go to Contracts</button></section>}
     </section>
   );
 }

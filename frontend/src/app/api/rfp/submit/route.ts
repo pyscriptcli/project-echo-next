@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
               current_stage_started_at: now.toLocaleString("en-PH", { timeZone: "Asia/Manila" }),
               status_message: "Your request was received and is awaiting review.",
               next_step_message: "",
-              track_status_url: `${appUrl}/?view=forms&tab=track`,
+              track_status_url: `${appUrl}/forms?tab=track`,
             },
           });
           if (!emailResult.success) console.error(`[Email] Requestor notification failed for task ${taskId}: ${emailResult.error || "unknown error"}`);

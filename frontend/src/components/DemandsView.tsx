@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   DemandRecord, 
   DemandAssetClass, 
@@ -57,7 +58,13 @@ export interface DemandsViewProps {
 }
 
 export function DemandsView({ sector = "all" }: DemandsViewProps) {
+  const router = useRouter();
   const [activeAssetClass, setActiveAssetClass] = useState<DemandAssetClass>(sector || "all");
+
+  const selectAssetClass = (assetClass: DemandAssetClass) => {
+    setActiveAssetClass(assetClass);
+    router.push(assetClass === "all" ? "/demands" : `/demands/${assetClass}`);
+  };
 
   useEffect(() => {
     if (sector) setActiveAssetClass(sector);
@@ -294,7 +301,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
           <div className="inline-flex border border-slate-300 bg-[#FFFCFB] p-0.5">
             <button
               type="button"
-              onClick={() => setActiveAssetClass("all")}
+              onClick={() => selectAssetClass("all")}
               className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeAssetClass === "all"
                   ? "bg-[#003366] text-white shadow-xs"
@@ -307,7 +314,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
 
             <button
               type="button"
-              onClick={() => setActiveAssetClass("retail")}
+              onClick={() => selectAssetClass("retail")}
               className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeAssetClass === "retail"
                   ? "bg-[#003366] text-white shadow-xs"
@@ -320,7 +327,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
 
             <button
               type="button"
-              onClick={() => setActiveAssetClass("industrial")}
+              onClick={() => selectAssetClass("industrial")}
               className={`px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeAssetClass === "industrial"
                   ? "bg-[#003366] text-white shadow-xs"

@@ -163,7 +163,7 @@ export async function sendSubmittedStatusEmail({
       current_stage_started_at: now,
       status_message: "Your request was received and is now in the queue.",
       next_step_message: "",
-      track_status_url: `${appUrl}/?view=forms&tab=track`,
+      track_status_url: `${appUrl}/forms?tab=track`,
     },
   });
 }
@@ -187,7 +187,7 @@ export async function sendApproverNotification({
   const config = getEmailConfig();
   const recipient = approverEmail || data.approverEmail || "approvals@primephilippines.com";
   const recipientName = approverName || data.approverName || data.approvedByName || "Approver";
-  const approvalUrl = `${appUrl}/?view=forms&tab=approvals&taskId=${taskId}`;
+  const approvalUrl = `${appUrl}/forms?tab=approvals&taskId=${taskId}`;
   const formattedTotal = Number(data.totalAmount || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -288,8 +288,8 @@ export async function sendRequestorRevisionNotification({
   const config = getEmailConfig();
   const recipient = requestorEmail || data.requestedByEmail || "requestor@primephilippines.com";
   const recipientName = requestorName || data.requestedByName || "Requestor";
-  const editUrl = `${appUrl}/?view=forms&tab=create&taskId=${taskId}`;
-  const trackUrl = `${appUrl}/?view=forms&tab=track&id=${taskId}`;
+  const editUrl = `${appUrl}/forms?tab=create&taskId=${taskId}`;
+  const trackUrl = `${appUrl}/forms?tab=track&id=${taskId}`;
 
   const subject = `[REVISION REQUESTED] Request #${taskId}: ${data.payee} — Action Required`;
 

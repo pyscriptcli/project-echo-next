@@ -25,7 +25,7 @@ export function SubmissionModal({
   if (!isOpen || !response) return null;
 
   const editUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/?view=forms&tab=create&taskId=${response.taskId}`
+    ? `${window.location.origin}/forms?tab=create&taskId=${response.taskId}`
     : "";
 
   const handleCopyLink = () => {
@@ -132,7 +132,7 @@ export function SubmissionModal({
             )}
 
             <a
-              href={`/?view=forms&tab=track&id=${response.taskId}`}
+              href={`/forms?tab=track&id=${response.taskId}`}
               className="py-2.5 px-3 text-xs font-bold bg-[#003366] text-white hover:bg-[#002244] flex items-center justify-center gap-1.5 transition-colors"
             >
               <span>📦 Track Status</span>

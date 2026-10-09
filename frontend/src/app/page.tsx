@@ -55,6 +55,7 @@ import { ArchivedMeeting } from "@/types/meeting";
 import { mergeMeetings } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
 import type { DiscoveredTopicItem } from "@/app/api/discover-topics/route";
+import { navRouteForView, navViewForPath } from "@/lib/navRoutes";
 import { 
   Upload, 
   X, 
@@ -418,6 +419,7 @@ export default function Home() {
 
   // Page Access Governance state
   const [allowedPages, setAllowedPages] = useState<NavView[]>([]);
+  const [governanceStatus, setGovernanceStatus] = useState<"loading" | "ready" | "error">("loading");
   const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
     "dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta",
   ]);
@@ -426,61 +428,83 @@ export default function Home() {
   const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
 
   useEffect(() => {
-    if (window.location.pathname.startsWith("/projects/")) {
-      setCurrentView("project");
+    if (!pathname) return;
+    if (pathname === "/") {
+      const legacyView = new URLSearchParams(window.location.search).get("view");
+      const legacyRoute = legacyView && navRouteForView(legacyView as NavView);
+      if (legacyRoute) {
+        setCurrentView(legacyView as NavView);
+        const target = new URL(window.location.href);
+        target.pathname = legacyRoute;
+        target.searchParams.delete("view");
+        router.replace(`${target.pathname}${target.search}${target.hash}`);
+      } else {
+        setCurrentView("dashboard");
+      }
       return;
     }
-    if (window.location.pathname === "/delta") {
-      setCurrentView("delta");
-      return;
-    }
-    const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "forms" || view === "project" || view === "notebook" || view === "market-insights" || view === "demands" || view === "delta") setCurrentView(view as NavView);
-  }, []);
-
-  useEffect(() => {
-    if (pathname === "/projects" || pathname.startsWith("/projects/")) setCurrentView("project");
-  }, [pathname]);
+    const routeView = navViewForPath(pathname);
+    if (routeView) setCurrentView(routeView);
+  }, [pathname, router]);
 
   // Fetch page governance and role access
   useEffect(() => {
-    const refreshGovernance = () => {
-      fetch("/api/forms/config", { cache: "no-store" })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (!data) return;
-          setIsAdminUser(Boolean(data.isAdmin));
-          setAskEchoEnabled(data.config?.features?.askEchoEnabled === true);
-          setAllowedFeatures(Array.isArray(data.allowedFeatures) ? data.allowedFeatures : []);
-          if (Array.isArray(data.allowedPages) && data.allowedPages.length > 0) {
-            setAllowedPages(data.allowedPages);
-            const isOwner = authUser?.email?.toLowerCase() === "admin@primephilippines.com";
-            setCurrentView((prev) => {
-              if (prev === "forms-admin") return prev;
-              if (prev === "project" && data.allowedPages.includes("tasks")) return prev;
-              if (prev === "delta" && (data.allowedPages.includes("project") || data.allowedPages.includes("tasks"))) return prev;
-              if (!data.allowedPages.includes(prev)) return data.allowedPages[0] || "forms";
-              return prev;
-            });
-          }
-          if (Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0) {
-            setSidebarOrder(data.config.sidebarOrder as NavView[]);
-          }
-        })
-        .catch(() => {});
+    let active = true;
+    const refreshGovernance = async () => {
+      setGovernanceStatus("loading");
+      try {
+        const response = await fetch("/api/forms/config", { cache: "no-store" });
+        if (!response.ok) throw new Error("Page access could not be loaded.");
+        const data = await response.json();
+        if (!Array.isArray(data.allowedPages)) throw new Error("Page access data is incomplete.");
+        if (!active) return;
+
+        const pages = data.allowedPages as NavView[];
+        const isOwner = authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com";
+        const hasFullPageAccess = Boolean(data.isAdmin) || isOwner;
+        setIsAdminUser(Boolean(data.isAdmin));
+        setAskEchoEnabled(data.config?.features?.askEchoEnabled === true);
+        setAllowedFeatures(Array.isArray(data.allowedFeatures) ? data.allowedFeatures : []);
+        setAllowedPages(pages);
+        setCurrentView((prev) => {
+          if (prev === "forms-admin" || hasFullPageAccess) return prev;
+          if (prev === "project" && pages.includes("tasks")) return prev;
+          if (prev === "delta" && (pages.includes("project") || pages.includes("tasks"))) return prev;
+          if (!pages.includes(prev)) return pages[0] || "forms";
+          return prev;
+        });
+        if (Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0) {
+          setSidebarOrder(data.config.sidebarOrder as NavView[]);
+        }
+        setGovernanceStatus("ready");
+      } catch {
+        if (active) setGovernanceStatus("error");
+      }
     };
 
     refreshGovernance();
     window.addEventListener("echo-config-updated", refreshGovernance);
-    return () => window.removeEventListener("echo-config-updated", refreshGovernance);
+    return () => {
+      active = false;
+      window.removeEventListener("echo-config-updated", refreshGovernance);
+    };
   }, [authUser]);
 
   const isPageAllowed = (view: NavView) => {
     if (view === "forms-admin") return false;
+    if (isAdminUser || authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com") return true;
     if (view === "project") return allowedPages.includes("project") || allowedPages.includes("tasks");
     if (view === "delta") return allowedPages.includes("delta") || allowedPages.includes("project") || allowedPages.includes("tasks");
     return allowedPages.includes(view);
   };
+
+  useEffect(() => {
+    if (governanceStatus !== "ready" || !pathname) return;
+    const routeView = navViewForPath(pathname);
+    if (!routeView || isPageAllowed(routeView)) return;
+    const fallbackView = allowedPages.find((page) => navRouteForView(page)) || "forms";
+    router.replace(navRouteForView(fallbackView) || "/forms");
+  }, [allowedPages, authUser, governanceStatus, isAdminUser, pathname, router]);
 
   const handleSelectView = (view: NavView) => {
     if (view === "forms-admin") {
@@ -491,8 +515,8 @@ export default function Home() {
     }
     if (isPageAllowed(view)) {
       setCurrentView(view);
-      if (view === "project") router.push("/projects");
-      else if (pathname === "/projects" || pathname.startsWith("/projects/")) router.push("/");
+      const route = navRouteForView(view);
+      if (route && route !== pathname) router.push(route);
     }
   };
 
@@ -1253,7 +1277,22 @@ export default function Home() {
 
         {/* Scrollable View Content (Maximized full width without big margin borders) */}
         <main className={`flex-1 min-h-0 ${isMeetingWorkspace ? "h-full overflow-hidden flex flex-col p-0" : currentView === "minutes" ? "overflow-y-auto p-0" : "overflow-y-auto px-4 py-5 md:px-8"}`}>
-          {!isPageAllowed(currentView) ? (
+          {governanceStatus === "loading" ? (
+            <div role="status" className="flex min-h-[400px] items-center justify-center p-8 text-sm text-slate-600">
+              <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin text-[#C9AB4C]" />
+              Checking page access…
+            </div>
+          ) : governanceStatus === "error" ? (
+            <div className="flex min-h-[400px] items-center justify-center p-8">
+              <div className="max-w-md border border-slate-200 bg-[#FFFCFB] p-8 text-center shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-800">Page access is unavailable</h2>
+                <p className="mt-2 text-xs text-slate-600">We couldn’t confirm your access. Try loading the page access settings again.</p>
+                <button type="button" onClick={() => window.dispatchEvent(new Event("echo-config-updated"))} className="mt-5 border border-[#003366] bg-[#003366] px-4 py-2 text-xs font-semibold text-white hover:bg-[#002244] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9AB4C]">
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : !isPageAllowed(currentView) ? (
             <div className="flex-1 flex items-center justify-center p-8 min-h-[400px]">
               <div className="max-w-md w-full bg-[#FFFCFB] border border-slate-200 p-8 text-center shadow-sm">
                 <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4 text-amber-600">
@@ -1321,7 +1360,7 @@ export default function Home() {
             )}
 
             {currentView === "market-insights" && <MarketInsightsView />}
-            {currentView === "demands" && <DemandsView sector={(new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("sector") as "retail" | "industrial" | null) || "all"} />}
+            {currentView === "demands" && <DemandsView sector={pathname?.startsWith("/demands/retail") ? "retail" : pathname?.startsWith("/demands/industrial") ? "industrial" : "all"} />}
 
             {/* VIEW 2: MEETINGS ARCHIVES */}
             {currentView === "meetings" && (

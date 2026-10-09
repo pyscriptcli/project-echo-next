@@ -25,7 +25,7 @@ export default function WorkflowPage() {
         <div className="max-w-[1520px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              href="/?view=forms&tab=create"
+              href="/forms?tab=create"
               className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

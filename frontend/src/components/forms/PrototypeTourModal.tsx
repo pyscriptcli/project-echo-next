@@ -382,7 +382,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                     Role: Department Approver (TL)
                   </span>
                   <Link
-                    href="/?view=forms&tab=approvals"
+                    href="/forms?tab=approvals"
                     onClick={() => setIsOpenDrawer(false)}
                     className="text-[10px] font-bold text-[#003366] hover:underline flex items-center gap-0.5"
                   >
@@ -402,7 +402,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                     Role: Finance &amp; Tracker
                   </span>
                   <Link
-                    href="/?view=forms&tab=track"
+                    href="/forms?tab=track"
                     onClick={() => setIsOpenDrawer(false)}
                     className="text-[10px] font-bold text-[#003366] hover:underline flex items-center gap-0.5"
                   >
@@ -422,7 +422,7 @@ export function PrototypeTourModal({ onPreFillDemo }: PrototypeTourModalProps) {
                     Process Workflow SOP
                   </span>
                   <Link
-                    href="/?view=forms&tab=workflow"
+                    href="/forms?tab=workflow"
                     onClick={() => setIsOpenDrawer(false)}
                     className="text-[10px] font-bold text-[#003366] hover:underline flex items-center gap-0.5"
                   >

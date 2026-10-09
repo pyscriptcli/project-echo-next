@@ -3,7 +3,7 @@ import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { DEFAULT_AI_POLICY, normalizeAiPolicy, type AiPolicy } from "@/lib/ask-echo/limits";
 import { REPOSITORY_FORM_MAPPINGS } from "@/components/forms/forms.config";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
-import { resolveAccess, normalizeFeatures, ALL_FEATURES, type FeatureId } from "@/lib/access-control";
+import { resolveAccess, normalizeFeatures, ALL_APP_PAGES, ALL_FEATURES, type FeatureId } from "@/lib/access-control";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,6 @@ const DEFAULT_CONFIG: FormsConfigData = {
   aiPolicy: DEFAULT_AI_POLICY,
 };
 
-const ALL_APP_PAGES = ["dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta"];
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, max-age=0" };
 
 function isOwnerOrAdmin(req: NextRequest, config: any) {
@@ -111,7 +110,7 @@ export async function GET(req: NextRequest) {
     features: config.features,
     formFeatures: config.formFeatures,
   });
-  const allowedPages = access.allowedPages;
+  const allowedPages = isAdmin ? ALL_APP_PAGES : access.allowedPages;
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {

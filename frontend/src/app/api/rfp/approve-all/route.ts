@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
                   current_stage_started_at: now,
                   status_message: "Your request was approved by the Team Leader.",
                   next_step_message: "It is now with Finance for verification.",
-                  track_status_url: `${appUrl}/?view=forms&tab=track`,
+                  track_status_url: `${appUrl}/forms?tab=track`,
                 },
               });
             }

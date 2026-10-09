@@ -172,7 +172,7 @@ export function Sidebar({
         type="button"
         onClick={() => onSelectView(item.id)}
         title={effectiveCollapsed ? item.label : undefined}
-        className={`w-full flex items-center gap-2.5 ${nested ? "pl-4" : "px-2.5"} py-2 text-[13px] font-medium transition-colors cursor-pointer ${
+        className={`w-full flex items-center gap-2.5 ${nested ? "pl-4" : "px-2.5"} py-2 text-[13px] font-normal transition-colors cursor-pointer ${
           isActive
             ? "bg-[#FFFCFB] text-[#003366] border-l-4 border-[#C9A84C]"
             : "text-[#FFFCFB] hover:bg-[#174778] border-l-4 border-transparent"
@@ -261,7 +261,7 @@ export function Sidebar({
                           type="button"
                           onClick={() => onSelectView("meetings")}
                           title={effectiveCollapsed ? "Meetings" : undefined}
-                          className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition-colors ${
+                          className={`flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-xs font-normal uppercase tracking-[0.15em] transition-colors ${
                             currentView === "meetings" ? "text-[#FFFCFB]" : "text-[#9FB8CE] hover:text-[#FFFCFB]"
                           } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
                         >

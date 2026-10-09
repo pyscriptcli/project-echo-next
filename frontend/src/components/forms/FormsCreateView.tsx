@@ -259,7 +259,7 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
   useEffect(() => {
     if (prefillParam === "true" && rfpAutofillEnabled) {
       handlePreFillDemo();
-      window.history.replaceState(null, "", "/?view=forms&tab=create");
+      window.history.replaceState(null, "", "/forms?tab=create");
     }
   }, [prefillParam, rfpAutofillEnabled]);
 
@@ -268,7 +268,7 @@ function RfpAppContent({ user, listId }: { user?: FormsUser | null; listId?: str
     if (tourParam === "true") {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("open-prototype-tour"));
-        window.history.replaceState(null, "", "/?view=forms&tab=create");
+        window.history.replaceState(null, "", "/forms?tab=create");
       }, 400);
     }
   }, [tourParam]);

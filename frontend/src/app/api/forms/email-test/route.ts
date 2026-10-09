@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         current_stage_started_at: now,
         status_message: "If you received this message, Resend is configured correctly.",
         next_step_message: "",
-        track_status_url: `${appUrl}/?view=forms&tab=track`,
+        track_status_url: `${appUrl}/forms?tab=track`,
       },
     });
     return NextResponse.json({ ...result, recipient });

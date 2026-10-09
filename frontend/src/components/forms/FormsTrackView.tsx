@@ -188,7 +188,7 @@ function TrackContent() {
             Try adjusting your search by Task ID, Payee, or Work Email, or submit a new payment request.
           </p>
           <Link
-            href="/?view=forms&tab=create"
+            href="/forms?tab=create"
             className="inline-flex items-center gap-1.5 mt-4 h-8 px-4 text-xs font-bold text-white bg-[#003366] hover:bg-[#002244] transition-colors shadow-sm"
           >
             <span>Fill Up New RFP</span>
@@ -230,7 +230,7 @@ function TrackContent() {
                       </div>
                     </div>
                     <Link
-                      href={`/?view=forms&tab=create&taskId=${req.taskId}`}
+                      href={`/forms?tab=create&taskId=${req.taskId}`}
                       className="h-8 px-3.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0 self-start sm:self-auto"
                     >
                       <Edit3 className="w-3.5 h-3.5" />

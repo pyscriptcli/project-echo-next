@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
             status_updated_at: now, completed_stage: "Approval Team Leader", approver_name: approverName || "Team Leader",
             completed_at: now, current_stage: "Finance Verification", current_stage_started_at: now,
             status_message: "Your request was approved by the Team Leader.", next_step_message: "It is now with Finance for verification.",
-            track_status_url: `${appUrl}/?view=forms&tab=track`,
+            track_status_url: `${appUrl}/forms?tab=track`,
           },
         });
       } catch (emailErr) {
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
             status_label: "Revision Requested", request_title: taskName, status_updated_at: now,
             current_stage: "Revision Requested", current_stage_started_at: now,
             status_message: revisionReason, next_step_message: "Please update and resubmit your request.",
-            track_status_url: `${appUrl}/?view=forms&tab=track`,
+            track_status_url: `${appUrl}/forms?tab=track`,
           } });
         }
       } catch (emailErr) {
