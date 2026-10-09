@@ -328,7 +328,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack }: {
   );
 }
 
-export function DeltaReviewList({ contextName, contextId, onStart, onOpen }: { contextName: string; contextId: string; onStart: () => void; onOpen: (review: SavedDeltaReview) => void }) {
+export function DeltaReviewList({ contextName, contextId, initialReviewId, onStart, onOpen }: { contextName: string; contextId: string; initialReviewId?: string; onStart: () => void; onOpen: (review: SavedDeltaReview) => void }) {
   const [reviews, setReviews] = useState<SavedDeltaReview[]>([]);
   const [folderReady, setFolderReady] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -351,8 +351,19 @@ export function DeltaReviewList({ contextName, contextId, onStart, onOpen }: { c
       if (!active) return;
       setFolderReady(chosen);
       if (chosen) {
-        try { setReviews(await listReviews()); }
+        try {
+          const saved = await listReviews();
+          if (!active) return;
+          setReviews(saved);
+          if (initialReviewId) {
+            const requested = saved.find((review) => review.id === initialReviewId && reviewMatchesContext(review, contextId, contextName));
+            if (requested) onOpen(requested);
+            else setError("That saved comparison could not be found in this subproject.");
+          }
+        }
         catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "Saved comparisons could not be read."); }
+      } else if (initialReviewId) {
+        setError("Choose your Documents folder to reopen this saved comparison.");
       }
     }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : "The local save folder could not be checked."); })
       .finally(() => { if (active) setLoading(false); });
