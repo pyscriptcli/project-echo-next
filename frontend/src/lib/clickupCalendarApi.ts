@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import { clickUpScope, clearClickUpReadCache, invalidateClickUpSync, readCachedClickUp, reserveClickUpRequest, writeCachedClickUp } from "@/lib/clickupReadStore";
+import { recordTelemetry } from "@/lib/telemetry";
 
 const RATE_INTERVAL_MS = Math.max(667, Number(process.env.CLICKUP_MIN_REQUEST_INTERVAL_MS) || 667);
 const MAX_ACTIVE_PER_TOKEN = 3;
@@ -11,6 +13,20 @@ const inFlightGets = new Map<string, Promise<Response>>();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+
+function safeEndpoint(input: string | URL) {
+  const idFollowing = new Set(["task", "list", "folder", "space", "team", "webhook", "goal", "comment", "doc", "view"]);
+  let previous = "";
+  return new URL(String(input)).pathname.split("/").map((part) => {
+    const safePart = /^\d+$/.test(part) || idFollowing.has(previous) ? ":id" : part;
+    previous = safePart;
+    return safePart;
+  }).join("/");
+}
+
+function scheduleClickUpTelemetry(event: Parameters<typeof recordTelemetry>[0]) {
+  try { after(() => recordTelemetry(event)); } catch { /* Some non-request callers have no Next after context. */ }
+}
 
 async function acquire(scope: string) {
   while ((activeByToken.get(scope) || 0) >= MAX_ACTIVE_PER_TOKEN) {
@@ -50,6 +66,8 @@ function retryDelay(response: Response, attempt: number) {
 
 async function clickUpRequest(token: string, input: string | URL, init?: RequestInit) {
   const scope = clickUpScope(token);
+  const requestQueuedAt = Date.now();
+  const endpoint = safeEndpoint(input);
   const queuedAt = Date.now();
   await acquire(scope);
   const queueWaitMs = Date.now() - queuedAt;
@@ -60,18 +78,44 @@ async function clickUpRequest(token: string, input: string | URL, init?: Request
     await reserveStart(scope);
     const rateWaitMs = Date.now() - rateWaitStartedAt;
     const requestStartedAt = Date.now();
+    let upstreamMs = 0;
     const headers = new Headers(init?.headers);
     headers.set("Authorization", token);
+    const upstreamStartedAt = Date.now();
     response = await fetch(input, { ...init, headers, cache: "no-store" });
+    upstreamMs += Date.now() - upstreamStartedAt;
     for (let attempt = 0; response.status === 429 && attempt < 3; attempt += 1) {
       retries += 1;
       await sleep(retryDelay(response, attempt));
       await reserveStart(scope);
+      const retryStartedAt = Date.now();
       response = await fetch(input, { ...init, headers, cache: "no-store" });
+      upstreamMs += Date.now() - retryStartedAt;
     }
     if (process.env.CLICKUP_PERF_LOGS === "true") {
-      console.info("[clickup-perf]", JSON.stringify({ path: new URL(String(input)).pathname, method: (init?.method || "GET").toUpperCase(), queueWaitMs, rateWaitMs, upstreamMs: Date.now() - requestStartedAt, retries, status: response.status, limitRemaining: response.headers.get("X-RateLimit-Remaining") }));
+      console.info("[clickup-perf]", JSON.stringify({ path: endpoint, method: (init?.method || "GET").toUpperCase(), queueWaitMs, rateWaitMs, upstreamMs, retries, status: response.status, limitRemaining: response.headers.get("X-RateLimit-Remaining") }));
     }
+    scheduleClickUpTelemetry({
+      source: "clickup",
+      operation: "clickup_request",
+      processingMs: Date.now() - requestStartedAt,
+      queueMs: queueWaitMs,
+      retryCount: retries,
+      success: response.ok,
+      errorCategory: response.ok ? undefined : `http_${response.status}`,
+      metadata: { endpoint, method: (init?.method || "GET").toUpperCase(), rateWaitMs, upstreamMs, status: response.status },
+    });
+  } catch (error) {
+    scheduleClickUpTelemetry({
+      source: "clickup",
+      operation: "clickup_request",
+      processingMs: Date.now() - requestQueuedAt,
+      queueMs: queueWaitMs,
+      success: false,
+      errorCategory: "network_error",
+      metadata: { endpoint, method: (init?.method || "GET").toUpperCase() },
+    });
+    throw error;
   } finally { release(scope); }
   return response;
 }
@@ -89,10 +133,14 @@ export async function clickUpCalendarFetch(token: string, input: string | URL, i
   }
   const key = `${scope}:${digest(url)}`;
   const pending = options.skipCache ? null : inFlightGets.get(key);
-  if (pending) return (await pending).clone();
+  if (pending) {
+    scheduleClickUpTelemetry({ source: "clickup", operation: "clickup_cache_hit", processingMs: 0, success: true, metadata: { endpoint: safeEndpoint(url), cacheState: "inflight" } });
+    return (await pending).clone();
+  }
   const request = (async () => {
     const cached = options.skipCache ? null : await readCachedClickUp(scope, url).catch(() => null);
     if (cached) {
+      scheduleClickUpTelemetry({ source: "clickup", operation: "clickup_cache_hit", processingMs: 0, success: true, metadata: { endpoint: safeEndpoint(url), cacheState: "stored" } });
       if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ path: new URL(url).pathname, method: "GET", cache: "hit" }));
       return cached;
     }

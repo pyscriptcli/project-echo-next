@@ -58,6 +58,8 @@ function emptySummary() {
     byProvider: {}, 
     bySource: {}, 
     byOperation: {},
+    clickupPerformance: { requests: 0, failures: 0, averageMs: 0, p50Ms: 0, p95Ms: 0, dataSources: {}, averageRecords: 0, averageSnapshotAgeMs: null },
+    clickupApiPerformance: { requests: 0, failures: 0, cacheHits: 0, cacheHitRate: 0, averageMs: 0, p95Ms: 0, averageQueueMs: 0, averageRateWaitMs: 0, averageUpstreamMs: 0, byEndpoint: {} },
     cost: {
       totalUsd: 0,
       totalPhp: 0,
@@ -106,6 +108,33 @@ function summarize(events: Array<Record<string, unknown>>) {
   const totalPhp = totalUsd * USD_TO_PHP;
 
   const countBy = (field: string) => events.reduce<Record<string, number>>((result, event) => { const key = String(event[field] || "unknown"); result[key] = (result[key] || 0) + 1; return result; }, {});
+  const clickupEvents = events.filter((event) => event.source === "clickup" && event.operation === "tasks_route");
+  const clickupDurations = clickupEvents.map((event) => Number(event.processing_ms || 0)).filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  const percentile = (values: number[], fraction: number) => values.length ? values[Math.min(values.length - 1, Math.ceil(values.length * fraction) - 1)] : 0;
+  const clickupMetadata = clickupEvents.map((event) => event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {});
+  const snapshotAges = clickupMetadata.map((metadata) => Number(metadata.snapshotAgeMs)).filter((value) => Number.isFinite(value) && value >= 0);
+  const recordCounts = clickupMetadata.map((metadata) => Number(metadata.recordCount)).filter((value) => Number.isFinite(value) && value >= 0);
+  const dataSources = clickupMetadata.reduce<Record<string, number>>((result, metadata) => {
+    const source = String(metadata.dataSource || "unknown");
+    result[source] = (result[source] || 0) + 1;
+    return result;
+  }, {});
+  const apiRequests = events.filter((event) => event.source === "clickup" && event.operation === "clickup_request");
+  const cacheHits = events.filter((event) => event.source === "clickup" && event.operation === "clickup_cache_hit");
+  const apiDurations = apiRequests.map((event) => Number(event.processing_ms || 0)).filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  const averageMetadataMetric = (key: string) => {
+    const values = apiRequests.map((event) => {
+      const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
+      return Number(metadata[key]);
+    }).filter((value) => Number.isFinite(value) && value >= 0);
+    return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+  };
+  const byEndpoint = apiRequests.reduce<Record<string, number>>((result, event) => {
+    const metadata = event.metadata && typeof event.metadata === "object" ? event.metadata as Record<string, unknown> : {};
+    const endpoint = String(metadata.endpoint || "unknown");
+    result[endpoint] = (result[endpoint] || 0) + 1;
+    return result;
+  }, {});
   
   return { 
     totalEvents: events.length, 
@@ -118,6 +147,28 @@ function summarize(events: Array<Record<string, unknown>>) {
     byProvider: countBy("provider"), 
     bySource: countBy("source"), 
     byOperation: countBy("operation"),
+    clickupPerformance: {
+      requests: clickupEvents.length,
+      failures: clickupEvents.filter((event) => event.success !== true).length,
+      averageMs: clickupDurations.length ? Math.round(clickupDurations.reduce((sum, value) => sum + value, 0) / clickupDurations.length) : 0,
+      p50Ms: percentile(clickupDurations, 0.5),
+      p95Ms: percentile(clickupDurations, 0.95),
+      dataSources,
+      averageRecords: recordCounts.length ? Math.round(recordCounts.reduce((sum, value) => sum + value, 0) / recordCounts.length) : 0,
+      averageSnapshotAgeMs: snapshotAges.length ? Math.round(snapshotAges.reduce((sum, value) => sum + value, 0) / snapshotAges.length) : null,
+    },
+    clickupApiPerformance: {
+      requests: apiRequests.length,
+      failures: apiRequests.filter((event) => event.success !== true).length,
+      cacheHits: cacheHits.length,
+      cacheHitRate: apiRequests.length + cacheHits.length ? Math.round(cacheHits.length / (apiRequests.length + cacheHits.length) * 100) : 0,
+      averageMs: apiDurations.length ? Math.round(apiDurations.reduce((sum, value) => sum + value, 0) / apiDurations.length) : 0,
+      p95Ms: percentile(apiDurations, 0.95),
+      averageQueueMs: apiRequests.length ? Math.round(apiRequests.reduce((sum, event) => sum + Number(event.queue_ms || 0), 0) / apiRequests.length) : 0,
+      averageRateWaitMs: averageMetadataMetric("rateWaitMs"),
+      averageUpstreamMs: averageMetadataMetric("upstreamMs"),
+      byEndpoint,
+    },
     cost: {
       totalUsd: Number(totalUsd.toFixed(4)),
       totalPhp: Number(totalPhp.toFixed(2)),

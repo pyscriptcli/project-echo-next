@@ -39,6 +39,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ClickUp requests share a per-user cache and rate budget. `CLICKUP_PERF_LOGS=true` records request queue time, rate-limit wait, upstream duration, retries, status, and remaining request budget without logging credentials or task content. The minimum request spacing defaults to 667 ms; set `CLICKUP_MIN_REQUEST_INTERVAL_MS` higher when the connected workspace requires a lower request rate.
 
+Selected task-list route timings and shared ClickUp request timings are also stored in the existing `echo_telemetry` table and summarized in Admin → API telemetry. The report separates route duration, cache hits, upstream duration, local queue wait, rate pacing, p95 latency, and endpoint category across pages. To enable this durable log, apply or rerun [`../supabase/echo_telemetry.sql`](../supabase/echo_telemetry.sql). Endpoint ids, task content, and OAuth tokens are not stored.
+
 To enable durable task snapshots and change notifications:
 
 1. Apply [`../supabase/clickup_read_model.sql`](../supabase/clickup_read_model.sql) to the Supabase project.

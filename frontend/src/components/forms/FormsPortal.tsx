@@ -555,6 +555,48 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
           {[["Events", telemetry?.summary?.totalEvents || 0], ["Success", telemetry?.summary?.successfulEvents || 0], ["Failures", telemetry?.summary?.failedEvents || 0], ["Avg processing", `${telemetry?.summary?.averageProcessingMs || 0} ms`], ["Fallback rate", `${telemetry?.summary?.fallbackRate || 0}%`]].map(([label, value]) => <div key={String(label)} className="panel"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">{label}</div><div className="mt-1 text-xl text-[#003366]">{value}</div></div>)}
         </div>
 
+        <div className="panel space-y-3">
+          <div>
+            <h3 className="text-base font-serif italic font-bold text-[#003366]">Tasks loading performance</h3>
+            <p className="mt-1 text-xs text-[#181D1E]/65">Server time for selected task list requests in the chosen date range.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {[
+              ["Requests", telemetry?.summary?.clickupPerformance?.requests || 0],
+              ["Average", `${telemetry?.summary?.clickupPerformance?.averageMs || 0} ms`],
+              ["95th percentile", `${telemetry?.summary?.clickupPerformance?.p95Ms || 0} ms`],
+              ["Failures", telemetry?.summary?.clickupPerformance?.failures || 0],
+              ["Avg records", telemetry?.summary?.clickupPerformance?.averageRecords || 0],
+            ].map(([label, value]) => <div key={String(label)} className="border border-[#003366]/10 px-3 py-2"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">{label}</div><div className="mt-1 text-lg text-[#003366]">{value}</div></div>)}
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#181D1E]/70">
+            {Object.entries((telemetry?.summary?.clickupPerformance?.dataSources || {}) as Record<string, number>).map(([source, count]) => <span key={source}>{source}: <strong className="text-[#003366]">{count}</strong></span>)}
+            {telemetry?.summary?.clickupPerformance?.averageSnapshotAgeMs != null && <span>Average snapshot age: <strong className="text-[#003366]">{Math.round(telemetry.summary.clickupPerformance.averageSnapshotAgeMs / 1000)} sec</strong></span>}
+            {!telemetry?.summary?.clickupPerformance?.requests && <span>No task loading events in this range yet.</span>}
+          </div>
+        </div>
+
+        <div className="panel space-y-3">
+          <div>
+            <h3 className="text-base font-serif italic font-bold text-[#003366]">ClickUp request timings</h3>
+            <p className="mt-1 text-xs text-[#181D1E]/65">Breaks down shared ClickUp request wait, cache reuse, and upstream response time across pages.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {[
+              ["Upstream requests", telemetry?.summary?.clickupApiPerformance?.requests || 0],
+              ["95th percentile", `${telemetry?.summary?.clickupApiPerformance?.p95Ms || 0} ms`],
+              ["Avg queue wait", `${telemetry?.summary?.clickupApiPerformance?.averageQueueMs || 0} ms`],
+              ["Avg rate wait", `${telemetry?.summary?.clickupApiPerformance?.averageRateWaitMs || 0} ms`],
+              ["Cache hit rate", `${telemetry?.summary?.clickupApiPerformance?.cacheHitRate || 0}%`],
+            ].map(([label, value]) => <div key={String(label)} className="border border-[#003366]/10 px-3 py-2"><div className="text-[10px] uppercase tracking-widest text-[#003366]/60">{label}</div><div className="mt-1 text-lg text-[#003366]">{value}</div></div>)}
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#181D1E]/70">
+            <span>Failures: <strong className="text-[#003366]">{telemetry?.summary?.clickupApiPerformance?.failures || 0}</strong></span>
+            <span>Avg upstream response: <strong className="text-[#003366]">{telemetry?.summary?.clickupApiPerformance?.averageUpstreamMs || 0} ms</strong></span>
+            {Object.entries((telemetry?.summary?.clickupApiPerformance?.byEndpoint || {}) as Record<string, number>).map(([endpoint, count]) => <span key={endpoint}>{endpoint}: <strong className="text-[#003366]">{count}</strong></span>)}
+          </div>
+        </div>
+
         {/* AI Compute & Cost Intelligence Panel */}
         <div className="panel space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-3">

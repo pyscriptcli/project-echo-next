@@ -7,8 +7,8 @@ create table if not exists public.echo_telemetry (
   user_id text,
   user_email text,
   occurred_at timestamptz not null default now(),
-  source text not null check (source in ('echo_recording', 'uploaded_audio', 'meetstream_bot', 'ask_echo', 'notetaker_finalize')),
-  operation text not null check (operation in ('audio_chunk', 'audio_upload', 'ask_echo', 'notetaker_finalize')),
+  source text not null check (source in ('echo_recording', 'uploaded_audio', 'meetstream_bot', 'ask_echo', 'notetaker_finalize', 'clickup')),
+  operation text not null check (operation in ('audio_chunk', 'audio_upload', 'ask_echo', 'notetaker_finalize', 'tasks_route', 'clickup_request', 'clickup_cache_hit')),
   capture_mode text check (capture_mode in ('botless', 'bot', 'unknown')),
   provider text,
   model text,
@@ -57,5 +57,13 @@ alter table public.echo_telemetry enable row level security;
 -- No client-side policy is granted, preventing users from reading other users' events.
 
 comment on table public.echo_telemetry is 'Operational Echo telemetry; never store audio, transcripts, prompts, or ClickUp content.';
-comment on column public.echo_telemetry.source is 'Where the work originated: Echo recording, uploaded audio, MeetStream bot, Ask Echo, or Notetaker finalization.';
+comment on column public.echo_telemetry.source is 'Where the work originated: Echo recording, uploaded audio, MeetStream bot, Ask Echo, Notetaker finalization, or ClickUp task loading.';
 comment on column public.echo_telemetry.occurred_at is 'Event time in UTC with timezone; use this for reporting.';
+
+-- Extend existing deployments without replacing stored telemetry.
+alter table public.echo_telemetry drop constraint if exists echo_telemetry_source_check;
+alter table public.echo_telemetry add constraint echo_telemetry_source_check
+  check (source in ('echo_recording', 'uploaded_audio', 'meetstream_bot', 'ask_echo', 'notetaker_finalize', 'clickup'));
+alter table public.echo_telemetry drop constraint if exists echo_telemetry_operation_check;
+alter table public.echo_telemetry add constraint echo_telemetry_operation_check
+  check (operation in ('audio_chunk', 'audio_upload', 'ask_echo', 'notetaker_finalize', 'tasks_route', 'clickup_request', 'clickup_cache_hit'));

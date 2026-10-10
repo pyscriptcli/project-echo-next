@@ -6,6 +6,7 @@ import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/click
 import { loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 import { recordProjectActivity } from "@/lib/projectActivity";
 import { after } from "next/server";
+import { recordTelemetry } from "@/lib/telemetry";
 import { clickUpScope, hasFreshClickUpTaskSnapshot, invalidateClickUpSync, queueClickUpSync, readClickUpTaskSnapshot } from "@/lib/clickupReadStore";
 import { processClickUpSyncQueue, registerClickUpListWebhook } from "@/lib/clickupSync";
 
@@ -186,6 +187,7 @@ function customFieldText(value: unknown) {
 
 // GET: Fetch tasks, members, list statuses, or discover lists
 export async function GET(req: NextRequest) {
+  const routeStartedAt = Date.now();
   try {
     const { token, listId } = getClickUpCredentials(req);
     const { searchParams } = new URL(req.url);
@@ -515,7 +517,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const routeStartedAt = Date.now();
     const forceRefresh = searchParams.get("refresh") === "1";
     const scope = clickUpScope(token);
     const userProfile = req.cookies.get("echo_user_profile")?.value;
@@ -762,10 +763,31 @@ export async function GET(req: NextRequest) {
       "X-ClickUp-Data-Source": snapshot ? "snapshot" : "api-read",
       ...(snapshot?.syncedAt ? { "X-Data-Synced-At": snapshot.syncedAt } : {}),
     } });
-    if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ operation: "tasks-route", source: snapshot ? "snapshot" : "api-read", durationMs: Date.now() - routeStartedAt, records: tasks.length, snapshotAgeMs: snapshot?.syncedAt ? Date.now() - Date.parse(snapshot.syncedAt) : undefined }));
+    const durationMs = Date.now() - routeStartedAt;
+    const snapshotAgeMs = snapshot?.syncedAt ? Math.max(0, Date.now() - Date.parse(snapshot.syncedAt)) : null;
+    after(() => recordTelemetry({
+      source: "clickup",
+      operation: "tasks_route",
+      processingMs: durationMs,
+      success: true,
+      metadata: {
+        dataSource: snapshot ? "snapshot" : "api-read",
+        recordCount: tasks.length,
+        ...(snapshotAgeMs !== null ? { snapshotAgeMs } : {}),
+      },
+    }));
+    if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ operation: "tasks-route", source: snapshot ? "snapshot" : "api-read", durationMs, records: tasks.length, snapshotAgeMs: snapshotAgeMs ?? undefined }));
     return response;
   } catch (error: any) {
     console.error("ClickUp Tasks GET error:", error);
+    const durationMs = Date.now() - routeStartedAt;
+    after(() => recordTelemetry({
+      source: "clickup",
+      operation: "tasks_route",
+      processingMs: durationMs,
+      success: false,
+      errorCategory: "tasks_route_error",
+    }));
     return NextResponse.json(
       { error: error.message || "Internal server error connecting to ClickUp" },
       { status: 500 }
