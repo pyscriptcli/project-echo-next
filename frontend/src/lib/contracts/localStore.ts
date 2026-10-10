@@ -180,17 +180,7 @@ export async function listLocalWorkspaces() {
 }
 
 export async function saveLocalWorkspace(workspace: LocalContractWorkspace) {
-  if (!await savedDirectory()) {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(WORKSPACES_STORE, "readwrite");
-      transaction.objectStore(WORKSPACES_STORE).put(workspace);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error || new Error("The workspace could not be saved in this browser."));
-    });
-    db.close();
-    return;
-  }
+  if (!await savedDirectory()) throw new Error("Choose a folder on this computer before creating a workspace.");
   const root = await contractsDirectory(await requireDirectory(true));
   const index = await readIndex(root);
   index.workspaces = [workspace, ...index.workspaces.filter((item) => item.id !== workspace.id)];
@@ -248,25 +238,7 @@ export async function listContracts(folderId: string) {
 }
 
 export async function saveContract(contract: LocalContract) {
-  if (!await savedDirectory()) {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME, WORKSPACES_STORE], "readwrite");
-      transaction.objectStore(STORE_NAME).put(contract);
-      const workspaces = transaction.objectStore(WORKSPACES_STORE);
-      const request = workspaces.getAll();
-      request.onsuccess = () => {
-        if (!(request.result as LocalContractWorkspace[]).some((workspace) => `local-${workspace.id}` === contract.folderId)) {
-          const id = contract.folderId.replace(/^local-/, "");
-          workspaces.put({ id, name: contract.folderName, createdAt: contract.updatedAt, updatedAt: contract.updatedAt } satisfies LocalContractWorkspace);
-        }
-      };
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error || new Error("The contract could not be saved in this browser."));
-    });
-    db.close();
-    return;
-  }
+  if (!await savedDirectory()) throw new Error("Choose a folder on this computer before saving a contract.");
   const root = await contractsDirectory(await requireDirectory(true));
   const files = await ensureFilesDirectory(root);
   const storedFile = `${contract.id}.docx`;
