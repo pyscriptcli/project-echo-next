@@ -217,9 +217,9 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - Routed selected-list reads through shared per-token caching/rate handling, served fresh snapshots after a current-user list access check, and scheduled first sync/webhook registration in the background.
 - Manual task refresh bypasses read cache; ClickUp webhooks clear that list's cached task responses before sync. Added route timing/source metadata.
 - Verification: `npx tsc --noEmit` and `git diff --check` passed; targeted ESLint reports pre-existing `no-explicit-any` errors in the touched files. Tests not run.
-- Commit: pending push on `main`.
+- Commit: `c2529ac` on `main`; pushed to `origin/main`.
 - Risk: snapshots remain limited to 3,000 records and five minutes; deployment still needs the existing sync migration/configuration.
-- Next: push the scoped performance changes; user requested publication.
+- Next: inspect `CLICKUP_PERF_LOGS` route/request timings after deployment and tune the slowest remaining list path.
 
 ### Local 2026-10-10 — persistent page data cache
 
