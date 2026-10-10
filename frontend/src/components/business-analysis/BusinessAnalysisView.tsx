@@ -249,6 +249,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         <div className="min-w-0 border-l-2 border-[#C9A84C] py-0.5 pl-2.5">
           <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#31577D]">{project ? "Business Analysis workspace" : "Business Analysis"}</p>
           <h1 className="truncate text-xl font-semibold tracking-tight text-[#003366]">{project?.name || "Projects"}</h1>
+          {!project && <p className="mt-0.5 truncate text-xs text-slate-600">Choose a workspace to view its requirements, notes, and documents.</p>}
         </div>
       </div>
       <div className="ba-no-print flex flex-wrap items-center gap-2">
@@ -258,10 +259,8 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       </div>
     </header>
 
-    {!project ? <section className="border border-[#CBD5E1] bg-[#FFFCFB]">
-      {state.projects.length === 0 ? <div className="border border-dashed border-slate-300 bg-white px-5 py-12 text-center"><FolderKanban aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">Create your first BA project</h2><p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Keep requirements, discovery notes, and delivery documents together in one workspace.</p></div> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    {!project ? state.projects.length === 0 ? <section className="border border-dashed border-slate-300 bg-white px-5 py-12 text-center"><FolderKanban aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">Create your first BA project</h2><p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Keep requirements, discovery notes, and delivery documents together in one workspace.</p></section> : <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {state.projects.map((item) => <button key={item.id} type="button" onClick={() => { setActiveId(item.id); setTab("requirements"); }} className="group min-h-40 border border-slate-200 bg-white p-4 text-left transition-colors hover:border-[#C9A84C] hover:bg-[#FFFCFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><span className="flex h-full flex-col"><span className="flex items-start justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderKanban aria-hidden="true" className="h-4 w-4" /></span><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-slate-400 transition-colors group-hover:text-[#003366]" /></span><span className="mt-4 text-base font-semibold text-[#003366]">{item.name}</span><span className="mt-1 text-xs text-slate-500">{item.requirements.length} requirement{item.requirements.length === 1 ? "" : "s"} · {item.documents.length} document{item.documents.length === 1 ? "" : "s"}</span><span className="mt-auto pt-4 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">Open workspace</span></span></button>)}
-      </div>}
     </section> : <>
       <div className="mb-3 grid grid-cols-2 gap-px border border-[#CBD5E1] bg-[#CBD5E1] md:grid-cols-4">
         <div className="bg-[#FFFCFB] px-3 py-2"><div className="text-xs font-semibold text-slate-700">Requirements</div><div className="mt-0.5 font-serif text-lg font-bold text-[#003366]">{filteredRequirements.length}</div></div>
@@ -299,7 +298,8 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
             <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} verification status`} className="h-7 w-full border border-transparent bg-transparent px-1 text-xs text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.verification} onChange={(event) => updateRequirement(item.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} milestone`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.milestone} onChange={(event) => updateRequirement(item.id, { milestone: event.target.value })} /></td>
             <td className="border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><textarea aria-label={`${item.id} acceptance criteria`} className={`${inputClass} mt-1`} rows={3} placeholder="Given / When / Then" value={item.acceptanceCriteria} onChange={(event) => updateRequirement(item.id, { acceptanceCriteria: event.target.value })} /></details></td>
-          </tr>)}</tbody></table></div>        </>}
+          </tr>)}</tbody></table></div>
+        </>}
       </section>}
 
       {tab === "elicitation" && <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
