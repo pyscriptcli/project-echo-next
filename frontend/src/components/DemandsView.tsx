@@ -75,18 +75,18 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const [sortCol, setSortCol] = useState<string>("date");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const requestDemands = useCallback(async () => {
-    const response = await fetch("/api/demands", { cache: "no-store" });
+  const requestDemands = useCallback(async (force = false) => {
+    const response = await fetch(`/api/demands${force ? "?refresh=1" : ""}`, { cache: "no-store" });
     const data: { demands?: DemandRecord[]; error?: string } = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to load demands.");
     return Array.isArray(data.demands) ? data.demands : [];
   }, []);
 
-  const loadDemands = useCallback(async () => {
+  const loadDemands = useCallback(async (force = false) => {
     setIsLoadingDemands(true);
     setLoadError(null);
     try {
-      setDemands(await requestDemands());
+      setDemands(await requestDemands(force));
       return true;
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Unable to load demands.");
@@ -221,7 +221,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     setIsSyncing(true);
     setSyncStatusMsg("Refreshing demands…");
     try {
-      const refreshed = await loadDemands();
+      const refreshed = await loadDemands(true);
       setSyncStatusMsg(refreshed ? "Demand records refreshed." : "Unable to refresh demand records.");
     } catch {
       setSyncStatusMsg("Unable to refresh demand records.");
@@ -485,7 +485,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
       {loadError && (
         <div role="alert" className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-center justify-between gap-3">
           <span>{loadError}</span>
-          <button type="button" onClick={() => void loadDemands()} className="font-semibold underline">Retry</button>
+          <button type="button" onClick={() => void loadDemands(true)} className="font-semibold underline">Retry</button>
         </div>
       )}
 

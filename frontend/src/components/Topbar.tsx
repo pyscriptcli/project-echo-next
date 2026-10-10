@@ -27,6 +27,7 @@ interface TopbarProps {
   meetings: ArchivedMeeting[];
   tasks?: ClickUpTask[];
   onOpenUniversalEcho: () => void;
+  onOpenSearch?: () => void;
   onSelectMeeting: (meetingId: string) => void;
   onSelectTask?: (taskId: string) => void;
   onNewMeeting: () => void;
@@ -51,6 +52,7 @@ export function Topbar({
   meetings,
   tasks = [],
   onOpenUniversalEcho,
+  onOpenSearch,
   onSelectMeeting,
   onSelectTask,
   onNewMeeting,
@@ -82,6 +84,7 @@ export function Topbar({
         e.preventDefault();
         inputRef.current?.focus();
         setIsOpen(true);
+        onOpenSearch?.();
       }
       if (e.key === "Escape") {
         setIsOpen(false);
@@ -90,7 +93,7 @@ export function Topbar({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [onOpenSearch]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -204,7 +207,7 @@ export function Topbar({
               setSearchQuery(e.target.value);
               setIsOpen(true);
             }}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => { setIsOpen(true); onOpenSearch?.(); }}
             placeholder="Search"
             className="w-full pl-10 pr-9 py-1.5 text-xs bg-[#FFFCFB] border border-[#003366]/25 rounded-none shadow-2xs focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] transition-all text-[#181D1E] placeholder:text-[#53616A]"
           />

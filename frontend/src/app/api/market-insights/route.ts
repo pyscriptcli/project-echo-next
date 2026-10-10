@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromRequest, getWorkspaceApiToken } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
+import { getTokenFromRequest } from "@/lib/auth";
 
 const MARKET_INSIGHTS_LIST_ID = "901420987429";
 type Sector = "industrial" | "retail";
@@ -7,7 +8,7 @@ type Sector = "industrial" | "retail";
 type Article = { sector: Sector; date: string; company: string; event: string; implications: string; source: string };
 
 function tokenFor(req: NextRequest) {
-  return getTokenFromRequest(req) || getWorkspaceApiToken();
+  return getTokenFromRequest(req);
 }
 
 function normalise(value: unknown) { return typeof value === "string" ? value.trim() : ""; }

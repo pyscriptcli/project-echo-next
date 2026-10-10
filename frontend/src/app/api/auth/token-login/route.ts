@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setAuthCookies, ClickUpUserProfile, cleanEnv } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export async function POST(req: NextRequest) {
   try {

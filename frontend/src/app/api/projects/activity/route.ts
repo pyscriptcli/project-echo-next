@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromRequest } from '@/lib/auth';
 import { clickUpCalendarFetch } from '@/lib/clickupCalendarApi';
 import { readProjectActivity } from '@/lib/projectActivity';
+import { clickUpFetch as fetch } from '@/lib/clickupCalendarApi';
 
 export const dynamic = 'force-dynamic';
 

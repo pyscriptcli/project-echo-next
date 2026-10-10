@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { createFormRequestId } from "@/lib/forms/requestId";
 import { sendSubmittedStatusEmail } from "@/lib/forms/email";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export async function POST(req: NextRequest) {
   try {

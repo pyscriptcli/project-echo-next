@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setAuthCookies, ClickUpUserProfile, getOAuthCredentials, isAllowedClickUpSignIn } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);

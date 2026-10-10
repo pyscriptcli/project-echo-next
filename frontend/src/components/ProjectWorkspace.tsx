@@ -28,7 +28,7 @@ type View = "overview" | "calendar" | "activity" | "map";
 interface ProjectList {
   id: string;
   name: string;
-  taskCount: number;
+  taskCount: number | null;
   url?: string | null;
   statuses?: string[];
 }
@@ -1038,7 +1038,7 @@ function MemberAvatars({ members, emptyLabel }: { members: ProjectMember[]; empt
   </span>;
 }
 
-export function ProjectWorkspace() {
+export function ProjectWorkspace({ userId }: { userId?: string }) {
   const pathname = usePathname() || "/projects";
   const router = useRouter();
   const [data, setData] = useState<ProjectData | null>(null);
@@ -1058,6 +1058,12 @@ export function ProjectWorkspace() {
   const [assigneeSyncMessage, setAssigneeSyncMessage] = useState("");
   const galleryRequest = useRef<Promise<ProjectCardData[]> | null>(null);
   const selectionRequestId = useRef(0);
+
+  useEffect(() => {
+    projectClientCache.clear();
+    galleryClientCache.clear();
+    galleryRequest.current = null;
+  }, [userId]);
 
   const loadProjectSelection = useCallback(async () => {
     const requestId = ++selectionRequestId.current;
@@ -1390,7 +1396,7 @@ export function ProjectWorkspace() {
               const lead = (data.defaultAssignees[list.id] || []).map((id) => data.members.find((member) => member.id === id)).find((member): member is ProjectMember => Boolean(member));
               return <article key={list.id} className="border border-slate-200 bg-white p-3 transition-colors hover:border-[#C9A84C]">
                 <button type="button" onClick={() => openSubproject(list.id)} className="block w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]">
-                  <span className="flex items-start justify-between gap-2"><span className="text-sm font-semibold text-[#003366]">{list.name}</span><span className="shrink-0 text-[10px] text-slate-500">{taskCount} tasks</span></span>
+                  <span className="flex items-start justify-between gap-2"><span className="text-sm font-semibold text-[#003366]">{list.name}</span><span className="shrink-0 text-[10px] text-slate-500">{taskCount === null ? "Open to load tasks" : `${taskCount} open tasks`}</span></span>
                   <span className="mt-2 block h-1.5 bg-slate-100"><span className="block h-full bg-[#C9A84C]" style={{ width: `${listTasksLoaded ? listProgress : 0}%` }} /></span>
                   <span className="mt-2 block text-[10px] text-slate-500">{listTasksLoaded ? `${listProgress}% complete` : "Progress loads when opened"}</span>
                 </button>

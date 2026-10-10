@@ -1,3 +1,5 @@
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
+
 function idPart(value: string, fallback: string) {
   const result = value
     .trim()

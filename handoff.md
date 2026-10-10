@@ -12,8 +12,7 @@ The visual system uses deep blue `#003366`, warm white `#FFFCFB`, gold `#C9A84C`
 
 - Repository: `https://github.com/pyscriptcli/project-echo-next.git`
 - Active branch: `main`
-- Current `main` commit: `d211b49` (`Secure MeetStream bot creation and configure transcription callbacks`).
-- `main` and `origin/main` are aligned at `d211b49`; this handoff update is the only local change.
+- Release base: `a1f2a70` (`style(demands): align page with projects workspace`); this release adds shared ClickUp caching and synchronization.
 - The Next.js app lives in `frontend/`; the repository root does not contain a `package.json`.
 - Use `frontend/` as the working directory for npm commands.
 
@@ -172,6 +171,10 @@ The current fixed mappings are in `frontend/src/lib/ask-echo/clickup.ts`:
 - Forms: list ids configured in the admin mappings
 - Meetings: the configured archive/repository path, gated by page access
 
+The Demands page reads and writes structured `echoDemand` records in its mapped list using the signed-in user's OAuth token. Status and Action Taken are free-text fields. Do not add workspace-token fallbacks. Candidate-property scouting, geolocation photos, and scouting reports remain future scope.
+
+ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Demands and project subproject reads.
+
 This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The deferred boundary is documented below.
 
 ## Key files
@@ -194,6 +197,7 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - `frontend/src/lib/ask-echo/provider.ts` — model prompt and server-side provider call.
 - `frontend/src/lib/ask-echo/store.ts` — config, meetings, usage, and Supabase access.
 - `frontend/src/lib/ask-echo/limits.ts` — approved models and AI policy limits.
+- `frontend/src/components/DemandsView.tsx` and `frontend/src/app/api/demands/route.ts` — demand monitoring UI and per-user connected-list access.
 - `frontend/src/app/api/auth/login/route.ts` — starts per-user OAuth; do not add shared-token fallback.
 - `frontend/src/app/api/auth/callback/route.ts` — exchanges OAuth code and sets session cookies.
 - `frontend/src/lib/auth.ts` — cookie names, profile types, allowed-domain check, session helpers.
@@ -202,6 +206,21 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md` — original implementation plan and product boundaries.
 
 ## Changelog
+
+### Local 2026-10-10 — shared ClickUp loading and durable snapshots
+
+- Routed ClickUp requests through shared per-user caching, request pacing, bounded concurrency, and retry handling; deferred nonessential page loads and removed eager task counts.
+- Added encrypted connection storage, synchronized task snapshots, signed list webhooks, and scheduled reconciliation. Migration: `supabase/clickup_read_model.sql`.
+- Deployment requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `CLICKUP_SYNC_ENCRYPTION_KEY`; configure the app origin for webhook registration.
+- Verification before release: TypeScript, focused ESLint, and `git diff --check` passed; tests were not run.
+- Commit: included in this `main` release.
+
+### Local 2026-10-09 — clean Demands monitor (uncommitted)
+
+- Replaced placeholder demand rows and fixed-date presets with connected-list loading and calendar-aware ranges.
+- Aligned demand creation and updates with the record route; surfaced load/save errors; kept Status and Action Taken as text.
+- Removed unsupported value estimates, static chart claims, and the generated trend report. Site scouting remains deferred.
+- Verification: targeted ESLint, `npx tsc --noEmit`, and `git diff --check` passed; tests were not run.
 
 ### `d211b49` — secure MeetStream creation and configure transcription callbacks
 

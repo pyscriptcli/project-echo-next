@@ -3,6 +3,7 @@ import { getTokenFromRequest } from "@/lib/auth";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
 import { recordProjectActivity } from "@/lib/projectActivity";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;

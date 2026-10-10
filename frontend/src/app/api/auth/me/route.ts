@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 import { getTokenFromRequest, getUserFromRequest, setAuthCookies, clearAuthCookies, ClickUpUserProfile } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {

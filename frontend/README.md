@@ -35,6 +35,21 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+### ClickUp loading and synchronized records
+
+ClickUp requests share a per-user cache and rate budget. `CLICKUP_PERF_LOGS=true` records request queue time, rate-limit wait, upstream duration, retries, status, and remaining request budget without logging credentials or task content. The minimum request spacing defaults to 667 ms; set `CLICKUP_MIN_REQUEST_INTERVAL_MS` higher when the connected workspace requires a lower request rate.
+
+To enable durable task snapshots and change notifications:
+
+1. Apply [`../supabase/clickup_read_model.sql`](../supabase/clickup_read_model.sql) to the Supabase project.
+2. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `CLICKUP_SYNC_ENCRYPTION_KEY` in the deployment. Generate a unique 32-byte key as hex with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Keep it stable and server-only; changing it makes stored ClickUp connections and webhook secrets unreadable.
+3. Set `NEXT_PUBLIC_APP_URL` to the app's HTTPS origin or set `CLICKUP_WEBHOOK_URL` to `https://<origin>/api/integrations/clickup/webhooks`.
+4. The app queues per-user task sync as users open Demands and project subprojects. It registers list-scoped webhooks after those reads, verifies signatures, and refreshes the snapshot in the background. The protected cron route retries queued jobs and reconciles ready snapshots daily.
+
+Vercel runs the configured daily cron in production. Daily frequency supports Hobby deployments; faster scheduled reconciliation requires a plan that permits more frequent jobs. Webhooks and page-triggered sync handle changes between scheduled runs.
+
+The read tables use service-role access only, OAuth tokens and webhook secrets are encrypted with AES-256-GCM, and snapshot reads require a fresh ClickUp list-access check. Snapshots older than five minutes are not served. Connections and task records unused for 90 days are removed by reconciliation.
+
 ### Echo.ai meeting bot
 
 Add `MEETSTREAM_API_KEY` as a Vercel environment variable for Production, Preview, and Development, then redeploy the project. Keep it server-only; do not prefix it with `NEXT_PUBLIC_`.

@@ -520,20 +520,19 @@ export default function Home() {
     }
   };
 
-  // Load archives directly from ClickUp (SSOT) across all spaces + personal list
+  const meetingsLoaded = useRef(false);
   useEffect(() => {
+    const hasPageAccess = isAdminUser || authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com" || allowedPages.includes(currentView);
+    if (governanceStatus !== "ready" || !hasPageAccess || (currentView !== "dashboard" && currentView !== "meetings") || meetingsLoaded.current) return;
+    meetingsLoaded.current = true;
     const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
-    fetchMeetings(undefined, personalListId)
-      .then((data) => {
-        if (data.meetings && Array.isArray(data.meetings)) {
-          setArchivedMeetings(data.meetings);
-          if (data.meetings.length > 0 && !selectedMeetingId) {
-            setSelectedMeetingId(data.meetings[0].id);
-          }
-        }
-      })
-      .catch((err) => console.log("Meetings sync fallback:", err));
-  }, []);
+    fetchMeetings(undefined, personalListId).then((data) => {
+      if (data.meetings && Array.isArray(data.meetings)) {
+        setArchivedMeetings(data.meetings);
+        if (data.meetings.length && !selectedMeetingId) setSelectedMeetingId(data.meetings[0].id);
+      }
+    }).catch((err) => { meetingsLoaded.current = false; console.warn("Meeting archive could not be refreshed:", err); });
+  }, [currentView, selectedMeetingId, governanceStatus, allowedPages, isAdminUser, authUser]);
 
   // Ensure scroll position resets to top when entering or switching notetaker views
   useEffect(() => {
@@ -547,15 +546,18 @@ export default function Home() {
   // Universal Search Tasks State
   const [tasks, setTasks] = useState<ClickUpTask[]>([]);
 
-  useEffect(() => {
-    fetchClickUpTasks()
-      .then((data) => {
-        if (data.tasks && Array.isArray(data.tasks)) {
-          setTasks(data.tasks);
-        }
-      })
-      .catch((e) => console.warn("Tasks prefetch for universal search:", e));
-  }, [currentView]);
+  const searchTasksLoaded = useRef(false);
+  const loadUniversalSearchTasks = async () => {
+    if (searchTasksLoaded.current || authStatus !== "authenticated" || !isPageAllowed("tasks")) return;
+    searchTasksLoaded.current = true;
+    try {
+      const data = await fetchClickUpTasks();
+      if (Array.isArray(data.tasks)) setTasks(data.tasks);
+    } catch (error) {
+      searchTasksLoaded.current = false;
+      console.warn("Universal search tasks could not be loaded:", error);
+    }
+  };
 
   // App Meeting Data
   const [transcript, setTranscript] = useState("");
@@ -1207,6 +1209,7 @@ export default function Home() {
         <Topbar
           meetings={archivedMeetings}
           tasks={tasks}
+          onOpenSearch={() => { void loadUniversalSearchTasks(); }}
           onOpenUniversalEcho={() => setIsUniversalEchoOpen(true)}
           onSelectMeeting={(meetingId) => {
             if (isPageAllowed("meetings")) {
@@ -1335,7 +1338,7 @@ export default function Home() {
               />
             )}
 
-            {currentView === "project" && <ProjectWorkspace />}
+            {currentView === "project" && <ProjectWorkspace userId={authUser?.id ? String(authUser.id) : undefined} />}
             {currentView === "delta" && <ContractsWorkspace />}
 
             {/* VIEW: TASKS (CLICKUP PORTAL) */}

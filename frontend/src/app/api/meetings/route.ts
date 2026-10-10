@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getTokenFromRequest, getWorkspaceApiToken, getUserFromRequest } from "@/lib/auth";
+import { getTokenFromRequest, getUserFromRequest } from "@/lib/auth";
 import { parseDiscussionItems } from "@/lib/meetingArchive";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 function meetingDescription(meeting: any) {
   const details = [
@@ -316,7 +317,7 @@ async function fetchMeetingsFromSpaceLegacy(spaceId: string, token: string): Pro
 
 export async function GET(req: NextRequest) {
   try {
-    const token = getTokenFromRequest(req) || getWorkspaceApiToken();
+    const token = getTokenFromRequest(req);
     const searchParams = new URL(req.url).searchParams;
     const spaceId = searchParams.get("spaceId");
     const isPersonalOnly = spaceId === "__personal__";
@@ -445,7 +446,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const meeting = body.meeting;
-    const token = getTokenFromRequest(req) || getWorkspaceApiToken();
+    const token = getTokenFromRequest(req);
     if (!token) return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
     if (!meeting?.id) return NextResponse.json({ error: "Meeting archive is missing its ClickUp task ID." }, { status: 400 });
 
@@ -498,7 +499,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const token = getTokenFromRequest(req) || getWorkspaceApiToken();
+    const token = getTokenFromRequest(req);
     if (!token) return NextResponse.json({ error: "ClickUp authentication required" }, { status: 401 });
 
     const searchParams = new URL(req.url).searchParams;

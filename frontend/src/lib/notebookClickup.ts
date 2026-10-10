@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getTokenFromRequest, getWorkspaceApiToken } from "@/lib/auth";
+import { getTokenFromRequest } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export const DAILY_LOG_LIST_ID = "901418075633";
 
@@ -329,5 +330,5 @@ export async function ensureDailyTask(token: string, date: string, member: Noteb
 }
 
 export function requestToken(req: NextRequest) {
-  return getTokenFromRequest(req) || getWorkspaceApiToken();
+  return getTokenFromRequest(req);
 }

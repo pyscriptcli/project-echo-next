@@ -5,6 +5,7 @@ import {
   ClickUpTaskResponse,
   FormType,
 } from "@/types/forms/rfp";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 const CLICKUP_API_BASE = "https://api.clickup.com/api/v2";
 

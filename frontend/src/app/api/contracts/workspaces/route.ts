@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 import { AdminConfigError, loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 
 export const dynamic = "force-dynamic";

@@ -56,10 +56,7 @@ function taskFieldValue(field: ClickUpField, key: string, site: ReturnType<typeo
 }
 
 function getSitesToken(request: NextRequest) {
-  const userToken = getTokenFromRequest(request);
-  if (userToken) return userToken;
-  if (process.env.NODE_ENV !== "development") return "";
-  return (process.env.CLICKUP_PERSONAL_API_TOKEN || process.env.CLICKUP_API_TOKEN || process.env.CLICKUP_TOKEN || "").trim();
+  return getTokenFromRequest(request);
 }
 
 async function clickUpJson(token: string, url: string, init?: RequestInit) {

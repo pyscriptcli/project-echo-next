@@ -1,5 +1,6 @@
 import type { EchoSourcePage } from "./access";
 import type { EvidenceSource } from "./retrieval";
+import { clickUpFetch } from "@/lib/clickupCalendarApi";
 
 const PAGE_LISTS: Partial<Record<EchoSourcePage, string>> = {
   notebook: "901418075633",
@@ -35,7 +36,7 @@ async function fetchList(token: string, listId: string, page: EchoSourcePage, fe
 
 export async function loadClickUpContext(args: { token: string; pages: EchoSourcePage[]; taskListId: string; formListIds: string[]; fetcher?: Fetcher }): Promise<EvidenceSource[]> {
   if (!args.token) return [];
-  const fetcher = args.fetcher || fetch;
+  const fetcher = args.fetcher || clickUpFetch;
   const requests: Array<Promise<EvidenceSource[]>> = [];
   const seen = new Set<string>();
   const add = (page: EchoSourcePage, listId?: string) => { if (!listId || seen.has(`${page}:${listId}`)) return; seen.add(`${page}:${listId}`); requests.push(fetchList(args.token, listId, page, fetcher)); };

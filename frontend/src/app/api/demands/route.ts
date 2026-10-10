@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
+import { clickUpCalendarFetch, clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
+import { clickUpScope, invalidateClickUpSync, queueClickUpSync, readClickUpTaskSnapshot } from "@/lib/clickupReadStore";
+import { processClickUpSyncQueue, registerClickUpListWebhook } from "@/lib/clickupSync";
 import { DEMANDS_CLICKUP_LIST_ID, formatDemandClickUpTitle } from "@/lib/demands/clickupSync";
 import type { DemandLocationRequirement, DemandPriority, DemandRecord, DemandType } from "@/types/demands";
+
+export const maxDuration = 60;
 
 type ClickUpTask = {
   id: string;
@@ -104,12 +109,12 @@ function buildDraft(value: unknown): DemandDraft | null {
     locations,
   };
 }
-async function listDemands(token: string): Promise<DemandRecord[]> {
+async function listDemands(token: string, force = false): Promise<DemandRecord[]> {
   const demands: DemandRecord[] = [];
   for (let page = 0; ; page += 1) {
-    const response = await fetch(
+    const response = await clickUpCalendarFetch(token,
       `https://api.clickup.com/api/v2/list/${DEMANDS_CLICKUP_LIST_ID}/task?include_closed=true&include_markdown_description=true&page=${page}`,
-      { headers: { Authorization: token }, cache: "no-store" },
+      undefined, undefined, { skipCache: force },
     );
     if (!response.ok) throw new Error("Unable to load demands right now.");
     const body: unknown = await response.json();
@@ -128,7 +133,24 @@ export async function GET(request: NextRequest) {
   if (!token) return NextResponse.json({ error: "Sign in to load demands." }, { status: 401 });
 
   try {
-    return NextResponse.json({ demands: await listDemands(token) });
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
+    const user = request.cookies.get("echo_user_profile")?.value;
+    let userId = "";
+    try { userId = String(JSON.parse(user || "{}").id || ""); } catch { /* no durable sync without a verified profile */ }
+    if (forceRefresh) await invalidateClickUpSync(clickUpScope(token), DEMANDS_CLICKUP_LIST_ID);
+    if (userId) after(async () => {
+      try {
+        await queueClickUpSync(token, userId, DEMANDS_CLICKUP_LIST_ID);
+        try { await registerClickUpListWebhook(token, userId, DEMANDS_CLICKUP_LIST_ID); }
+        catch { console.warn("[clickup-sync] demand webhook could not be registered"); }
+        await processClickUpSyncQueue(1);
+      } catch { console.warn("[clickup-sync] demand refresh could not be scheduled"); }
+    });
+    const accessCheck = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${DEMANDS_CLICKUP_LIST_ID}`, undefined, undefined, { skipCache: true });
+    if (!accessCheck.ok) return NextResponse.json({ error: "This account cannot access the demands list." }, { status: accessCheck.status });
+    const snapshot = forceRefresh ? null : await readClickUpTaskSnapshot(clickUpScope(token), DEMANDS_CLICKUP_LIST_ID);
+    if (snapshot) return NextResponse.json({ demands: snapshot.tasks.map((task) => parseTask(task as ClickUpTask)).filter((demand): demand is DemandRecord => demand !== null), syncedAt: snapshot.syncedAt, source: "synced" });
+    return NextResponse.json({ demands: await listDemands(token, forceRefresh) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to load demands." },

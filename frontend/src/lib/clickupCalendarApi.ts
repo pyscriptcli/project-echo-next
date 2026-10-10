@@ -1,138 +1,121 @@
 import { createHash } from "node:crypto";
+import { clickUpScope, clearClickUpReadCache, invalidateClickUpSync, readCachedClickUp, reserveClickUpRequest, writeCachedClickUp } from "@/lib/clickupReadStore";
 
-const MIN_REQUEST_INTERVAL_MS = 1_200;
-const CACHE_TTL_MS = 30_000;
-const MAX_CACHE_ENTRIES = 500;
-
-type CachedResponse = {
-  expiresAt: number;
-  status: number;
-  statusText: string;
-  headers: Array<[string, string]>;
-  body: string;
-};
-
-const requestQueues = new Map<string, Promise<void>>();
-const lastRequestAt = new Map<string, number>();
-const responseCache = new Map<string, CachedResponse>();
+const RATE_INTERVAL_MS = Math.max(667, Number(process.env.CLICKUP_MIN_REQUEST_INTERVAL_MS) || 667);
+const MAX_ACTIVE_PER_TOKEN = 3;
+const localNextAt = new Map<string, number>();
+const localStartQueues = new Map<string, Promise<void>>();
+const activeByToken = new Map<string, number>();
+const waiters = new Map<string, Array<() => void>>();
 const inFlightGets = new Map<string, Promise<Response>>();
 
-function tokenKey(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 
-function responseFromCache(cached: CachedResponse) {
-  return new Response(cached.body, {
-    status: cached.status,
-    statusText: cached.statusText,
-    headers: cached.headers,
-  });
-}
-
-function cacheResponse(key: string, response: Response, body: string) {
-  if (responseCache.size >= MAX_CACHE_ENTRIES) {
-    const oldestKey = responseCache.keys().next().value;
-    if (oldestKey) responseCache.delete(oldestKey);
+async function acquire(scope: string) {
+  while ((activeByToken.get(scope) || 0) >= MAX_ACTIVE_PER_TOKEN) {
+    await new Promise<void>((resolve) => {
+      const queue = waiters.get(scope) || [];
+      queue.push(resolve);
+      waiters.set(scope, queue);
+    });
   }
-  responseCache.set(key, {
-    expiresAt: Date.now() + CACHE_TTL_MS,
-    status: response.status,
-    statusText: response.statusText,
-    headers: Array.from(response.headers.entries()),
-    body,
-  });
+  activeByToken.set(scope, (activeByToken.get(scope) || 0) + 1);
 }
 
-function rateLimitWaitMs(response: Response) {
+function release(scope: string) {
+  activeByToken.set(scope, Math.max(0, (activeByToken.get(scope) || 1) - 1));
+  waiters.get(scope)?.shift()?.();
+}
+
+async function reserveStart(scope: string) {
+  let waitMs = 0;
+  try { waitMs = await reserveClickUpRequest(scope, RATE_INTERVAL_MS); } catch { /* shared DB may be offline; keep a process-local limit */ }
+  await sleep(waitMs);
+  const previous = localStartQueues.get(scope) || Promise.resolve();
+  const reservation = previous.catch(() => undefined).then(async () => {
+    await sleep(Math.max(0, (localNextAt.get(scope) || 0) - Date.now()));
+    localNextAt.set(scope, Date.now() + RATE_INTERVAL_MS);
+  });
+  localStartQueues.set(scope, reservation.catch(() => undefined));
+  await reservation;
+}
+
+function retryDelay(response: Response, attempt: number) {
   const retryAfter = Number(response.headers.get("Retry-After"));
-  if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1_000 + 250;
-  const resetAt = Number(response.headers.get("X-RateLimit-Reset"));
-  if (Number.isFinite(resetAt) && resetAt > 0) {
-    return Math.max(1_000, resetAt * 1_000 - Date.now() + 250);
-  }
-  return 5_000;
+  const reset = Number(response.headers.get("X-RateLimit-Reset"));
+  const serverDelay = retryAfter > 0 ? retryAfter * 1000 : reset > Date.now() / 1000 ? reset * 1000 - Date.now() : 0;
+  return Math.min(30_000, Math.max(serverDelay, 500 * (2 ** attempt)) + Math.random() * 250);
 }
 
-async function fetchAtSafeRate(key: string, token: string, input: string | URL, init?: RequestInit) {
-  const enqueuedAt = Date.now();
-  const previous = requestQueues.get(key) || Promise.resolve();
-  const operation = previous.catch(() => undefined).then(async () => {
-    const queueWaitMs = Date.now() - enqueuedAt;
+async function clickUpRequest(token: string, input: string | URL, init?: RequestInit) {
+  const scope = clickUpScope(token);
+  const queuedAt = Date.now();
+  await acquire(scope);
+  const queueWaitMs = Date.now() - queuedAt;
+  const rateWaitStartedAt = Date.now();
+  let response: Response;
+  let retries = 0;
+  try {
+    await reserveStart(scope);
+    const rateWaitMs = Date.now() - rateWaitStartedAt;
+    const requestStartedAt = Date.now();
     const headers = new Headers(init?.headers);
     headers.set("Authorization", token);
-    const requestInit = { ...init, headers, cache: "no-store" as RequestCache };
-
-    const send = async () => {
-      const elapsed = Date.now() - (lastRequestAt.get(key) || 0);
-      if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-        await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS - elapsed));
-      }
-      lastRequestAt.set(key, Date.now());
-      return fetch(input, requestInit);
-    };
-
-    const startedAt = Date.now();
-    let response = await send();
-    if (response.status === 429) {
-      const waitMs = rateLimitWaitMs(response);
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-      response = await send();
+    response = await fetch(input, { ...init, headers, cache: "no-store" });
+    for (let attempt = 0; response.status === 429 && attempt < 3; attempt += 1) {
+      retries += 1;
+      await sleep(retryDelay(response, attempt));
+      await reserveStart(scope);
+      response = await fetch(input, { ...init, headers, cache: "no-store" });
     }
     if (process.env.CLICKUP_PERF_LOGS === "true") {
-      console.info("[clickup-perf]", JSON.stringify({ path: new URL(String(input)).pathname, method: (init?.method || "GET").toUpperCase(), queueWaitMs, responseMs: Date.now() - startedAt, status: response.status }));
+      console.info("[clickup-perf]", JSON.stringify({ path: new URL(String(input)).pathname, method: (init?.method || "GET").toUpperCase(), queueWaitMs, rateWaitMs, upstreamMs: Date.now() - requestStartedAt, retries, status: response.status, limitRemaining: response.headers.get("X-RateLimit-Remaining") }));
     }
+  } finally { release(scope); }
+  return response;
+}
+
+export async function clickUpCalendarFetch(token: string, input: string | URL, init?: RequestInit, invalidatePaths?: string[], options: { skipCache?: boolean } = {}) {
+  const url = String(input);
+  const method = (init?.method || "GET").toUpperCase();
+  const scope = clickUpScope(token);
+  if (method !== "GET") {
+    const response = await clickUpRequest(token, input, init);
+    const listIds = Array.from(new Set((invalidatePaths || []).map((path) => path.match(/^\/list\/(\d+)\/task/)?.[1]).filter((id): id is string => Boolean(id))));
+    if (listIds.length) await Promise.all(listIds.map((listId) => invalidateClickUpSync(scope, listId)));
+    else await invalidateClickUpSync(scope);
     return response;
-  });
-  requestQueues.set(key, operation.then(() => undefined, () => undefined));
-  return operation;
+  }
+  const key = `${scope}:${digest(url)}`;
+  const pending = options.skipCache ? null : inFlightGets.get(key);
+  if (pending) return (await pending).clone();
+  const request = (async () => {
+    const cached = options.skipCache ? null : await readCachedClickUp(scope, url).catch(() => null);
+    if (cached) {
+      if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ path: new URL(url).pathname, method: "GET", cache: "hit" }));
+      return cached;
+    }
+    const response = await clickUpRequest(token, input, init);
+    if (!response.ok) return response;
+    const body = await response.clone().text();
+    await writeCachedClickUp(scope, url, response, body);
+    return response;
+  })();
+  if (!options.skipCache) inFlightGets.set(key, request);
+  try { return (await request).clone(); } finally { if (!options.skipCache) inFlightGets.delete(key); }
+}
+
+/** Route ClickUp traffic through one cache, rate budget, and concurrency limiter. */
+export async function clickUpFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  if (!url.startsWith("https://api.clickup.com/")) return fetch(input, init);
+  const headers = new Headers(init?.headers || (typeof input === "object" && "headers" in input ? input.headers : undefined));
+  const token = headers.get("Authorization") || "";
+  if (!token) return fetch(input, init);
+  return clickUpCalendarFetch(token, url, init);
 }
 
 export function clearClickUpCalendarCache(token: string, resourcePaths?: string[]) {
-  const prefix = `${tokenKey(token)}:`;
-  for (const key of responseCache.keys()) {
-    if (key.startsWith(prefix) && (!resourcePaths?.length || resourcePaths.some((path) => key.includes(path)))) responseCache.delete(key);
-  }
-}
-
-/** Calendar/project requests are isolated by the user's ClickUp token. */
-export async function clickUpCalendarFetch(
-  token: string,
-  input: string | URL,
-  init?: RequestInit,
-  invalidatePaths?: string[],
-) {
-  const key = tokenKey(token);
-  const method = (init?.method || "GET").toUpperCase();
-  const url = String(input);
-
-  if (method !== "GET") {
-    const response = await fetchAtSafeRate(key, token, input, init);
-    clearClickUpCalendarCache(token, invalidatePaths);
-    return response;
-  }
-
-  const cacheKey = `${key}:${url}`;
-  const cached = responseCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ path: new URL(url).pathname, method: "GET", cache: "hit" }));
-    return responseFromCache(cached);
-  }
-  if (cached) responseCache.delete(cacheKey);
-
-  const pending = inFlightGets.get(cacheKey);
-  if (pending) return (await pending).clone();
-
-  const request = (async () => {
-    const response = await fetchAtSafeRate(key, token, input, init);
-    if (!response.ok) return response;
-    const body = await response.clone().text();
-    cacheResponse(cacheKey, response, body);
-    return response;
-  })();
-  inFlightGets.set(cacheKey, request);
-  try {
-    return (await request).clone();
-  } finally {
-    inFlightGets.delete(cacheKey);
-  }
+  void clearClickUpReadCache(clickUpScope(token), resourcePaths);
 }

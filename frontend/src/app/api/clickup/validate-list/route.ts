@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
+import { clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 
 export function extractClickUpListId(input: string): string {
   const trimmed = input.trim();

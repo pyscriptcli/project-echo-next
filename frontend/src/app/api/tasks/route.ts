@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { formatEchoDate } from "@/lib/dateUtils";
-import { clearClickUpCalendarCache, clickUpCalendarFetch } from "@/lib/clickupCalendarApi";
+import { clearClickUpCalendarCache, clickUpCalendarFetch, clickUpFetch as fetch } from "@/lib/clickupCalendarApi";
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 import { loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 import { recordProjectActivity } from "@/lib/projectActivity";
+import { after } from "next/server";
+import { clickUpScope, invalidateClickUpSync, queueClickUpSync, readClickUpTaskSnapshot } from "@/lib/clickupReadStore";
+import { processClickUpSyncQueue, registerClickUpListWebhook } from "@/lib/clickupSync";
+
+export const maxDuration = 60;
 
 function getClickUpCredentials(req: NextRequest) {
   const cookieToken = req.cookies.get("echo_clickup_token")?.value || "";
   const token =
-    req.headers.get("x-clickup-token") ||
     cookieToken ||
-    process.env.CLICKUP_API_TOKEN ||
     "";
   const listId =
     req.nextUrl.searchParams.get("listId") ||
@@ -67,19 +70,6 @@ async function fetchProjectListTasks(token: string, listId: string) {
         && !description.includes("MOSAIC_SITE_RECORD:");
     })
     .map((task) => serializeProjectTask(task, listId));
-}
-
-async function fetchOpenProjectListTaskCount(token: string, listId: string) {
-  let count = 0;
-  for (let page = 0; ; page += 1) {
-    const response = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${encodeURIComponent(listId)}/task?subtasks=true&include_closed=false&page=${page}`);
-    if (!response.ok) throw new Error(`Unable to count open tasks for subproject ${listId} (${response.status}).`);
-    const payload = await response.json() as { tasks?: ClickUpProjectTask[] };
-    const batch = Array.isArray(payload.tasks) ? payload.tasks : [];
-    count += batch.length;
-    if (batch.length < 100) break;
-  }
-  return count;
 }
 
 interface ClickUpProjectList {
@@ -295,7 +285,7 @@ export async function GET(req: NextRequest) {
           url: typeof folder.url === "string" ? folder.url : `https://app.clickup.com/9014981136/v/o/f/${encodeURIComponent(folderId)}`,
           spaceName: String(folder.space?.name || ""),
         },
-        lists: await Promise.all(rawLists.map(async (list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), url: list.url || null, taskCount: await fetchOpenProjectListTaskCount(projectToken, String(list.id)), statuses: Array.isArray(list.statuses) ? list.statuses.map((item) => String(item.status || "")).filter(Boolean) : [] }))),
+        lists: rawLists.map((list) => ({ id: String(list.id), name: String(list.name || "Untitled list"), url: list.url || null, taskCount: null, statuses: Array.isArray(list.statuses) ? list.statuses.map((item) => String(item.status || "")).filter(Boolean) : [] })),
         tasks: [],
         members,
         defaultAssignees,
@@ -309,12 +299,28 @@ export async function GET(req: NextRequest) {
       if (!projectToken) return NextResponse.json({ error: "Sign in with ClickUp to view subproject tasks." }, { status: 401 });
       if (!/^\d+$/.test(projectFolderId) || !/^\d+$/.test(projectListId)) return NextResponse.json({ error: "A valid project and subproject are required." }, { status: 400 });
       if (searchParams.get("refresh") === "1") clearClickUpCalendarCache(projectToken, [`/list/${projectListId}/task`]);
-      const folderListsResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/folder/${projectFolderId}/list`);
+      const folderListsResponse = await clickUpCalendarFetch(projectToken, `https://api.clickup.com/api/v2/folder/${projectFolderId}/list`, undefined, undefined, { skipCache: true });
       const folderListsPayload = await folderListsResponse.json().catch(() => ({}));
       if (!folderListsResponse.ok) return NextResponse.json({ error: folderListsPayload.err || "Unable to verify the subproject." }, { status: folderListsResponse.status });
       const belongsToFolder = ((folderListsPayload.lists || []) as ClickUpProjectList[]).some((list) => String(list.id) === projectListId);
       if (!belongsToFolder) return NextResponse.json({ error: "This subproject does not belong to the selected project." }, { status: 403 });
       try {
+        if (searchParams.get("refresh") === "1") await invalidateClickUpSync(clickUpScope(projectToken), projectListId);
+        let userId = "";
+        try { userId = String(JSON.parse(req.cookies.get("echo_user_profile")?.value || "{}").id || ""); } catch { /* sync requires a profile identity */ }
+        if (userId) after(async () => {
+          try {
+            await queueClickUpSync(projectToken, userId, projectListId);
+            try { await registerClickUpListWebhook(projectToken, userId, projectListId); }
+            catch { console.warn("[clickup-sync] project webhook could not be registered"); }
+            await processClickUpSyncQueue(1);
+          } catch { console.warn("[clickup-sync] project refresh could not be scheduled"); }
+        });
+        const snapshot = await readClickUpTaskSnapshot(clickUpScope(projectToken), projectListId);
+        if (snapshot) return NextResponse.json({ tasks: (snapshot.tasks as unknown as ClickUpProjectTask[]).filter((task) => {
+          const description = task.description_text || task.description || "";
+          return task.name?.trim().toLocaleLowerCase() !== "sites" && !description.includes("MOSAIC_SITES_STORAGE:") && !description.includes("MOSAIC_SITE_RECORD:");
+        }).map((task) => serializeProjectTask(task, projectListId)) }, { headers: { "Cache-Control": "no-store", "X-Data-Synced-At": snapshot.syncedAt } });
         const tasks = await fetchProjectListTasks(projectToken, projectListId);
         return NextResponse.json({ tasks }, { headers: { "Cache-Control": "no-store" } });
       } catch (error) {
