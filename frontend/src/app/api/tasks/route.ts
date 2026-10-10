@@ -6,7 +6,7 @@ import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/click
 import { loadAdminConfig, saveAdminConfig } from "@/lib/admin-config/store";
 import { recordProjectActivity } from "@/lib/projectActivity";
 import { after } from "next/server";
-import { clickUpScope, invalidateClickUpSync, queueClickUpSync, readClickUpTaskSnapshot } from "@/lib/clickupReadStore";
+import { clickUpScope, hasFreshClickUpTaskSnapshot, invalidateClickUpSync, queueClickUpSync, readClickUpTaskSnapshot } from "@/lib/clickupReadStore";
 import { processClickUpSyncQueue, registerClickUpListWebhook } from "@/lib/clickupSync";
 
 export const maxDuration = 60;
@@ -515,24 +515,44 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch tasks, list info, and list-specific members in parallel
-    const [tasksRes, listInfoRes, listMembersRes] = await Promise.all([
-      fetch(
-        `https://api.clickup.com/api/v2/list/${targetListId}/task?subtasks=true&include_closed=true`,
-        {
-          headers: { Authorization: token },
-          cache: "no-store",
-        }
-      ),
-      fetch(`https://api.clickup.com/api/v2/list/${targetListId}`, {
-        headers: { Authorization: token },
-        cache: "no-store",
-      }).catch(() => null),
-      fetch(`https://api.clickup.com/api/v2/list/${targetListId}/member`, {
-        headers: { Authorization: token },
-        cache: "no-store",
-      }).catch(() => null),
-    ]);
+    const routeStartedAt = Date.now();
+    const forceRefresh = searchParams.get("refresh") === "1";
+    const scope = clickUpScope(token);
+    const userProfile = req.cookies.get("echo_user_profile")?.value;
+    let syncUserId = "";
+    try { syncUserId = String(JSON.parse(userProfile || "{}").id || ""); } catch { /* no snapshot sync without a signed-in profile */ }
+    if (forceRefresh) await invalidateClickUpSync(scope, targetListId);
+
+    const canUseSnapshot = !forceRefresh && Boolean(syncUserId) && await hasFreshClickUpTaskSnapshot(scope, targetListId);
+    let snapshot: Awaited<ReturnType<typeof readClickUpTaskSnapshot>> = null;
+    let verifiedListResponse: Response | null = null;
+    if (canUseSnapshot) {
+      verifiedListResponse = await clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${encodeURIComponent(targetListId)}`, undefined, undefined, { skipCache: true });
+      if (!verifiedListResponse.ok) {
+        const status = verifiedListResponse.status;
+        return NextResponse.json({ error: status === 401 ? "Your ClickUp session has expired. Sign in again to continue." : "This account cannot access the selected ClickUp list." }, { status });
+      }
+      snapshot = await readClickUpTaskSnapshot(scope, targetListId);
+    }
+
+    const taskUrl = `https://api.clickup.com/api/v2/list/${encodeURIComponent(targetListId)}/task?subtasks=true&include_closed=true`;
+    const membersUrl = `https://api.clickup.com/api/v2/list/${encodeURIComponent(targetListId)}/member`;
+    let tasksRes: Response;
+    let listInfoRes: Response | null;
+    let listMembersRes: Response | null;
+    if (snapshot) {
+      tasksRes = new Response(JSON.stringify({ tasks: snapshot.tasks }), { status: 200, headers: { "Content-Type": "application/json" } });
+      [listInfoRes, listMembersRes] = await Promise.all([
+        verifiedListResponse,
+        clickUpCalendarFetch(token, membersUrl),
+      ]);
+    } else {
+      [tasksRes, listInfoRes, listMembersRes] = await Promise.all([
+        clickUpCalendarFetch(token, taskUrl, undefined, undefined, { skipCache: forceRefresh }),
+        verifiedListResponse || clickUpCalendarFetch(token, `https://api.clickup.com/api/v2/list/${encodeURIComponent(targetListId)}`),
+        clickUpCalendarFetch(token, membersUrl),
+      ]);
+    }
 
     if (!tasksRes.ok) {
       let errMsg = "Failed to fetch tasks from ClickUp";
@@ -551,6 +571,15 @@ export async function GET(req: NextRequest) {
         { status: tasksRes.status }
       );
     }
+
+    if (!snapshot && syncUserId) after(async () => {
+      try {
+        await queueClickUpSync(token, syncUserId, targetListId);
+        try { await registerClickUpListWebhook(token, syncUserId, targetListId); }
+        catch { console.warn("[clickup-sync] task-list webhook could not be registered"); }
+        await processClickUpSyncQueue(1);
+      } catch { console.warn("[clickup-sync] task-list refresh could not be scheduled"); }
+    });
 
     const tasksData = await tasksRes.json();
     const rawTasks = tasksData.tasks || [];
@@ -718,7 +747,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       tasks,
       total: tasks.length,
       listId: targetListId,
@@ -728,7 +757,13 @@ export async function GET(req: NextRequest) {
       members,
       statuses: finalStatuses,
       categories: WORKSPACE_STATUS_CATEGORIES,
-    });
+    }, { headers: {
+      "Server-Timing": `clickup;dur=${Date.now() - routeStartedAt}`,
+      "X-ClickUp-Data-Source": snapshot ? "snapshot" : "api-read",
+      ...(snapshot?.syncedAt ? { "X-Data-Synced-At": snapshot.syncedAt } : {}),
+    } });
+    if (process.env.CLICKUP_PERF_LOGS === "true") console.info("[clickup-perf]", JSON.stringify({ operation: "tasks-route", source: snapshot ? "snapshot" : "api-read", durationMs: Date.now() - routeStartedAt, records: tasks.length, snapshotAgeMs: snapshot?.syncedAt ? Date.now() - Date.parse(snapshot.syncedAt) : undefined }));
+    return response;
   } catch (error: any) {
     console.error("ClickUp Tasks GET error:", error);
     return NextResponse.json(

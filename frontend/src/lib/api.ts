@@ -438,13 +438,14 @@ function getClickUpHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function fetchClickUpTasks(customListId?: string) {
+export async function fetchClickUpTasks(customListId?: string, forceRefresh = false) {
   const headers = getClickUpHeaders();
   let url = "/api/tasks";
   const targetId = customListId || getStoredClickUpListId();
-  if (targetId) {
-    url += `?listId=${encodeURIComponent(targetId)}`;
-  }
+  const params = new URLSearchParams();
+  if (targetId) params.set("listId", targetId);
+  if (forceRefresh) params.set("refresh", "1");
+  if (params.size) url += `?${params.toString()}`;
   const res = await fetch(url, { headers, cache: "no-store" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

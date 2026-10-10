@@ -173,7 +173,7 @@ The current fixed mappings are in `frontend/src/lib/ask-echo/clickup.ts`:
 
 The Demands page reads and writes structured `echoDemand` records in its mapped list using the signed-in user's OAuth token. Status and Action Taken are free-text fields. Do not add workspace-token fallbacks. Candidate-property scouting, geolocation photos, and scouting reports remain future scope.
 
-ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Demands and project subproject reads.
+ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Tasks, Demands, and project subproject reads. Tasks list discovery is on demand and caches its result per signed-in browser user.
 
 ### Browser page cache
 
@@ -210,6 +210,16 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md` — original implementation plan and product boundaries.
 
 ## Changelog
+
+### Local 2026-10-10 — reduce selected Tasks list loading
+
+- Removed workspace-wide list discovery from Tasks page entry; persist discovered lists per user and scan only when the selector needs data or the user requests a rescan.
+- Routed selected-list reads through shared per-token caching/rate handling, served fresh snapshots after a current-user list access check, and scheduled first sync/webhook registration in the background.
+- Manual task refresh bypasses read cache; ClickUp webhooks clear that list's cached task responses before sync. Added route timing/source metadata.
+- Verification: `npx tsc --noEmit` and `git diff --check` passed; targeted ESLint reports pre-existing `no-explicit-any` errors in the touched files. Tests not run.
+- Commit: pending push on `main`.
+- Risk: snapshots remain limited to 3,000 records and five minutes; deployment still needs the existing sync migration/configuration.
+- Next: push the scoped performance changes; user requested publication.
 
 ### Local 2026-10-10 — persistent page data cache
 

@@ -179,7 +179,6 @@ export default function TasksView({
       }
       void loadTasks(false, listId || undefined, Boolean(cached));
     })();
-    loadDiscoveredLists(false);
   }, []);
 
   // Close dropdown on outside click
@@ -212,7 +211,7 @@ export default function TasksView({
     const activeListId = listIdOverride !== undefined ? listIdOverride : (selectedListId || getStoredClickUpListId());
 
     try {
-      const data = await fetchClickUpTasks(activeListId || undefined);
+      const data = await fetchClickUpTasks(activeListId || undefined, showRefreshIndicator);
       if (userId) void writeBrowserPageCache(userId, `tasks:${activeListId || "default"}`, data);
       setTasks(data.tasks || []);
       if (data.members && Array.isArray(data.members)) {
@@ -256,14 +255,23 @@ export default function TasksView({
     }
   };
 
-  const loadDiscoveredLists = async (showNotification = false) => {
-    setLoadingLists(true);
-    setDiscovering(true);
+  const loadDiscoveredLists = async (showNotification = false, force = false) => {
+    if (!force && !showNotification && userId) {
+      const cached = await readBrowserPageCache<{ lists: typeof availableLists }>(userId, "tasks:discovered-lists");
+      if (cached && Array.isArray(cached.lists)) {
+        setAvailableLists(cached.lists);
+        setDiscoveredLists(cached.lists);
+        return;
+      }
+    }
+    setLoadingLists(availableLists.length === 0);
+    setDiscovering(availableLists.length === 0);
     try {
       const data = await discoverClickUpLists(tokenInput.trim() || undefined);
       const lists = data.lists || [];
       setAvailableLists(lists);
       setDiscoveredLists(lists);
+      if (userId) void writeBrowserPageCache(userId, "tasks:discovered-lists", { lists });
 
       const currentListId = selectedListId || getStoredClickUpListId();
       if (currentListId && lists.length > 0) {
@@ -280,6 +288,7 @@ export default function TasksView({
       }
     } catch (err: any) {
       console.warn("Discovered lists notice:", err.message);
+      if (userId && (err.status === 401 || err.status === 403)) await clearBrowserPageCache(userId);
       if (showNotification) {
         alert(err.message || "Failed to discover ClickUp lists.");
       }
@@ -326,7 +335,7 @@ export default function TasksView({
     setNeedsAuth(false);
     setNeedsListSelection(false);
     loadTasks();
-    loadDiscoveredLists(false);
+    loadDiscoveredLists(false, true);
   };
 
   const handleDiscoverLists = async () => {

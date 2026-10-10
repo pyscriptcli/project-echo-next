@@ -211,6 +211,7 @@ export async function queueClickUpWebhookJob(scope: string, listId: string) {
   if (!client) return;
   const { data: connection } = await client.from("echo_clickup_connections").select("user_id").eq("scope_key", scope).maybeSingle();
   if (!connection?.user_id) return;
+  await clearClickUpReadCache(scope, [`/list/${listId}/task`]);
   await client.from("echo_clickup_connections").update({ updated_at: new Date().toISOString() }).eq("scope_key", scope);
   await client.from("echo_clickup_sync_jobs").upsert({ scope_key: scope, user_id: connection.user_id, list_id: listId, state: "queued", next_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: "scope_key,list_id" });
 }
@@ -224,6 +225,14 @@ export async function readClickUpTaskSnapshot(scope: string, listId: string, max
   const { data, error } = await client.from("echo_clickup_task_records").select("payload").eq("scope_key", scope).eq("list_id", listId).order("record_id").limit(3001);
   if (error || !data || data.length > 3000) return null;
   return { tasks: data.map((record) => record.payload as Record<string, unknown>), syncedAt: job.last_synced_at };
+}
+
+export async function hasFreshClickUpTaskSnapshot(scope: string, listId: string, maxAgeMs = 5 * 60_000) {
+  const client = db();
+  if (!client) return false;
+  const cutoff = new Date(Date.now() - maxAgeMs).toISOString();
+  const { data, error } = await client.from("echo_clickup_sync_jobs").select("state,last_synced_at").eq("scope_key", scope).eq("list_id", listId).maybeSingle();
+  return !error && data?.state === "ready" && Boolean(data.last_synced_at) && data.last_synced_at >= cutoff;
 }
 
 export async function invalidateClickUpSync(scope: string, listId?: string) {
