@@ -50,13 +50,26 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
       const req = rawRequirement as Record<string, unknown>;
       if (typeof req.id !== "string") return [];
       const createdAt = text(req.createdAt, 40) || normalizedAt;
+      const rawTasks = Array.isArray(req.tasks) ? req.tasks.slice(0, 100) : [];
+      const tasks = rawTasks.flatMap((rawTask, index) => {
+        if (!rawTask || typeof rawTask !== "object") return [];
+        const task = rawTask as Record<string, unknown>;
+        if (typeof task.title !== "string") return [];
+        const rawClickUpTask = task.clickUpTask && typeof task.clickUpTask === "object" ? task.clickUpTask as Record<string, unknown> : null;
+        const clickUpTask = rawClickUpTask && typeof rawClickUpTask.id === "string" && typeof rawClickUpTask.listId === "string"
+          ? { id: text(rawClickUpTask.id, 80), url: text(rawClickUpTask.url, 500), listId: text(rawClickUpTask.listId, 80), listName: text(rawClickUpTask.listName, 200) }
+          : undefined;
+        return [{ id: text(task.id, 80) || `${text(req.id, 40)}-task-${index + 1}`, title: text(task.title, 500), done: task.done === true, ...(clickUpTask ? { clickUpTask } : {}) }];
+      });
+      const legacyMilestone = text(req.milestone, 300);
+      if (!tasks.length && legacyMilestone) tasks.push({ id: `${text(req.id, 40)}-legacy-task`, title: legacyMilestone, done: false });
       return [{
         id: text(req.id, 40), createdAt, updatedAt: text(req.updatedAt, 40) || createdAt, statement: text(req.statement, 5000),
         category: categories.includes(String(req.category)) ? req.category as BAProject["requirements"][number]["category"] : "Business",
         priority: req.priority === "" ? "" : priorities.includes(String(req.priority)) ? req.priority as BAProject["requirements"][number]["priority"] : "Must Have",
         userStory: text(req.userStory, 5000), acceptanceCriteria: text(req.acceptanceCriteria, 10000),
         testCase: text(req.testCase, 500), verification: statuses.includes(String(req.verification)) ? req.verification as BAProject["requirements"][number]["verification"] : "Not Tested",
-        milestone: text(req.milestone, 300),
+        tasks,
       }];
     });
     const rawPhases = Array.isArray(item.phases) ? item.phases : [];
@@ -104,7 +117,7 @@ export function requirementsFromNotes(notes: string, existing: BAProject["requir
     const statement = match[2].trim();
     const index = next.findIndex((requirement) => requirement.id.toUpperCase() === id);
     if (index >= 0) next[index] = { ...next[index], statement, updatedAt: now };
-    else next.push({ id, createdAt: now, updatedAt: now, statement, category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" });
+    else next.push({ id, createdAt: now, updatedAt: now, statement, category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] });
   }
   return next;
 }

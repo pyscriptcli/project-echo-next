@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
 import { BA_MIN_COLUMN_WIDTHS, createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/lib/business-analysis";
 import type { ArchivedMeeting } from "@/types/meeting";
-import type { BAProject, BARequirement, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/types/business-analysis";
+import type { BAProject, BARequirement, BARequirementTask, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/types/business-analysis";
 
 type Tab = "requirements" | "elicitation" | "roadmap" | "documents" | "export";
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -17,6 +17,8 @@ const TABS: Array<{ id: Tab; label: string }> = [
 const CATEGORIES: RequirementCategory[] = ["Functional", "Non-Functional", "Technical", "Compliance", "Business"];
 const PRIORITIES: MoscowPriority[] = ["Must Have", "Should Have", "Could Have", "Won't Have"];
 const STATUSES: VerificationStatus[] = ["Passed", "In Dev", "Not Tested", "Blocked"];
+type ClickUpTaskList = { id: string; name: string; teamName: string; spaceName: string; folderName: string };
+type ClickUpSaveTarget = { projectId: string; requirementId: string; taskId: string; taskName: string; requirement: string };
 const PRE_DOC_TEMPLATES = ["Project Charter", "Business Case", "Business Requirements Document", "Functional Requirements Document", "UAT Test Plan"];
 const POST_DOC_TEMPLATES = ["Stakeholder Sign-Off Certificate", "Production Release Notes", "Post-Implementation Review"];
 const DOC_TEMPLATES = [...PRE_DOC_TEMPLATES, ...POST_DOC_TEMPLATES];
@@ -114,18 +116,53 @@ function RichTextEditor({ value, onChange, label, placeholder, className = "" }:
 function RichTextPreview({ value, className = "" }: { value: string; className?: string }) {
   return <div className={`whitespace-pre-wrap break-words [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5 ${className}`} dangerouslySetInnerHTML={{ __html: markdownToHtml(value) }} />;
 }
+
+function RequirementGenerationActions({ label, generating, onGenerate }: { label: string; generating: boolean; onGenerate: (customPrompt?: string) => void }) {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const iconButtonClass = "inline-flex h-6 w-6 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50";
+
+  return <div className="relative inline-flex shrink-0 items-center gap-1">
+    <button type="button" title={`Generate ${label.toLowerCase()} with AI`} aria-label={`Generate ${label.toLowerCase()} for this requirement`} className={iconButtonClass} disabled={generating} onClick={() => onGenerate()}>{generating ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button>
+    <button type="button" title={`Add a custom prompt for ${label.toLowerCase()}`} aria-label={`Custom prompt for ${label.toLowerCase()}`} aria-expanded={promptOpen} className={iconButtonClass} disabled={generating} onClick={() => setPromptOpen((open) => !open)}><MoreHorizontal aria-hidden="true" size={15} /></button>
+    {promptOpen && <div className="absolute right-0 top-full z-20 mt-1 w-64 border border-slate-200 bg-white p-2 shadow-md">
+      <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Custom prompt<textarea autoFocus rows={3} maxLength={1200} value={customPrompt} onChange={(event) => setCustomPrompt(event.target.value)} placeholder={`Add instructions for ${label.toLowerCase()}`} className="mt-1 w-full resize-y border border-slate-300/70 bg-white px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" /></label>
+      <div className="mt-1 flex justify-end"><button type="button" className="inline-flex h-7 items-center border border-[#003366] bg-[#003366] px-2 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={!customPrompt.trim() || generating} onClick={() => { onGenerate(customPrompt.trim()); setPromptOpen(false); }}>Generate</button></div>
+    </div>}
+  </div>;
+}
+
+function RequirementTaskRow({ requirementId, task, onUpdate, onRemove, onSaveToClickUp, savingToClickUp }: { requirementId: string; task: BARequirementTask; onUpdate: (changes: Partial<BARequirementTask>) => void; onRemove: () => void; onSaveToClickUp: () => void; savingToClickUp: boolean }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const clickUpUrl = task.clickUpTask?.url || (task.clickUpTask ? `https://app.clickup.com/t/${encodeURIComponent(task.clickUpTask.id)}` : "");
+  return <div className="flex min-w-0 items-center gap-2 border border-slate-200/70 px-2 py-1">
+    <input type="checkbox" aria-label={`${requirementId} task completed`} className="h-3.5 w-3.5 shrink-0 accent-[#003366]" checked={task.done} onChange={(event) => onUpdate({ done: event.target.checked })} />
+    <input aria-label={`${requirementId} task`} className={`h-7 min-w-0 flex-1 border border-transparent bg-transparent px-1 text-xs text-slate-700 outline-none hover:border-slate-200 focus:border-[#C9A33B] focus:bg-white ${task.done ? "text-slate-400 line-through" : ""}`} value={task.title} onChange={(event) => onUpdate({ title: event.target.value })} placeholder="Describe a task" />
+    {task.clickUpTask && <a href={clickUpUrl} target="_blank" rel="noreferrer" title={`Saved in ${task.clickUpTask.listName}`} aria-label={`Open ClickUp task ${task.clickUpTask.id}`} className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[#31577D] hover:text-[#003366]"><ArrowUpRight aria-hidden="true" size={13} /></a>}
+    <div className="relative shrink-0"><button type="button" title="Task options" aria-label={`Task options for ${requirementId}`} aria-expanded={menuOpen} className="inline-flex h-6 w-6 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setMenuOpen((open) => !open)}><MoreHorizontal aria-hidden="true" size={14} /></button>
+      {menuOpen && <div className="absolute right-0 top-full z-20 mt-1 min-w-40 border border-slate-200 bg-white p-1 shadow-md">{task.clickUpTask ? <a href={clickUpUrl} target="_blank" rel="noreferrer" className="block px-2 py-1.5 text-left text-[11px] text-[#003366] hover:bg-slate-50">Open ClickUp task</a> : <button type="button" className="block w-full px-2 py-1.5 text-left text-[11px] text-[#003366] hover:bg-slate-50 disabled:opacity-50" disabled={!task.title.trim() || savingToClickUp} onClick={() => { setMenuOpen(false); onSaveToClickUp(); }}>{savingToClickUp ? "Saving…" : "Save to ClickUp"}</button>}</div>}
+    </div>
+    <button type="button" title="Remove task" aria-label={`Remove task from ${requirementId}`} className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-slate-400 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={onRemove}><X aria-hidden="true" size={13} /></button>
+  </div>;
+}
+
 type RequirementCardProps = {
   requirement: BARequirement;
   onUpdate: (id: string, changes: Partial<BARequirement>) => void;
-  onGenerateStory: (requirement: BARequirement) => void;
-  onGenerateTestCase: (requirement: BARequirement) => void;
-  onGenerateAcceptanceCriteria: (requirement: BARequirement) => void;
+  onGenerateStory: (requirement: BARequirement, customPrompt?: string) => void;
+  onGenerateTestCase: (requirement: BARequirement, customPrompt?: string) => void;
+  onGenerateAcceptanceCriteria: (requirement: BARequirement, customPrompt?: string) => void;
+  onAddTask: (requirementId: string) => void;
+  onUpdateTask: (requirementId: string, taskId: string, changes: Partial<BARequirementTask>) => void;
+  onRemoveTask: (requirementId: string, taskId: string) => void;
+  onSaveTaskToClickUp: (requirement: BARequirement, task: BARequirementTask) => void;
+  savingTaskId: string;
   generatingStory: boolean;
   generatingTestCase: boolean;
   generatingAcceptanceCriteria: boolean;
 };
 
-function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
+function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, onAddTask, onUpdateTask, onRemoveTask, onSaveTaskToClickUp, savingTaskId, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
   return <article className="min-w-0 border border-slate-200 bg-white p-3 sm:p-4">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
       <div className="flex min-w-0 items-baseline gap-2">
@@ -141,24 +178,24 @@ function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTes
     <textarea data-ba-req-id={requirement.id} aria-label={`${requirement.id} business requirement`} rows={1} className="ba-rtm-cell-editor mt-2 block min-h-9 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 border-l-2 border-l-[#C9A84C] bg-white/70 px-2 py-1 text-base font-semibold leading-6 text-[#003366] focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the business need" value={requirement.statement} onChange={(event) => onUpdate(requirement.id, { statement: event.target.value })} />
     <div className="mt-2 grid min-w-0 gap-3 lg:grid-cols-3">
       <section className="min-w-0 border-t border-slate-100 pt-2">
-        <div className="flex min-h-7 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</span><button type="button" title="Generate user story and acceptance criteria" aria-label={`Generate story for ${requirement.id}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingStory} onClick={() => onGenerateStory(requirement)}>{generatingStory ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button></div>
+        <div className="flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</span><RequirementGenerationActions label="User story" generating={generatingStory} onGenerate={(customPrompt) => onGenerateStory(requirement, customPrompt)} /></div>
         <RichTextEditor value={requirement.userStory} onChange={(userStory) => onUpdate(requirement.id, { userStory })} label={`${requirement.id} user story`} placeholder="Add a concise user story" />
       </section>
       <section className="min-w-0 border-t border-slate-100 pt-2">
-        <div className="flex min-h-7 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Test case</span><button type="button" title="Generate test case from this row" aria-label={`Generate test case for ${requirement.id}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingTestCase} onClick={() => onGenerateTestCase(requirement)}>{generatingTestCase ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button></div>
+        <div className="flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Test case</span><RequirementGenerationActions label="Test case" generating={generatingTestCase} onGenerate={(customPrompt) => onGenerateTestCase(requirement, customPrompt)} /></div>
         <RichTextEditor value={requirement.testCase} onChange={(testCase) => onUpdate(requirement.id, { testCase })} label={`${requirement.id} test case`} placeholder="Add a concise test case" />
       </section>
       <section className="min-w-0 border-t border-slate-100 pt-2">
-        <div className="flex min-h-7 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</span><button type="button" title="Generate acceptance criteria from this row" aria-label={`Generate acceptance criteria for ${requirement.id}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingAcceptanceCriteria} onClick={() => onGenerateAcceptanceCriteria(requirement)}>{generatingAcceptanceCriteria ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button></div>
+        <div className="flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</span><RequirementGenerationActions label="Acceptance criteria" generating={generatingAcceptanceCriteria} onGenerate={(customPrompt) => onGenerateAcceptanceCriteria(requirement, customPrompt)} /></div>
         <RichTextEditor value={requirement.acceptanceCriteria} onChange={(acceptanceCriteria) => onUpdate(requirement.id, { acceptanceCriteria })} label={`${requirement.id} acceptance criteria`} placeholder="Add concise acceptance criteria" />
       </section>
     </div>
-    <label className="mt-3 block w-full text-[10px] font-semibold uppercase tracking-wide text-slate-500">Target milestone<input aria-label={`${requirement.id} milestone`} className="mt-1 h-8 w-full border border-slate-200 bg-white px-2 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={requirement.milestone} onChange={(event) => onUpdate(requirement.id, { milestone: event.target.value })} placeholder="Add milestone" /></label>
+    <section className="mt-3 w-full" aria-label={`${requirement.id} tasks`}><div className="mb-1 flex items-center justify-between gap-2"><h3 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tasks</h3><button type="button" className="inline-flex h-6 items-center gap-1 border border-slate-200 px-2 text-[10px] font-semibold text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => onAddTask(requirement.id)}><Plus aria-hidden="true" size={12} />Add task</button></div><div className="space-y-1">{requirement.tasks.map((task) => <RequirementTaskRow key={task.id} requirementId={requirement.id} task={task} onUpdate={(changes) => onUpdateTask(requirement.id, task.id, changes)} onRemove={() => onRemoveTask(requirement.id, task.id)} onSaveToClickUp={() => onSaveTaskToClickUp(requirement, task)} savingToClickUp={savingTaskId === task.id} />)}{!requirement.tasks.length && <p className="border border-dashed border-slate-200 px-2 py-1.5 text-[11px] text-slate-400">No tasks added.</p>}</div></section>
     <footer className="mt-3 border-t border-slate-100 pt-2 text-[10px] text-slate-600">Created {timestampText(requirement.createdAt)} <span aria-hidden="true">·</span> Updated {timestampText(requirement.updatedAt)}</footer>
   </article>;
 }
 const inputClass = "w-full min-w-0 border border-[#CBD5E1] bg-white px-2 py-1.5 text-sm text-[#1B1D1E] outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]";
-const filterSelectClass = "h-9 min-w-0 border border-[#CBD5E1] bg-white px-2 text-sm text-[#1B1D1E] outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]";
+const filterSelectClass = "h-8 min-w-0 border border-[#CBD5E1] bg-white px-2 text-xs text-[#1B1D1E] outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]";
 const buttonClass = "inline-flex min-h-9 items-center justify-center gap-2 border border-[#003366] bg-[#003366] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C] disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryClass = "inline-flex min-h-9 items-center justify-center gap-2 border border-[#31577D] bg-[#FFFCFB] px-3 py-1.5 text-sm font-semibold text-[#003366] transition-colors hover:bg-[#F1F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C] disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -183,9 +220,9 @@ async function renderXlsx(project: BAProject) {
     { header: "Req ID", key: "id", width: 14 }, { header: "Business Requirement", key: "statement", width: 42 },
     { header: "Category", key: "category", width: 20 }, { header: "MoSCoW Priority", key: "priority", width: 18 },
     { header: "User Story", key: "userStory", width: 38 }, { header: "Test Case Ref", key: "testCase", width: 18 },
-    { header: "Verification Status", key: "verification", width: 20 }, { header: "Target Milestone", key: "milestone", width: 20 },
+    { header: "Verification Status", key: "verification", width: 20 }, { header: "Tasks", key: "tasks", width: 38 },
   ];
-  for (const requirement of project.requirements) sheet.addRow(requirement);
+  for (const requirement of project.requirements) sheet.addRow({ ...requirement, tasks: requirement.tasks.map((task) => `${task.done ? "[x]" : "[ ]"} ${task.title}`).join("\n") });
   const header = sheet.getRow(1);
   header.height = 24;
   header.eachCell((cell) => {
@@ -203,7 +240,7 @@ async function renderXlsx(project: BAProject) {
 
   const summary = workbook.addWorksheet("Summary");
   summary.columns = [{ header: "Measure", key: "measure", width: 34 }, { header: "Value", key: "value", width: 22 }];
-  const linked = project.requirements.filter((item) => item.userStory || item.testCase || item.milestone).length;
+  const linked = project.requirements.filter((item) => item.userStory || item.testCase || item.tasks.length).length;
   summary.addRows([
     { measure: "Project", value: project.name }, { measure: "Requirements", value: project.requirements.length },
     { measure: "Traceability coverage", value: project.requirements.length ? `${Math.round(linked * 100 / project.requirements.length)}%` : "0%" },
@@ -248,6 +285,13 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [generatingId, setGeneratingId] = useState("");
   const [generatingTestCaseId, setGeneratingTestCaseId] = useState("");
   const [generatingAcceptanceCriteriaId, setGeneratingAcceptanceCriteriaId] = useState("");
+  const [savingTaskId, setSavingTaskId] = useState("");
+  const [clickUpSaveTarget, setClickUpSaveTarget] = useState<ClickUpSaveTarget | null>(null);
+  const [clickUpLists, setClickUpLists] = useState<ClickUpTaskList[]>([]);
+  const [clickUpListsLoading, setClickUpListsLoading] = useState(false);
+  const [clickUpListsLoaded, setClickUpListsLoaded] = useState(false);
+  const [clickUpListId, setClickUpListId] = useState("");
+  const [clickUpSaveError, setClickUpSaveError] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(DOC_TEMPLATES[0]);
   const [documentTitle, setDocumentTitle] = useState("");
   const resizeStart = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
@@ -291,7 +335,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   }, [state, loading, loadError]);
 
   const filteredRequirements = useMemo(() => project?.requirements.filter((item) => (filterCategory === "All categories" || item.category === filterCategory) && (filterPriority === "All priorities" || item.priority === filterPriority)) || [], [project, filterCategory, filterPriority]);
-  const coverage = filteredRequirements.length ? Math.round(filteredRequirements.filter((item) => item.userStory || item.testCase || item.milestone).length * 100 / filteredRequirements.length) : 0;
+  const coverage = filteredRequirements.length ? Math.round(filteredRequirements.filter((item) => item.userStory || item.testCase || item.tasks.length).length * 100 / filteredRequirements.length) : 0;
   const unprioritized = filteredRequirements.filter((item) => !item.priority).length;
 
   useEffect(() => {
@@ -336,7 +380,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const addRequirement = () => {
     if (!project) return;
     const now = new Date().toISOString();
-    const requirement: BARequirement = { id: nextRequirementId(project.requirements), createdAt: now, updatedAt: now, statement: "", category: "Functional", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" };
+    const requirement: BARequirement = { id: nextRequirementId(project.requirements), createdAt: now, updatedAt: now, statement: "", category: "Functional", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] };
     updateProject((current) => ({ ...current, requirements: [...current.requirements, requirement] }));
     setFilterCategory("All categories");
     setFilterPriority("All priorities");
@@ -346,6 +390,58 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const updateRequirement = (id: string, changes: Partial<BARequirement>) => {
     const updatedAt = new Date().toISOString();
     updateProject((current) => ({ ...current, requirements: current.requirements.map((item) => item.id === id ? { ...item, ...changes, updatedAt } : item) }));
+  };
+
+  const addRequirementTask = (requirementId: string) => {
+    const requirement = project?.requirements.find((item) => item.id === requirementId);
+    if (!requirement) return;
+    updateRequirement(requirementId, { tasks: [...requirement.tasks, { id: crypto.randomUUID(), title: "", done: false }] });
+  };
+  const updateRequirementTask = (requirementId: string, taskId: string, changes: Partial<BARequirementTask>) => {
+    const requirement = project?.requirements.find((item) => item.id === requirementId);
+    if (!requirement) return;
+    updateRequirement(requirementId, { tasks: requirement.tasks.map((task) => task.id === taskId ? { ...task, ...changes } : task) });
+  };
+  const removeRequirementTask = (requirementId: string, taskId: string) => {
+    const requirement = project?.requirements.find((item) => item.id === requirementId);
+    if (!requirement) return;
+    updateRequirement(requirementId, { tasks: requirement.tasks.filter((task) => task.id !== taskId) });
+  };
+
+  const openClickUpTaskSave = async (requirement: BARequirement, task: BARequirementTask) => {
+    if (!project) return;
+    setClickUpSaveError("");
+    setClickUpListId("");
+    setClickUpSaveTarget({ projectId: project.id, requirementId: requirement.id, taskId: task.id, taskName: task.title, requirement: requirement.statement });
+    if (clickUpListsLoaded) return;
+    setClickUpListsLoading(true);
+    try {
+      const response = await fetch("/api/business-analysis/tasks", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not load ClickUp lists.");
+      setClickUpLists(Array.isArray(body.lists) ? body.lists : []);
+      setClickUpListsLoaded(true);
+    } catch (error) { setClickUpSaveError(error instanceof Error ? error.message : "Could not load ClickUp lists."); }
+    finally { setClickUpListsLoading(false); }
+  };
+
+  const saveRequirementTaskToClickUp = async () => {
+    if (!clickUpSaveTarget || !clickUpListId) return;
+    const target = clickUpSaveTarget;
+    setSavingTaskId(target.taskId);
+    setClickUpSaveError("");
+    try {
+      const response = await fetch("/api/business-analysis/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listId: clickUpListId, taskName: target.taskName, requirementId: target.requirementId, requirement: target.requirement, localTaskId: target.taskId }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not save this task to ClickUp.");
+      const clickUpTask = body.clickUpTask as BARequirementTask["clickUpTask"];
+      if (!clickUpTask) throw new Error("ClickUp did not return a task link.");
+      const updatedAt = new Date().toISOString();
+      setState((current) => ({ ...current, projects: current.projects.map((item) => item.id !== target.projectId ? item : { ...item, updatedAt, requirements: item.requirements.map((requirement) => requirement.id !== target.requirementId ? requirement : { ...requirement, updatedAt, tasks: requirement.tasks.map((task) => task.id === target.taskId ? { ...task, clickUpTask } : task) }) }) }));
+      setSaveState("saving");
+      setClickUpSaveTarget(null);
+    } catch (error) { setClickUpSaveError(error instanceof Error ? error.message : "Could not save this task to ClickUp."); }
+    finally { setSavingTaskId(""); }
   };
 
   const resizeColumn = (index: number, width: number) => setState((current) => ({
@@ -381,11 +477,11 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     finally { setMeetingLoading(false); }
   };
 
-  const generateStory = async (requirement: BARequirement) => {
+  const generateStory = async (requirement: BARequirement, customPrompt?: string) => {
     if (!project) return;
     setGeneratingId(requirement.id);
     try {
-      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: requirement.id, statement: requirement.statement, context: project.description }) });
+      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: requirement.id, statement: requirement.statement, context: project.description, customPrompt }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Story generation failed.");
       updateRequirement(requirement.id, { userStory: body.userStory, acceptanceCriteria: body.acceptanceCriteria });
@@ -393,13 +489,13 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     finally { setGeneratingId(""); }
   };
 
-  const generateTestCase = async (requirement: BARequirement) => {
+  const generateTestCase = async (requirement: BARequirement, customPrompt?: string) => {
     setGeneratingTestCaseId(requirement.id);
     try {
       const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         type: "test-case", id: requirement.id, statement: requirement.statement, category: requirement.category,
         priority: requirement.priority, userStory: requirement.userStory, acceptanceCriteria: requirement.acceptanceCriteria,
-        verification: requirement.verification, milestone: requirement.milestone,
+        verification: requirement.verification, tasks: requirement.tasks.map(({ title, done }) => ({ title, done })), customPrompt,
       }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Test case generation failed.");
@@ -408,14 +504,14 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     finally { setGeneratingTestCaseId(""); }
   };
 
-  const generateAcceptanceCriteria = async (requirement: BARequirement) => {
+  const generateAcceptanceCriteria = async (requirement: BARequirement, customPrompt?: string) => {
     if (!project) return;
     setGeneratingAcceptanceCriteriaId(requirement.id);
     try {
       const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         type: "acceptance-criteria", id: requirement.id, statement: requirement.statement, context: project.description,
         category: requirement.category, priority: requirement.priority, userStory: requirement.userStory,
-        testCase: requirement.testCase, verification: requirement.verification, milestone: requirement.milestone,
+        testCase: requirement.testCase, verification: requirement.verification, tasks: requirement.tasks.map(({ title, done }) => ({ title, done })), customPrompt,
       }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Acceptance criteria generation failed.");
@@ -476,17 +572,17 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       {tab === "requirements" && <section>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <h2 className="mr-auto font-serif text-lg font-bold italic text-[#003366]">Requirements traceability matrix</h2>
-          <label className="sr-only" htmlFor="ba-category-filter">Filter category</label><select id="ba-category-filter" className={`${filterSelectClass} w-[165px]`} value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)}><option>All categories</option>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select>
-          <label className="sr-only" htmlFor="ba-priority-filter">Filter MoSCoW priority</label><select id="ba-priority-filter" className={`${filterSelectClass} w-[180px]`} value={filterPriority} onChange={(event) => setFilterPriority(event.target.value)}><option>All priorities</option><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select>
+          <label className="sr-only" htmlFor="ba-category-filter">Filter category</label><select id="ba-category-filter" className={`${filterSelectClass} w-[160px]`} value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)}><option>All categories</option>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select>
+          <label className="sr-only" htmlFor="ba-priority-filter">Filter MoSCoW priority</label><select id="ba-priority-filter" className={`${filterSelectClass} w-[160px]`} value={filterPriority} onChange={(event) => setFilterPriority(event.target.value)}><option>All priorities</option><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select>
           <div className="inline-flex border border-slate-300 bg-white" role="group" aria-label="Requirement view">
-            <button type="button" aria-pressed={requirementsView === "table"} onClick={() => setRequirementsView("table")} className={`inline-flex min-h-9 items-center justify-center gap-1.5 px-2.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${requirementsView === "table" ? "bg-[#003366] text-white" : "text-[#003366] hover:bg-slate-50"}`}><Table2 aria-hidden="true" size={14} />Table</button>
-            <button type="button" aria-pressed={requirementsView === "cards"} onClick={() => setRequirementsView("cards")} className={`inline-flex min-h-9 items-center justify-center gap-1.5 border-l border-slate-300 px-2.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${requirementsView === "cards" ? "bg-[#003366] text-white" : "text-[#003366] hover:bg-slate-50"}`}><LayoutGrid aria-hidden="true" size={14} />Cards</button>
+            <button type="button" aria-pressed={requirementsView === "table"} onClick={() => setRequirementsView("table")} className={`inline-flex min-h-8 items-center justify-center gap-1 px-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${requirementsView === "table" ? "bg-[#003366] text-white" : "text-[#003366] hover:bg-slate-50"}`}><Table2 aria-hidden="true" size={13} />Table</button>
+            <button type="button" aria-pressed={requirementsView === "cards"} onClick={() => setRequirementsView("cards")} className={`inline-flex min-h-8 items-center justify-center gap-1 border-l border-slate-300 px-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${requirementsView === "cards" ? "bg-[#003366] text-white" : "text-[#003366] hover:bg-slate-50"}`}><LayoutGrid aria-hidden="true" size={13} />Cards</button>
           </div>
-          <button className={buttonClass} onClick={addRequirement}><Plus size={15} />Add requirement</button>
+          <button type="button" className="inline-flex min-h-8 items-center justify-center gap-1.5 border border-[#003366] bg-[#003366] px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]" onClick={addRequirement}><Plus size={13} />Add requirement</button>
         </div>
         {project.requirements.length > 0 && <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-700" aria-label="Requirement category breakdown">{CATEGORIES.map((category) => <span key={category}>{category}: {filteredRequirements.filter((item) => item.category === category).length}</span>)}</div>}
         {project.requirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements yet. Add one here or tag a line in Elicitation with <code className="font-mono text-[#003366]">@REQ-001: requirement</code>.</div> : filteredRequirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements match these filters.</div> : requirementsView === "table" ? <>
-          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="table-fixed border-collapse text-left text-xs" style={{ width: `${state.tableColumnWidths.reduce((total, width) => total + width, 0)}px`, minWidth: "100%" }}><colgroup>{state.tableColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Milestone", "Story / criteria"].map((heading, index) => <th key={heading} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{heading}<button type="button" role="separator" aria-orientation="vertical" aria-label={`Resize ${heading} column`} aria-valuenow={state.tableColumnWidths[index]} aria-valuemin={BA_MIN_COLUMN_WIDTHS[index]} aria-valuemax={720} tabIndex={0} className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none border-0 bg-transparent p-0 hover:bg-[#C9A84C]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onPointerDown={(event) => startColumnResize(event, index)} onPointerMove={moveColumnResize} onPointerUp={stopColumnResize} onPointerCancel={stopColumnResize} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, state.tableColumnWidths[index] + (event.key === "ArrowRight" ? 12 : -12)); } }} /></th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
+          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="table-fixed border-collapse text-left text-xs" style={{ width: `${state.tableColumnWidths.reduce((total, width) => total + width, 0)}px`, minWidth: "100%" }}><colgroup>{state.tableColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Tasks", "Story / criteria"].map((heading, index) => <th key={heading} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{heading}<button type="button" role="separator" aria-orientation="vertical" aria-label={`Resize ${heading} column`} aria-valuenow={state.tableColumnWidths[index]} aria-valuemin={BA_MIN_COLUMN_WIDTHS[index]} aria-valuemax={720} tabIndex={0} className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none border-0 bg-transparent p-0 hover:bg-[#C9A84C]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onPointerDown={(event) => startColumnResize(event, index)} onPointerMove={moveColumnResize} onPointerUp={stopColumnResize} onPointerCancel={stopColumnResize} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, state.tableColumnWidths[index] + (event.key === "ArrowRight" ? 12 : -12)); } }} /></th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
             <td className="align-top border border-slate-200/60 px-2 py-2 font-medium tabular-nums text-[#003366]"><div className="flex items-center justify-between gap-1"><span className="whitespace-nowrap">{item.id}</span><button type="button" aria-label={`View details for ${item.id}`} title="View requirement details" className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[#31577D] hover:bg-[#FBF7E9] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId(item.id)}><Eye aria-hidden="true" size={14} /></button></div></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><textarea data-ba-req-id={item.id} aria-label={`${item.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.statement} onChange={(event) => updateRequirement(item.id, { statement: event.target.value })} /></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} category`} className={`${cellSelectClass} ${categoryColor[item.category]}`} value={item.category} onChange={(event) => updateRequirement(item.id, { category: event.target.value as RequirementCategory })}>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></td>
@@ -494,10 +590,10 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><RichTextEditor value={item.userStory} onChange={(userStory) => updateRequirement(item.id, { userStory })} label={`${item.id} user story`} placeholder="Add a concise user story" /></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><div className="relative"><RichTextEditor value={item.testCase} onChange={(testCase) => updateRequirement(item.id, { testCase })} label={`${item.id} test case`} placeholder="Add a concise test case" /><button type="button" title="Generate test case from this row" aria-label={`Generate test case for ${item.id}`} className="absolute right-1 top-1 inline-flex h-5 w-6 items-center justify-center border border-transparent bg-white text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingTestCaseId === item.id} onClick={() => void generateTestCase(item)}>{generatingTestCaseId === item.id ? <LoaderCircle aria-hidden="true" size={12} className="animate-spin" /> : <Sparkles aria-hidden="true" size={12} />}</button></div></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} verification status`} className={`${cellSelectClass} ${verificationColor[item.verification]}`} value={item.verification} onChange={(event) => updateRequirement(item.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></td>
-            <td className="align-top border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} milestone`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.milestone} onChange={(event) => updateRequirement(item.id, { milestone: event.target.value })} /></td>
+            <td className="align-top border border-slate-200/60 px-2 py-1.5"><button type="button" aria-label={`View ${item.tasks.length} tasks for ${item.id}`} onClick={() => setDetailRequirementId(item.id)} className="min-h-7 w-full text-left text-xs text-slate-700 hover:text-[#003366]">{item.tasks.length ? `${item.tasks.filter((task) => task.done).length}/${item.tasks.length} complete` : <span className="text-slate-400">Add tasks in card view</span>}</button></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><RichTextEditor className="mt-1" value={item.acceptanceCriteria} onChange={(acceptanceCriteria) => updateRequirement(item.id, { acceptanceCriteria })} label={`${item.id} acceptance criteria`} placeholder="Add concise acceptance criteria" /></details></td>
           </tr>)}</tbody></table></div>
-        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateStory={(item) => void generateStory(item)} onGenerateTestCase={(item) => void generateTestCase(item)} onGenerateAcceptanceCriteria={(item) => void generateAcceptanceCriteria(item)} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
+        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateStory={(item, prompt) => void generateStory(item, prompt)} onGenerateTestCase={(item, prompt) => void generateTestCase(item, prompt)} onGenerateAcceptanceCriteria={(item, prompt) => void generateAcceptanceCriteria(item, prompt)} onAddTask={addRequirementTask} onUpdateTask={updateRequirementTask} onRemoveTask={removeRequirementTask} onSaveTaskToClickUp={(item, task) => void openClickUpTaskSave(item, task)} savingTaskId={savingTaskId} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
       </section>}
 
       {tab === "elicitation" && <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -511,7 +607,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         {project.documents.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-5 text-sm text-slate-700">No documents yet. Choose a template to create a project draft.</div> : <div className="space-y-3">{project.documents.map((item) => <article key={item.id} className="border border-[#CBD5E1] bg-[#FFFCFB] p-4"><div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><label className="sr-only" htmlFor={`doc-title-${item.id}`}>Document title</label><input id={`doc-title-${item.id}`} className={`${inputClass} font-semibold`} value={item.title} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, title: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /><p className="mt-1 text-xs text-slate-700">{item.kind} · Updated {new Date(item.updatedAt).toLocaleDateString()}</p></div><button className={secondaryClass} onClick={() => void exportDocument(item)}><Download size={15} />Download Word</button></div><label className="sr-only" htmlFor={`doc-content-${item.id}`}>Document content</label><textarea id={`doc-content-${item.id}`} className={`${inputClass} min-h-48 resize-y leading-6`} value={item.content} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, content: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /></article>)}</div>}
       </section>}
 
-      {tab === "export" && <section><div className="mb-3"><h2 className="font-serif text-xl font-bold italic text-[#003366]">Export and review</h2><p className="mt-1 text-sm text-slate-700">Create files from the current project data.</p></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"><button className={`${secondaryClass} justify-start p-4`} onClick={async () => downloadBlob(await renderXlsx(project), `${fileName(project.name)}-rtm.xlsx`)}><Table2 size={18} /><span className="text-left"><strong className="block">Export RTM workbook</strong><span className="mt-1 block text-xs font-normal text-slate-700">Requirements, links, and verification statuses</span></span><Download className="ml-auto" size={15} /></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => window.print()}><Printer size={18} /><span className="text-left"><strong className="block">Print project summary</strong><span className="mt-1 block text-xs font-normal text-slate-700">Open the browser print dialog for a PDF copy</span></span></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => setTab("documents")}><FileText size={18} /><span className="text-left"><strong className="block">Project documents</strong><span className="mt-1 block text-xs font-normal text-slate-700">Edit and download a Word draft</span></span></button></div><div className="mt-5 border border-[#CBD5E1] bg-[#FFFCFB] p-4"><h3 className="font-semibold text-[#003366]">Traceability summary</h3><dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3"><div><dt className="text-slate-700">Coverage</dt><dd className="font-semibold">{coverage}%</dd></div><div><dt className="text-slate-700">Passed verification</dt><dd className="font-semibold">{project.requirements.filter((item) => item.verification === "Passed").length} of {project.requirements.length}</dd></div><div><dt className="text-slate-700">Requirements without a story, test, or milestone</dt><dd className="font-semibold">{project.requirements.filter((item) => !item.userStory && !item.testCase && !item.milestone).length}</dd></div></dl></div></section>}
+      {tab === "export" && <section><div className="mb-3"><h2 className="font-serif text-xl font-bold italic text-[#003366]">Export and review</h2><p className="mt-1 text-sm text-slate-700">Create files from the current project data.</p></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"><button className={`${secondaryClass} justify-start p-4`} onClick={async () => downloadBlob(await renderXlsx(project), `${fileName(project.name)}-rtm.xlsx`)}><Table2 size={18} /><span className="text-left"><strong className="block">Export RTM workbook</strong><span className="mt-1 block text-xs font-normal text-slate-700">Requirements, links, and verification statuses</span></span><Download className="ml-auto" size={15} /></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => window.print()}><Printer size={18} /><span className="text-left"><strong className="block">Print project summary</strong><span className="mt-1 block text-xs font-normal text-slate-700">Open the browser print dialog for a PDF copy</span></span></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => setTab("documents")}><FileText size={18} /><span className="text-left"><strong className="block">Project documents</strong><span className="mt-1 block text-xs font-normal text-slate-700">Edit and download a Word draft</span></span></button></div><div className="mt-5 border border-[#CBD5E1] bg-[#FFFCFB] p-4"><h3 className="font-semibold text-[#003366]">Traceability summary</h3><dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3"><div><dt className="text-slate-700">Coverage</dt><dd className="font-semibold">{coverage}%</dd></div><div><dt className="text-slate-700">Passed verification</dt><dd className="font-semibold">{project.requirements.filter((item) => item.verification === "Passed").length} of {project.requirements.length}</dd></div><div><dt className="text-slate-700">Requirements without a story, test, or task</dt><dd className="font-semibold">{project.requirements.filter((item) => !item.userStory && !item.testCase && !item.tasks.length).length}</dd></div></dl></div></section>}
     </>}
     {detailRequirement && <div className="ba-no-print fixed inset-0 z-50 flex items-center justify-center bg-[#001A33]/40 p-3 sm:p-6" onClick={() => setDetailRequirementId("")}><section role="dialog" aria-modal="true" aria-labelledby="ba-requirement-detail-title" className="max-h-[min(760px,calc(100dvh-1.5rem))] w-full max-w-3xl overflow-y-auto border border-slate-300 bg-[#FFFCFB] shadow-xl" onClick={(event) => event.stopPropagation()}>
       <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5"><div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#31577D]">{project?.name || "Business Analysis"}</p><h2 id="ba-requirement-detail-title" className="mt-1 font-serif text-xl font-bold italic text-[#003366]">{detailRequirement.id}</h2></div><button type="button" aria-label="Close requirement details" className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId("")}><X aria-hidden="true" size={15} /></button></header>
@@ -520,13 +616,21 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Category</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.category}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">MoSCoW priority</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.priority || "Unprioritized"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Verification</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.verification}</dd></div>
-        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Milestone</dt><dd className="mt-1 text-sm text-slate-800">{detailRequirement.milestone || "—"}</dd></div>
+        <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tasks</dt><dd className="mt-1 space-y-1 text-sm text-slate-800">{detailRequirement.tasks.length ? detailRequirement.tasks.map((task) => <div key={task.id} className="flex items-start gap-2"><span className="text-[#31577D]">{task.done ? "✓" : "○"}</span><span className={task.done ? "text-slate-500 line-through" : ""}>{task.title || "Untitled task"}{task.clickUpTask && <a className="ml-2 inline-flex items-center gap-1 text-xs text-[#31577D] hover:text-[#003366]" href={task.clickUpTask.url || `https://app.clickup.com/t/${encodeURIComponent(task.clickUpTask.id)}`} target="_blank" rel="noreferrer">Open linked task <ArrowUpRight size={12} /></a>}</span></div>) : "—"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</dt><dd className="mt-1 text-sm text-slate-800">{detailRequirement.userStory ? <RichTextPreview value={detailRequirement.userStory} /> : "—"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Test case</dt><dd className="mt-1 text-sm text-slate-800">{detailRequirement.testCase ? <RichTextPreview value={detailRequirement.testCase} /> : "—"}</dd></div>
         <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</dt><dd className="mt-1 text-sm text-slate-800">{detailRequirement.acceptanceCriteria ? <RichTextPreview value={detailRequirement.acceptanceCriteria} /> : "—"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Created</dt><dd className="mt-1 text-xs text-slate-700">{timestampText(detailRequirement.createdAt)}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last updated</dt><dd className="mt-1 text-xs text-slate-700">{timestampText(detailRequirement.updatedAt)}</dd></div>
       </dl>
+    </section></div>}
+    {clickUpSaveTarget && <div className="ba-no-print fixed inset-0 z-[60] flex items-center justify-center bg-[#001A33]/40 p-3" onClick={() => setClickUpSaveTarget(null)}><section role="dialog" aria-modal="true" aria-labelledby="ba-clickup-save-title" className="w-full max-w-md border border-slate-300 bg-[#FFFCFB] shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div><h2 id="ba-clickup-save-title" className="font-serif text-lg font-bold italic text-[#003366]">Save task to ClickUp</h2><p className="mt-0.5 text-xs text-slate-600">The task will stay in this requirement too.</p></div><button type="button" aria-label="Close ClickUp save dialog" className="inline-flex h-7 w-7 items-center justify-center border border-slate-300 text-[#003366]" onClick={() => setClickUpSaveTarget(null)}><X size={14} /></button></header>
+      <div className="space-y-3 p-4"><div className="border border-slate-200 bg-white px-3 py-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{clickUpSaveTarget.requirementId}</p><p className="mt-1 text-sm font-medium text-[#003366]">{clickUpSaveTarget.taskName}</p></div>
+        {clickUpListsLoading ? <p className="text-sm text-slate-600">Loading available lists…</p> : clickUpLists.length ? <label className="block text-xs font-semibold text-slate-700">Task list<select className={`${inputClass} mt-1`} value={clickUpListId} onChange={(event) => setClickUpListId(event.target.value)}><option value="">Choose a list</option>{clickUpLists.map((list) => <option key={list.id} value={list.id}>{[list.teamName, list.spaceName, list.folderName, list.name].filter(Boolean).join(" / ")}</option>)}</select></label> : <p className="text-sm text-slate-600">No task lists are available for your connected account.</p>}
+        {clickUpSaveError && <p role="alert" className="text-sm text-[#B42318]">{clickUpSaveError}</p>}
+        <div className="flex justify-end gap-2"><button type="button" className={secondaryClass} onClick={() => setClickUpSaveTarget(null)}>Cancel</button><button type="button" className={buttonClass} disabled={!clickUpListId || clickUpListsLoading || Boolean(savingTaskId)} onClick={() => void saveRequirementTaskToClickUp()}>{savingTaskId ? <LoaderCircle size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}Save linked copy</button></div>
+      </div>
     </section></div>}
     <footer className="ba-no-print mt-8 flex items-center gap-2 border-t border-slate-200 pt-3 text-xs text-slate-600"><Check size={14} className={saveState === "error" ? "text-[#B42318]" : "text-[#003366]"} aria-hidden="true" />{saveState === "error" ? "Changes are not saved. Use Save to retry." : "Changes save to your Business Analysis workspace."}</footer>
   </div>;

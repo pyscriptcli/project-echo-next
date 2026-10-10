@@ -2,6 +2,18 @@ export type RequirementCategory = "Functional" | "Non-Functional" | "Technical" 
 export type MoscowPriority = "Must Have" | "Should Have" | "Could Have" | "Won't Have";
 export type VerificationStatus = "Passed" | "In Dev" | "Not Tested" | "Blocked";
 
+export interface BARequirementTask {
+  id: string;
+  title: string;
+  done: boolean;
+  clickUpTask?: {
+    id: string;
+    url: string;
+    listId: string;
+    listName: string;
+  };
+}
+
 export interface BARequirement {
   id: string;
   createdAt: string;
@@ -13,7 +25,7 @@ export interface BARequirement {
   acceptanceCriteria: string;
   testCase: string;
   verification: VerificationStatus;
-  milestone: string;
+  tasks: BARequirementTask[];
 }
 
 export interface BAPhase {
