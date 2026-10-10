@@ -8,6 +8,7 @@ import { resolveAccess, normalizeFeatures, ALL_APP_PAGES, ALL_FEATURES, type Fea
 export const dynamic = "force-dynamic";
 
 const OWNER_EMAIL = "admin@primephilippines.com";
+const BUSINESS_ANALYSIS_OWNER_EMAIL = "dave.policarpio@primephilippines.com";
 interface UserPagePermission {
   email: string;
   name?: string;
@@ -82,12 +83,13 @@ export async function GET(req: NextRequest) {
 
   // If user is not authenticated or not logged in yet, return public default page access policy
   if ((!token || !userEmail) && !testAdmin) {
+    const publicPages = defaultPages.filter((page) => page !== "business-analysis");
     return NextResponse.json({
-      allowedPages: defaultPages,
+      allowedPages: publicPages,
       allowedFeatures: defaultFeatures,
       defaultFeatureAccess: defaultFeatures,
-      userAllowedPages: defaultPages,
-      defaultPageAccess: defaultPages,
+      userAllowedPages: publicPages,
+      defaultPageAccess: publicPages,
       sidebarOrder: config.sidebarOrder || [],
       isAdmin: false,
       source,
@@ -110,7 +112,14 @@ export async function GET(req: NextRequest) {
     features: config.features,
     formFeatures: config.formFeatures,
   });
-  const allowedPages = isAdmin ? ALL_APP_PAGES : access.allowedPages;
+  const baRule = Array.isArray(config.pagePermissions)
+    ? config.pagePermissions.find((rule: any) => String(rule.email || "").toLowerCase().trim() === userEmail)
+    : null;
+  const baExplicitlyGranted = Array.isArray(baRule?.allowedPages) && baRule.allowedPages.includes("business-analysis");
+  const ordinaryPages = access.allowedPages.filter((page) => page !== "business-analysis");
+  const allowedPages = isAdmin ? ALL_APP_PAGES : userEmail === BUSINESS_ANALYSIS_OWNER_EMAIL || baExplicitlyGranted
+    ? Array.from(new Set([...ordinaryPages, "business-analysis"]))
+    : ordinaryPages;
 
   // Owner and Admins receive full config including admin settings and all user permissions
   if (isAdmin) {

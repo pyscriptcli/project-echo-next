@@ -37,7 +37,7 @@ import { ALL_FEATURES, FEATURE_CATALOG, type FeatureId } from "@/lib/access-cont
 export type PortalTab = "create" | "track" | "approvals" | "admin";
 export type Role = "owner" | "admin" | "approver" | "requestor";
 export type FormType = "rfp" | "po" | "pcv";
-export type AppPage = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta";
+export type AppPage = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta" | "business-analysis";
 
 export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> = [
   { id: "dashboard", label: "Dashboard", desc: "Executive overview & meeting metrics" },
@@ -50,7 +50,9 @@ export const APP_PAGE_LIST: Array<{ id: AppPage; label: string; desc: string }> 
   { id: "minutes", label: "Notetaker", desc: "Studio, live recording & minutes synthesis" },
   { id: "forms", label: "Forms", desc: "Submit, track & approve company requests" },
   { id: "delta", label: "DELTA Review", desc: "Compare lease drafts and export a local review register" },
+  { id: "business-analysis", label: "Business Analysis", desc: "Personal IT requirements, notes, and delivery planning" },
 ];
+const DEFAULT_ACCESS_PAGE_LIST = APP_PAGE_LIST.filter((page) => page.id !== "business-analysis");
 
 export const OWNER_EMAIL = "admin@primephilippines.com";
 const FORM_LABELS: Record<string, string> = {
@@ -423,11 +425,12 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
   const handleUpdateDefaultPages = (pages: AppPage[]) => {
     save({
       ...config,
-      defaultPageAccess: pages.length > 0 ? pages : ["forms"],
+      defaultPageAccess: pages.filter((page) => page !== "business-analysis").length > 0 ? pages.filter((page) => page !== "business-analysis") : ["forms"],
     });
   };
 
   const toggleDefaultPage = (page: AppPage) => {
+    if (page === "business-analysis") return;
     const current = config.defaultPageAccess || ["forms"];
     let next: AppPage[];
     if (current.includes(page)) {
@@ -898,7 +901,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
               </button>
               <button
                 type="button"
-                onClick={() => handleUpdateDefaultPages(APP_PAGE_LIST.map((p) => p.id))}
+                onClick={() => handleUpdateDefaultPages(DEFAULT_ACCESS_PAGE_LIST.map((p) => p.id))}
                 className="text-[11px] font-semibold text-[#003366] bg-[#FFFCFB] hover:bg-[#FFFCFB] px-2.5 py-1 border border-slate-300 shadow-xs cursor-pointer"
               >
                 Grant All Pages
@@ -910,7 +913,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
             <span className="text-[11px] font-semibold text-slate-700 mr-1">
               Active Default Pages:
             </span>
-            {APP_PAGE_LIST.map((page) => {
+            {DEFAULT_ACCESS_PAGE_LIST.map((page) => {
               const currentDefault = config.defaultPageAccess || ["forms"];
               const isAllowed = currentDefault.includes(page.id);
               return (
@@ -929,7 +932,7 @@ export function AdminConfiguration({ userEmail, username }: { userEmail: string;
               );
             })}
             <span className="text-[11px] text-slate-500 italic ml-2">
-              ({(config.defaultPageAccess || ["forms"]).length} of {APP_PAGE_LIST.length} permitted by default)
+              ({(config.defaultPageAccess || ["forms"]).filter((page) => page !== "business-analysis").length} of {DEFAULT_ACCESS_PAGE_LIST.length} permitted by default)
             </span>
           </div>
         </div>

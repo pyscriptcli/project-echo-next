@@ -56,6 +56,12 @@ This preserves today's handoff through tomorrow. It is replaced only after two n
 
 ## What is implemented
 
+### Business Analysis Workbench
+
+- `/business-analysis` and `/ba` open a personal IT BA workspace in the shared Mosaic shell. Dave and system admins have access by default; explicit page permissions can grant it to others.
+- Requirements, elicitation notes, six delivery phases, and editable pre/post documents are stored per signed-in user in `mosaic_ba_workspaces`. Apply `supabase/business_analysis.sql`; server routes use the service key and enforce page access plus owner-scoped reads/writes.
+- Notetaker import loads saved records through the existing `/api/meetings` path. Story generation uses the configured Ask Echo model policy. Excel RTM, Word documents, and browser print are available; external stakeholder links are deferred.
+
 ### Authentication and user connections
 
 - Echo signs users in through ClickUp OAuth.

@@ -17,9 +17,10 @@ import {
   NotebookTabs,
   ClipboardCheck,
   ChartNoAxesColumnIncreasing,
+  BriefcaseBusiness,
 } from "lucide-react";
 
-export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta" | "forms-admin";
+export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-insights" | "demands" | "meetings" | "minutes" | "forms" | "delta" | "business-analysis" | "forms-admin";
 
 interface SidebarProps {
   currentView: NavView;
@@ -57,6 +58,7 @@ export function Sidebar({
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
   const [expandedSections, setExpandedSections] = React.useState({
+    personal: true,
     workspaces: true,
     monitoring: true,
     knowledge: true,
@@ -95,6 +97,7 @@ export function Sidebar({
       icon: LayoutGrid,
       badge: null
     },
+    { id: "business-analysis" as NavView, label: "Business Analysis", icon: BriefcaseBusiness, badge: null },
     {
       id: "project" as NavView,
       label: "Projects",
@@ -151,6 +154,7 @@ export function Sidebar({
 
   const navById = new Map(navItems.map((item) => [item.id, item]));
   const sidebarGroups = [
+    { id: "personal" as const, label: "Personal Workspace", itemIds: ["business-analysis"] as NavView[] },
     { id: "workspaces" as const, label: "Workspaces", itemIds: ["dashboard", "project", "delta", "tasks"] as NavView[] },
     { id: "monitoring" as const, label: "Monitoring", itemIds: ["demands", "market-insights"] as NavView[] },
     { id: "knowledge" as const, label: "Knowledge", itemIds: ["notebook"] as NavView[] },

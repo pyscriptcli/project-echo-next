@@ -45,6 +45,7 @@ import TasksView, { ClickUpTask } from "@/components/TasksView";
 import { NotebookView } from "@/components/NotebookView";
 import { MarketInsightsView } from "@/components/MarketInsightsView";
 import { DemandsView } from "@/components/DemandsView";
+import { BusinessAnalysisView } from "@/components/business-analysis/BusinessAnalysisView";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { FinalizeMeetingModal } from "@/components/FinalizeMeetingModal";
 import { DiscoverTopicsModal } from "@/components/DiscoverTopicsModal";
@@ -438,7 +439,7 @@ export default function Home() {
   const [allowedPages, setAllowedPages] = useState<NavView[]>(warmGovernance?.allowedPages || []);
   const [governanceStatus, setGovernanceStatus] = useState<"loading" | "ready" | "error">(warmGovernance ? "ready" : "loading");
   const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
-    "dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta",
+    "dashboard", "business-analysis", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta",
   ]);
   const [isAdminUser, setIsAdminUser] = useState(warmGovernance?.isAdmin || false);
   const [askEchoEnabled, setAskEchoEnabled] = useState(warmGovernance?.askEchoEnabled || false);
@@ -1409,6 +1410,11 @@ export default function Home() {
 
             {currentView === "market-insights" && <MarketInsightsView userId={authUser?.id ? String(authUser.id) : undefined} />}
             {currentView === "demands" && <DemandsView userId={authUser?.id ? String(authUser.id) : undefined} sector={pathname?.startsWith("/demands/retail") ? "retail" : pathname?.startsWith("/demands/industrial") ? "industrial" : "all"} />}
+            {currentView === "business-analysis" && <BusinessAnalysisView userId={authUser?.id ? String(authUser.id) : undefined} meetings={archivedMeetings} onLoadMeetings={async () => {
+              const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+              const result = await fetchMeetings(undefined, personalListId);
+              return Array.isArray(result.meetings) ? result.meetings : [];
+            }} />}
 
             {/* VIEW 2: MEETINGS ARCHIVES */}
             {currentView === "meetings" && (
