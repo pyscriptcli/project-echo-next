@@ -16,6 +16,10 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Local ClickUp sign-in
+
+For local development, place your personal ClickUp API key in `.env.local` as `CLICKUP_PERSONAL_API_TOKEN=...`, then restart `npm run dev`. The local login reads the ClickUp profile, applies the configured work-email allowlist, and creates a local session. This key is accepted only when `NODE_ENV=development`; deployed environments continue to require each user to sign in through ClickUp OAuth. The file is ignored by Git. Never add the key to a `NEXT_PUBLIC_` variable or commit it.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
@@ -52,7 +56,7 @@ Vercel runs the configured daily cron in production. Daily frequency supports Ho
 
 ### Contract files
 
-Contracts are stored as ordinary files in a local `Mosaic Contracts` folder, not as ClickUp records or browser-only file blobs. On first use of each computer, open Mosaic in Chrome or Edge, choose the local OneDrive folder in Contracts, and Mosaic creates its contract folder and moves any existing browser-stored contract files there. OneDrive's installed sync app then syncs those files normally. On another computer, wait for OneDrive to finish syncing, open Contracts, and choose the same folder once. Mosaic does not verify that the selected folder is managed by OneDrive; choose a OneDrive-synced location if you want those files synced. The browser must be open to manage and compare contracts; OneDrive can continue its own file sync independently.
+Contracts are stored as ordinary files in a local `Mosaic Contracts` folder, not as ClickUp records or browser-only file blobs. On first use of each computer, open Mosaic in a desktop browser that supports local folder access, choose the local OneDrive folder in Contracts, and Mosaic creates its contract folder and moves any existing browser-stored contract files there. OneDrive's installed sync app then syncs those files normally. On another computer, wait for OneDrive to finish syncing, open Contracts, and choose the same folder once. Mosaic does not verify that the selected folder is managed by OneDrive; choose a OneDrive-synced location if you want those files synced. The browser must be open to manage and compare contracts; OneDrive can continue its own file sync independently. Browsers without the File System Access API cannot currently choose a folder; supporting those browsers requires a local companion app.
 
 The read tables use service-role access only, OAuth tokens and webhook secrets are encrypted with AES-256-GCM, and snapshot reads require a fresh ClickUp list-access check. Snapshots older than five minutes are not served. Connections and task records unused for 90 days are removed by reconciliation.
 

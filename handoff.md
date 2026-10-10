@@ -61,7 +61,7 @@ This preserves today's handoff through tomorrow. It is replaced only after two n
 - Echo signs users in through ClickUp OAuth.
 - Each user gets their own OAuth access token in the `echo_clickup_token` HTTP-only cookie and a cached profile in `echo_user_profile`.
 - The OAuth callback fetches the ClickUp user profile and workspace name, checks the configured allowed email domains, then establishes the session.
-- A shared `CLICKUP_API_TOKEN` fallback was intentionally removed from the normal login route. Do not reintroduce it: a shared token could bypass an individual user's ClickUp permissions.
+- Production and preview sign-in use each user's ClickUp OAuth token; do not add a shared-token fallback there. Local development may use `CLICKUP_PERSONAL_API_TOKEN` from the ignored `frontend/.env.local` only when `NODE_ENV=development`. The dev server binds to `127.0.0.1`; local sign-in resolves the ClickUp profile and applies the existing allowed-email-domain check before setting the HTTP-only session cookie.
 - `/api/auth/me` returns the signed-in profile and refreshes the cached profile when needed.
 - Ask Echo requires an authenticated profile with an email address.
 
@@ -173,7 +173,7 @@ The current fixed mappings are in `frontend/src/lib/ask-echo/clickup.ts`:
 
 The Demands page reads and writes structured `echoDemand` records in its mapped list using the signed-in user's OAuth token. Status and Action Taken are free-text fields. Do not add workspace-token fallbacks. Candidate-property scouting, geolocation photos, and scouting reports remain future scope.
 
-Contracts no longer uses ClickUp folders or stores contract files in browser IndexedDB. Users choose a local folder (ideally their OneDrive-synced folder); Mosaic creates `Mosaic Contracts`, stores `.docx` files and a portable index there, and migrates legacy browser-stored contract files during setup. The browser remembers the directory handle per device. OneDrive sync is performed by its normal desktop client, not by Mosaic; choose the same synced folder on each device after its files finish syncing. Folder access uses the browser File System Access API and currently requires desktop Chrome or Edge.
+Contracts no longer uses ClickUp folders or stores contract files in browser IndexedDB. Users choose a local folder (ideally their OneDrive-synced folder); Mosaic creates `Mosaic Contracts`, stores `.docx` files and a portable index there, and migrates legacy browser-stored contract files during setup. The browser remembers the directory handle per device. OneDrive sync is performed by its normal desktop client, not by Mosaic; choose the same synced folder on each device after its files finish syncing. Folder access uses the browser File System Access API and is available only in desktop browsers that implement it; browsers without this API need a local companion app for folder selection.
 
 ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Tasks, Demands, and project subproject reads. Tasks list discovery is on demand and caches its result per signed-in browser user.
 

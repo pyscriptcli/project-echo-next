@@ -57,6 +57,11 @@ export function getOAuthCredentials() {
   return { clientId, clientSecret, redirectUri };
 }
 
+export function getLocalDevelopmentClickUpPersonalToken(): string {
+  if (process.env.NODE_ENV !== "development") return "";
+  return cleanEnv(process.env.CLICKUP_PERSONAL_API_TOKEN);
+}
+
 export function getWorkspaceApiToken(): string {
   // 1. Direct standard checks
   const candidates = [

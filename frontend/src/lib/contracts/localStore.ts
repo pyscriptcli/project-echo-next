@@ -242,11 +242,11 @@ export async function chooseContractsFolder() {
       ? "Open Mosaic using its secure HTTPS address to choose the contract folder."
       : pickerStatus.reason === "embedded"
         ? "Open Mosaic in its own browser tab to choose the contract folder."
-        : "Use desktop Chrome or Edge to choose the contract folder.";
+        : "This browser does not support choosing a local contract folder.";
     throw new Error(message);
   }
   const picker = (window as DirectoryWindow).showDirectoryPicker;
-  if (!picker) throw new Error("Use desktop Chrome or Edge to choose the contract folder.");
+  if (!picker) throw new Error("This browser does not support choosing a local contract folder.");
   const selected = await picker.call(window, { id: "mosaic-contract-storage", mode: "readwrite", startIn: "documents" });
   const root = await contractsDirectory(selected);
   await ensureFilesDirectory(root);
