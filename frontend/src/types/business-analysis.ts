@@ -19,6 +19,7 @@ export interface BARequirement {
   createdAt: string;
   updatedAt: string;
   statement: string;
+  businessImpact: string;
   category: RequirementCategory;
   priority: MoscowPriority | "";
   userStory: string;

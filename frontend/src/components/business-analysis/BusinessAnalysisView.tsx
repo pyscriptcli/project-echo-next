@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MessageSquareMore, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MessageSquareMore, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, Tags, X } from "lucide-react";
 import { BA_MIN_COLUMN_WIDTHS, createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/lib/business-analysis";
 import type { ArchivedMeeting } from "@/types/meeting";
 import type { BAProject, BARequirement, BARequirementTask, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/types/business-analysis";
@@ -122,17 +122,39 @@ function RichTextPreview({ value, className = "" }: { value: string; className?:
 function RequirementGenerationActions({ label, generating, onGenerate, onGrill, grillDisabled = false }: { label: string; generating: boolean; onGenerate: (customPrompt?: string) => void; onGrill: () => void; grillDisabled?: boolean }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const iconButtonClass = "inline-flex h-6 w-6 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50";
+
+  useEffect(() => {
+    if (!promptOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !popoverRef.current?.contains(event.target) && !optionsButtonRef.current?.contains(event.target)) setPromptOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setPromptOpen(false); optionsButtonRef.current?.focus(); }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [promptOpen]);
 
   return <div className="relative inline-flex shrink-0 items-center gap-1">
     <button type="button" title={`Generate ${label.toLowerCase()} with AI`} aria-label={`Generate ${label.toLowerCase()} for this requirement`} className={iconButtonClass} disabled={generating} onClick={() => onGenerate()}>{generating ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button>
-    <button type="button" title={`Add a custom prompt for ${label.toLowerCase()}`} aria-label={`Custom prompt for ${label.toLowerCase()}`} aria-expanded={promptOpen} className={iconButtonClass} disabled={generating} onClick={() => setPromptOpen((open) => !open)}><MoreHorizontal aria-hidden="true" size={15} /></button>
-    {promptOpen && <div className="absolute right-0 top-full z-20 mt-1 w-64 border border-slate-200 bg-white p-2 shadow-md">
+    <button ref={optionsButtonRef} type="button" title={`More options for ${label.toLowerCase()}`} aria-label={`More options for ${label.toLowerCase()}`} aria-expanded={promptOpen} aria-haspopup="dialog" className={iconButtonClass} disabled={generating} onClick={() => setPromptOpen((open) => !open)}><MoreHorizontal aria-hidden="true" size={15} /></button>
+    {promptOpen && <div ref={popoverRef} role="dialog" aria-label={`${label} generation options`} className="absolute right-0 top-full z-20 mt-1 w-64 border border-slate-200 bg-white p-2 shadow-md">
       <button type="button" className="mb-2 inline-flex h-7 w-full items-center gap-1.5 border-b border-slate-100 px-1 pb-2 text-left text-[11px] font-semibold text-[#003366] hover:text-[#31577D] disabled:cursor-not-allowed disabled:opacity-50" disabled={grillDisabled || generating} onClick={() => { setPromptOpen(false); onGrill(); }}><MessageSquareMore aria-hidden="true" size={13} />Grill me about this requirement</button>
-      <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Custom prompt<textarea autoFocus rows={3} maxLength={1200} value={customPrompt} onChange={(event) => setCustomPrompt(event.target.value)} placeholder={`Add instructions for ${label.toLowerCase()}`} className="mt-1 w-full resize-y border border-slate-300/70 bg-white px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" /></label>
+      <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Custom prompt<textarea rows={3} maxLength={1200} value={customPrompt} onChange={(event) => setCustomPrompt(event.target.value)} placeholder={`Add instructions for ${label.toLowerCase()}`} className="mt-1 w-full resize-y border border-slate-300/70 bg-white px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" /></label>
       <div className="mt-1 flex justify-end"><button type="button" className="inline-flex h-7 items-center border border-[#003366] bg-[#003366] px-2 text-[10px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={!customPrompt.trim() || generating} onClick={() => { onGenerate(customPrompt.trim()); setPromptOpen(false); }}>Generate</button></div>
     </div>}
   </div>;
+}
+
+function RequirementClassificationAction({ requirementId, generating, onClassify, disabled = false }: { requirementId: string; generating: boolean; onClassify: () => void; disabled?: boolean }) {
+  return <button type="button" title="Suggest category, priority, and business impact" aria-label={`Suggest category, priority, and business impact for ${requirementId}`} className="inline-flex h-6 w-6 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-not-allowed disabled:opacity-50" disabled={generating || disabled} onClick={onClassify}>{generating ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Tags aria-hidden="true" size={13} />}</button>;
 }
 
 function RequirementTaskRow({ requirementId, task, onUpdate, onRemove, onSaveToClickUp, savingToClickUp }: { requirementId: string; task: BARequirementTask; onUpdate: (changes: Partial<BARequirementTask>) => void; onRemove: () => void; onSaveToClickUp: () => void; savingToClickUp: boolean }) {
@@ -163,12 +185,15 @@ type RequirementCardProps = {
   onSaveTaskToClickUp: (requirement: BARequirement, task: BARequirementTask) => void;
   savingTaskId: string;
   generatingRequirement: boolean;
+  onClassifyRequirement: (requirement: BARequirement) => void;
+  classifying: boolean;
   generatingStory: boolean;
   generatingTestCase: boolean;
   generatingAcceptanceCriteria: boolean;
+  classificationPending: boolean;
 };
 
-function RequirementCard({ requirement, onUpdate, onGenerateRequirement, onGrillRequirement, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, onAddTask, onUpdateTask, onRemoveTask, onSaveTaskToClickUp, savingTaskId, generatingRequirement, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
+function RequirementCard({ requirement, onUpdate, onGenerateRequirement, onGrillRequirement, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, onClassifyRequirement, onAddTask, onUpdateTask, onRemoveTask, onSaveTaskToClickUp, savingTaskId, generatingRequirement, generatingStory, generatingTestCase, generatingAcceptanceCriteria, classifying, classificationPending }: RequirementCardProps) {
   return <article className="min-w-0 border border-slate-200 bg-white p-3 sm:p-4">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
       <div className="flex min-w-0 items-baseline gap-2">
@@ -181,7 +206,7 @@ function RequirementCard({ requirement, onUpdate, onGenerateRequirement, onGrill
         <select aria-label={`${requirement.id} verification status`} className={`${cardSelectClass} w-32 ${verificationColor[requirement.verification]}`} value={requirement.verification} onChange={(event) => onUpdate(requirement.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select>
       </div>
     </header>
-    <section className="mt-2 min-w-0 border-l-2 border-l-[#C9A84C] bg-white/70 px-2 py-1"><div className="mb-1 flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business requirement</span><RequirementGenerationActions label="Business requirement" generating={generatingRequirement} onGenerate={(customPrompt) => onGenerateRequirement(requirement, customPrompt)} onGrill={() => onGrillRequirement(requirement)} grillDisabled={!requirement.statement.trim()} /></div><textarea data-ba-req-id={requirement.id} aria-label={`${requirement.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-8 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 bg-white px-2 py-1 text-base font-semibold leading-6 text-[#003366] focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the business need" value={requirement.statement} onChange={(event) => onUpdate(requirement.id, { statement: event.target.value })} /></section>
+    <section className="mt-2 min-w-0 border-l-2 border-l-[#C9A84C] bg-white/70 px-2 py-1"><div className="mb-1 flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business requirement</span><div className="inline-flex shrink-0 items-center gap-1"><RequirementGenerationActions label="Business requirement" generating={generatingRequirement} onGenerate={(customPrompt) => onGenerateRequirement(requirement, customPrompt)} onGrill={() => onGrillRequirement(requirement)} grillDisabled={!requirement.statement.trim()} /><RequirementClassificationAction requirementId={requirement.id} generating={classifying} onClassify={() => onClassifyRequirement(requirement)} disabled={classificationPending && !classifying || !requirement.statement.trim()} /></div></div><textarea data-ba-req-id={requirement.id} aria-label={`${requirement.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-8 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 bg-white px-2 py-1 text-base font-semibold leading-6 text-[#003366] focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the business need" value={requirement.statement} onChange={(event) => onUpdate(requirement.id, { statement: event.target.value })} /></section>
     <div className="mt-2 grid min-w-0 gap-3 lg:grid-cols-3">
       <section className="min-w-0 border-t border-slate-100 pt-2">
         <div className="flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</span><RequirementGenerationActions label="User story" generating={generatingStory} onGenerate={(customPrompt) => onGenerateStory(requirement, customPrompt)} onGrill={() => onGrillRequirement(requirement)} grillDisabled={!requirement.statement.trim()} /></div>
@@ -196,6 +221,7 @@ function RequirementCard({ requirement, onUpdate, onGenerateRequirement, onGrill
         <RichTextEditor value={requirement.acceptanceCriteria} onChange={(acceptanceCriteria) => onUpdate(requirement.id, { acceptanceCriteria })} label={`${requirement.id} acceptance criteria`} placeholder="Add concise acceptance criteria" />
       </section>
     </div>
+    <section className="mt-3 min-w-0 border-t border-slate-100 pt-2"><label htmlFor={`${requirement.id}-impact`} className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business impact</label><textarea id={`${requirement.id}-impact`} data-ba-req-id={`${requirement.id}-impact`} aria-label={`${requirement.id} business impact`} rows={1} className="ba-rtm-cell-editor block min-h-8 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 bg-white px-2 py-1 text-xs leading-5 text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the expected value or outcome" value={requirement.businessImpact} onChange={(event) => onUpdate(requirement.id, { businessImpact: event.target.value })} /></section>
     <section className="mt-3 w-full" aria-label={`${requirement.id} tasks`}><div className="mb-1 flex items-center justify-between gap-2"><h3 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tasks</h3><button type="button" className="inline-flex h-6 items-center gap-1 border border-slate-200 px-2 text-[10px] font-semibold text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => onAddTask(requirement.id)}><Plus aria-hidden="true" size={12} />Add task</button></div><div className="space-y-1">{requirement.tasks.map((task) => <RequirementTaskRow key={task.id} requirementId={requirement.id} task={task} onUpdate={(changes) => onUpdateTask(requirement.id, task.id, changes)} onRemove={() => onRemoveTask(requirement.id, task.id)} onSaveToClickUp={() => onSaveTaskToClickUp(requirement, task)} savingToClickUp={savingTaskId === task.id} />)}{!requirement.tasks.length && <p className="border border-dashed border-slate-200 px-2 py-1.5 text-[11px] text-slate-400">No tasks added.</p>}</div></section>
     <footer className="mt-3 border-t border-slate-100 pt-2 text-[10px] text-slate-600">Created {timestampText(requirement.createdAt)} <span aria-hidden="true">·</span> Updated {timestampText(requirement.updatedAt)}</footer>
   </article>;
@@ -227,6 +253,7 @@ async function renderXlsx(project: BAProject) {
     { header: "Category", key: "category", width: 20 }, { header: "MoSCoW Priority", key: "priority", width: 18 },
     { header: "User Story", key: "userStory", width: 38 }, { header: "Test Case Ref", key: "testCase", width: 18 },
     { header: "Verification Status", key: "verification", width: 20 }, { header: "Tasks", key: "tasks", width: 38 },
+    { header: "Business Impact", key: "businessImpact", width: 42 },
   ];
   for (const requirement of project.requirements) sheet.addRow({ ...requirement, tasks: requirement.tasks.map((task) => `${task.done ? "[x]" : "[ ]"} ${task.title}`).join("\n") });
   const header = sheet.getRow(1);
@@ -242,7 +269,7 @@ async function renderXlsx(project: BAProject) {
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: statusFill[requirement.verification] } };
     sheet.getRow(index + 2).alignment = { vertical: "top", wrapText: true };
   });
-  sheet.autoFilter = { from: "A1", to: `H${project.requirements.length + 1}` };
+  sheet.autoFilter = { from: "A1", to: `I${project.requirements.length + 1}` };
 
   const summary = workbook.addWorksheet("Summary");
   summary.columns = [{ header: "Measure", key: "measure", width: 34 }, { header: "Value", key: "value", width: 22 }];
@@ -267,7 +294,7 @@ function meetingNotes(meeting: ArchivedMeeting) {
 }
 
 function templateContent(kind: string, project: BAProject) {
-  const requirements = project.requirements.map((item) => `${item.id} (${item.priority}, ${item.category})\n${item.statement}`).join("\n\n") || "No requirements have been recorded.";
+  const requirements = project.requirements.map((item) => `${item.id} (${item.priority}, ${item.category})\n${item.statement}${item.businessImpact ? `\nBusiness impact: ${item.businessImpact}` : ""}`).join("\n\n") || "No requirements have been recorded.";
   const phases = project.phases.map((phase) => `${phase.name}: ${phase.startDate || "Start date not set"} to ${phase.targetDate || "Target date not set"}`).join("\n");
   const signoff = kind === "Stakeholder Sign-Off Certificate" ? "\n\nStakeholder sign-off\nName: ______________________________\nRole: _______________________________\nDecision: ___________________________\nSignature: __________________________\nDate: _______________________________" : "";
   return `${kind}\n\nProject: ${project.name}\nPrepared: ${new Date().toLocaleDateString()}\n\nProject context\n${project.description || "Add the project purpose and context."}\n\nRequirements\n${requirements}\n\nDelivery phases\n${phases}\n\nDecisions and notes\n${project.discoveryNotes || "Add discovery notes and decisions."}${signoff}`;
@@ -290,6 +317,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [meetingError, setMeetingError] = useState("");
   const [generatingId, setGeneratingId] = useState("");
   const [generatingRequirementId, setGeneratingRequirementId] = useState("");
+  const [classifyingRequirementId, setClassifyingRequirementId] = useState("");
   const [generatingTestCaseId, setGeneratingTestCaseId] = useState("");
   const [generatingAcceptanceCriteriaId, setGeneratingAcceptanceCriteriaId] = useState("");
   const [savingTaskId, setSavingTaskId] = useState("");
@@ -395,7 +423,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const addRequirement = () => {
     if (!project) return;
     const now = new Date().toISOString();
-    const requirement: BARequirement = { id: nextRequirementId(project.requirements), createdAt: now, updatedAt: now, statement: "", category: "Functional", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] };
+    const requirement: BARequirement = { id: nextRequirementId(project.requirements), createdAt: now, updatedAt: now, statement: "", businessImpact: "", category: "Functional", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] };
     updateProject((current) => ({ ...current, requirements: [...current.requirements, requirement] }));
     setFilterCategory("All categories");
     setFilterPriority("All priorities");
@@ -520,6 +548,25 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       updateRequirement(requirement.id, { statement: body.statement.trim() });
     } catch (error) { window.alert(error instanceof Error ? error.message : "Requirement generation failed."); }
     finally { setGeneratingRequirementId(""); }
+  };
+
+  const classifyRequirement = async (requirement: BARequirement) => {
+    if (!project || !requirement.statement.trim()) return;
+    setClassifyingRequirementId(requirement.id);
+    try {
+      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        type: "classify-impact", id: requirement.id, statement: requirement.statement, context: project.description,
+        userStory: requirement.userStory, acceptanceCriteria: requirement.acceptanceCriteria, testCase: requirement.testCase,
+        tasks: requirement.tasks.map(({ title, done }) => ({ title, done })),
+      }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "AI suggestions are unavailable right now.");
+      if (!CATEGORIES.includes(body.category) || !(PRIORITIES as string[]).includes(body.priority) || typeof body.businessImpact !== "string" || !body.businessImpact.trim()) {
+        throw new Error("AI could not return usable category, priority, and impact suggestions. Try again.");
+      }
+      updateRequirement(requirement.id, { category: body.category, priority: body.priority, businessImpact: body.businessImpact.trim().slice(0, 3000) });
+    } catch (error) { window.alert(error instanceof Error ? error.message : "AI suggestions are unavailable right now."); }
+    finally { setClassifyingRequirementId(""); }
   };
 
   const grillRequest = async (type: "grill-question" | "grill-refine", requirementId: string, statement: string, turns: GrillTurn[]) => {
@@ -689,9 +736,9 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         </div>
         {project.requirements.length > 0 && <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-700" aria-label="Requirement category breakdown">{CATEGORIES.map((category) => <span key={category}>{category}: {filteredRequirements.filter((item) => item.category === category).length}</span>)}</div>}
         {project.requirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements yet. Add one here or tag a line in Elicitation with <code className="font-mono text-[#003366]">@REQ-001: requirement</code>.</div> : filteredRequirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements match these filters.</div> : requirementsView === "table" ? <>
-          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="table-fixed border-collapse text-left text-xs" style={{ width: `${state.tableColumnWidths.reduce((total, width) => total + width, 0)}px`, minWidth: "100%" }}><colgroup>{state.tableColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Tasks", "Story / criteria"].map((heading, index) => <th key={heading} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{heading}<button type="button" role="separator" aria-orientation="vertical" aria-label={`Resize ${heading} column`} aria-valuenow={state.tableColumnWidths[index]} aria-valuemin={BA_MIN_COLUMN_WIDTHS[index]} aria-valuemax={720} tabIndex={0} className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none border-0 bg-transparent p-0 hover:bg-[#C9A84C]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onPointerDown={(event) => startColumnResize(event, index)} onPointerMove={moveColumnResize} onPointerUp={stopColumnResize} onPointerCancel={stopColumnResize} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, state.tableColumnWidths[index] + (event.key === "ArrowRight" ? 12 : -12)); } }} /></th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
+          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="table-fixed border-collapse text-left text-xs" style={{ width: `${state.tableColumnWidths.reduce((total, width) => total + width, 0)}px`, minWidth: "100%" }}><colgroup>{state.tableColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Tasks", "Story / criteria", "Business impact"].map((heading, index) => <th key={heading} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{heading}<button type="button" role="separator" aria-orientation="vertical" aria-label={`Resize ${heading} column`} aria-valuenow={state.tableColumnWidths[index]} aria-valuemin={BA_MIN_COLUMN_WIDTHS[index]} aria-valuemax={720} tabIndex={0} className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none border-0 bg-transparent p-0 hover:bg-[#C9A84C]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onPointerDown={(event) => startColumnResize(event, index)} onPointerMove={moveColumnResize} onPointerUp={stopColumnResize} onPointerCancel={stopColumnResize} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, state.tableColumnWidths[index] + (event.key === "ArrowRight" ? 12 : -12)); } }} /></th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
             <td className="align-top border border-slate-200/60 px-2 py-2 font-medium tabular-nums text-[#003366]"><div className="flex items-center justify-between gap-1"><span className="whitespace-nowrap">{item.id}</span><button type="button" aria-label={`View details for ${item.id}`} title="View requirement details" className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[#31577D] hover:bg-[#FBF7E9] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId(item.id)}><Eye aria-hidden="true" size={14} /></button></div></td>
-            <td className="align-top border border-slate-200/60 px-2 py-1.5"><textarea data-ba-req-id={item.id} aria-label={`${item.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.statement} onChange={(event) => updateRequirement(item.id, { statement: event.target.value })} /></td>
+            <td className="align-top border border-slate-200/60 px-2 py-1.5"><div className="relative"><textarea data-ba-req-id={item.id} aria-label={`${item.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 pr-8 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.statement} onChange={(event) => updateRequirement(item.id, { statement: event.target.value })} /><span className="absolute right-1 top-1"><RequirementClassificationAction requirementId={item.id} generating={classifyingRequirementId === item.id} onClassify={() => void classifyRequirement(item)} disabled={Boolean(classifyingRequirementId) && classifyingRequirementId !== item.id || !item.statement.trim()} /></span></div></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} category`} className={`${cellSelectClass} ${categoryColor[item.category]}`} value={item.category} onChange={(event) => updateRequirement(item.id, { category: event.target.value as RequirementCategory })}>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} priority`} className={`${cellSelectClass} ${priorityColor[item.priority]}`} value={item.priority} onChange={(event) => updateRequirement(item.id, { priority: event.target.value as MoscowPriority | "" })}><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><RichTextEditor value={item.userStory} onChange={(userStory) => updateRequirement(item.id, { userStory })} label={`${item.id} user story`} placeholder="Add a concise user story" /></td>
@@ -699,8 +746,9 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} verification status`} className={`${cellSelectClass} ${verificationColor[item.verification]}`} value={item.verification} onChange={(event) => updateRequirement(item.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button type="button" aria-label={`View ${item.tasks.length} tasks for ${item.id}`} onClick={() => setDetailRequirementId(item.id)} className="min-h-7 w-full text-left text-xs text-slate-700 hover:text-[#003366]">{item.tasks.length ? `${item.tasks.filter((task) => task.done).length}/${item.tasks.length} complete` : <span className="text-slate-400">Add tasks in card view</span>}</button></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><RichTextEditor className="mt-1" value={item.acceptanceCriteria} onChange={(acceptanceCriteria) => updateRequirement(item.id, { acceptanceCriteria })} label={`${item.id} acceptance criteria`} placeholder="Add concise acceptance criteria" /></details></td>
+            <td className="align-top border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} business impact`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.businessImpact} placeholder="Expected value or outcome" onChange={(event) => updateRequirement(item.id, { businessImpact: event.target.value })} /></td>
           </tr>)}</tbody></table></div>
-        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateRequirement={(item, prompt) => void generateRequirement(item, prompt)} onGrillRequirement={(item) => void startRequirementGrill(item)} onGenerateStory={(item, prompt) => void generateStory(item, prompt)} onGenerateTestCase={(item, prompt) => void generateTestCase(item, prompt)} onGenerateAcceptanceCriteria={(item, prompt) => void generateAcceptanceCriteria(item, prompt)} onAddTask={addRequirementTask} onUpdateTask={updateRequirementTask} onRemoveTask={removeRequirementTask} onSaveTaskToClickUp={(item, task) => void openClickUpTaskSave(item, task)} savingTaskId={savingTaskId} generatingRequirement={generatingRequirementId === requirement.id} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
+        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateRequirement={(item, prompt) => void generateRequirement(item, prompt)} onGrillRequirement={(item) => void startRequirementGrill(item)} onGenerateStory={(item, prompt) => void generateStory(item, prompt)} onGenerateTestCase={(item, prompt) => void generateTestCase(item, prompt)} onGenerateAcceptanceCriteria={(item, prompt) => void generateAcceptanceCriteria(item, prompt)} onClassifyRequirement={(item) => void classifyRequirement(item)} onAddTask={addRequirementTask} onUpdateTask={updateRequirementTask} onRemoveTask={removeRequirementTask} onSaveTaskToClickUp={(item, task) => void openClickUpTaskSave(item, task)} savingTaskId={savingTaskId} generatingRequirement={generatingRequirementId === requirement.id} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} classifying={classifyingRequirementId === requirement.id} classificationPending={Boolean(classifyingRequirementId)} />)}</div>}
       </section>}
 
       {tab === "elicitation" && <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -720,6 +768,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5"><div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#31577D]">{project?.name || "Business Analysis"}</p><h2 id="ba-requirement-detail-title" className="mt-1 font-serif text-xl font-bold italic text-[#003366]">{detailRequirement.id}</h2></div><button type="button" aria-label="Close requirement details" className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId("")}><X aria-hidden="true" size={15} /></button></header>
       <dl className="grid grid-cols-1 gap-px bg-slate-200 sm:grid-cols-2">
         <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business requirement</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.statement || "—"}</dd></div>
+        <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business impact</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.businessImpact || "—"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Category</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.category}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">MoSCoW priority</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.priority || "Unprioritized"}</dd></div>
         <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Verification</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.verification}</dd></div>

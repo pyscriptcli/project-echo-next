@@ -9,8 +9,8 @@ export const BA_PHASES: Array<{ name: string; deliverables: string[] }> = [
   { name: "Post-Go-Live & Hypercare", deliverables: ["PIR retrospective", "BAU handover"] },
 ];
 
-export const BA_MIN_COLUMN_WIDTHS = [100, 220, 100, 115, 240, 280, 110, 140, 150];
-export const DEFAULT_BA_COLUMN_WIDTHS = [110, 240, 110, 125, 260, 300, 120, 160, 175];
+export const BA_MIN_COLUMN_WIDTHS = [100, 220, 100, 115, 240, 280, 110, 140, 150, 220];
+export const DEFAULT_BA_COLUMN_WIDTHS = [110, 240, 110, 125, 260, 300, 120, 160, 175, 240];
 export const EMPTY_BA_STATE: BAWorkspaceState = { projects: [], tableColumnWidths: DEFAULT_BA_COLUMN_WIDTHS };
 
 export function createBAProject(name = "New BA Project"): BAProject {
@@ -64,7 +64,7 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
       const legacyMilestone = text(req.milestone, 300);
       if (!tasks.length && legacyMilestone) tasks.push({ id: `${text(req.id, 40)}-legacy-task`, title: legacyMilestone, done: false });
       return [{
-        id: text(req.id, 40), createdAt, updatedAt: text(req.updatedAt, 40) || createdAt, statement: text(req.statement, 5000),
+        id: text(req.id, 40), createdAt, updatedAt: text(req.updatedAt, 40) || createdAt, statement: text(req.statement, 5000), businessImpact: text(req.businessImpact, 3000),
         category: categories.includes(String(req.category)) ? req.category as BAProject["requirements"][number]["category"] : "Business",
         priority: req.priority === "" ? "" : priorities.includes(String(req.priority)) ? req.priority as BAProject["requirements"][number]["priority"] : "Must Have",
         userStory: text(req.userStory, 5000), acceptanceCriteria: text(req.acceptanceCriteria, 10000),
@@ -117,7 +117,7 @@ export function requirementsFromNotes(notes: string, existing: BAProject["requir
     const statement = match[2].trim();
     const index = next.findIndex((requirement) => requirement.id.toUpperCase() === id);
     if (index >= 0) next[index] = { ...next[index], statement, updatedAt: now };
-    else next.push({ id, createdAt: now, updatedAt: now, statement, category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] });
+    else next.push({ id, createdAt: now, updatedAt: now, statement, businessImpact: "", category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", tasks: [] });
   }
   return next;
 }
