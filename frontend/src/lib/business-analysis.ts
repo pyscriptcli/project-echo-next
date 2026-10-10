@@ -9,7 +9,8 @@ export const BA_PHASES: Array<{ name: string; deliverables: string[] }> = [
   { name: "Post-Go-Live & Hypercare", deliverables: ["PIR retrospective", "BAU handover"] },
 ];
 
-export const DEFAULT_BA_COLUMN_WIDTHS = [110, 260, 110, 120, 220, 140, 115, 140, 170];
+export const BA_MIN_COLUMN_WIDTHS = [100, 220, 100, 115, 240, 280, 110, 140, 150];
+export const DEFAULT_BA_COLUMN_WIDTHS = [110, 240, 110, 125, 260, 300, 120, 160, 175];
 export const EMPTY_BA_STATE: BAWorkspaceState = { projects: [], tableColumnWidths: DEFAULT_BA_COLUMN_WIDTHS };
 
 export function createBAProject(name = "New BA Project"): BAProject {
@@ -32,7 +33,7 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
   const source = rawState.projects.slice(0, 50);
   const rawWidths = Array.isArray(rawState.tableColumnWidths) ? rawState.tableColumnWidths : null;
   const tableColumnWidths = rawWidths
-    ? DEFAULT_BA_COLUMN_WIDTHS.map((fallback, index) => Math.max(72, Math.min(720, Number.isFinite(Number(rawWidths[index])) ? Number(rawWidths[index]) : fallback)))
+    ? DEFAULT_BA_COLUMN_WIDTHS.map((fallback, index) => Math.max(BA_MIN_COLUMN_WIDTHS[index], Math.min(720, Number.isFinite(Number(rawWidths[index])) ? Number(rawWidths[index]) : fallback)))
     : [...DEFAULT_BA_COLUMN_WIDTHS];
   const text = (value: unknown, limit = 500) => typeof value === "string" ? value.slice(0, limit) : "";
   const categories = ["Functional", "Non-Functional", "Technical", "Compliance", "Business"];
