@@ -45,6 +45,7 @@ import {
 import { WORKSPACE_STATUS_CATEGORIES, ALL_WORKSPACE_STATUSES } from "@/lib/clickupStatuses";
 import { SearchableMemberSelect } from "./SearchableMemberSelect";
 import { formatEchoDate } from "@/lib/dateUtils";
+import { clearBrowserPageCache, readBrowserPageCache, writeBrowserPageCache } from "@/lib/browserPageCache";
 
 export interface ClickUpTask {
   id: string;
@@ -74,6 +75,7 @@ export interface ClickUpTask {
 }
 
 interface TasksViewProps {
+  userId?: string;
   onNavigateToMeetings?: () => void;
   onSelectMeeting?: (meetingTitle: string) => void;
   focusedTaskId?: string | null;
@@ -81,6 +83,7 @@ interface TasksViewProps {
 }
 
 export default function TasksView({
+  userId,
   onNavigateToMeetings,
   onSelectMeeting,
   focusedTaskId,
@@ -162,7 +165,20 @@ export default function TasksView({
     if (listId) setSelectedListId(listId);
     if (listName) setSelectedListName(listName);
 
-    loadTasks(false, listId || undefined);
+    void (async () => {
+      const cacheKey = `tasks:${listId || "default"}`;
+      const cached = userId ? await readBrowserPageCache<Awaited<ReturnType<typeof fetchClickUpTasks>>>(userId, cacheKey) : undefined;
+      if (cached) {
+        setTasks(cached.tasks || []);
+        setAvailableMembers(cached.members || []);
+        setStatusCategories(cached.categories || WORKSPACE_STATUS_CATEGORIES);
+        if (cached.listId) setSelectedListId(cached.listId);
+        if (cached.listName) setSelectedListName(cached.folderName ? `${cached.folderName} / ${cached.listName}` : cached.listName);
+        if (cached.spaceName) setSelectedSpaceName(cached.spaceName);
+        setLoading(false);
+      }
+      void loadTasks(false, listId || undefined, Boolean(cached));
+    })();
     loadDiscoveredLists(false);
   }, []);
 
@@ -187,9 +203,9 @@ export default function TasksView({
     }
   }, [focusedTaskId, tasks]);
 
-  const loadTasks = async (showRefreshIndicator = false, listIdOverride?: string) => {
+  const loadTasks = async (showRefreshIndicator = false, listIdOverride?: string, background = false) => {
     if (showRefreshIndicator) setRefreshing(true);
-    else setLoading(true);
+    else if (!background && tasks.length === 0) setLoading(true);
     setError(null);
     setNeedsListSelection(false);
 
@@ -197,6 +213,7 @@ export default function TasksView({
 
     try {
       const data = await fetchClickUpTasks(activeListId || undefined);
+      if (userId) void writeBrowserPageCache(userId, `tasks:${activeListId || "default"}`, data);
       setTasks(data.tasks || []);
       if (data.members && Array.isArray(data.members)) {
         setAvailableMembers(data.members);
@@ -220,6 +237,7 @@ export default function TasksView({
       setNeedsListSelection(false);
     } catch (err: any) {
       console.warn("Failed to load ClickUp tasks:", err.message);
+      if (userId && (err.status === 401 || err.status === 403)) await clearBrowserPageCache(userId);
       setError(err.message);
       if (err.needsAuth || err.status === 401 || err.message.includes("authentication") || err.message.includes("Token")) {
         setNeedsAuth(true);
@@ -281,7 +299,16 @@ export default function TasksView({
     setIsListDropdownOpen(false);
     setNeedsListSelection(false);
     setError(null);
-    loadTasks(false, list.id);
+    void (async () => {
+      const cached = userId ? await readBrowserPageCache<Awaited<ReturnType<typeof fetchClickUpTasks>>>(userId, `tasks:${list.id}`) : undefined;
+      if (cached) {
+        setTasks(cached.tasks || []);
+        setAvailableMembers(cached.members || []);
+        setStatusCategories(cached.categories || WORKSPACE_STATUS_CATEGORIES);
+        setLoading(false);
+      }
+      void loadTasks(false, list.id, Boolean(cached));
+    })();
   };
 
   const handleSaveCredentials = async () => {

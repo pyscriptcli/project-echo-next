@@ -24,6 +24,7 @@ export type NavView = "dashboard" | "project" | "tasks" | "notebook" | "market-i
 interface SidebarProps {
   currentView: NavView;
   onSelectView: (view: NavView) => void;
+  onPreloadView?: (view: NavView) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   user?: {
@@ -44,6 +45,7 @@ interface SidebarProps {
 export function Sidebar({
   currentView,
   onSelectView,
+  onPreloadView,
   isCollapsed: externalCollapsed,
   onToggleCollapse,
   user,
@@ -171,6 +173,8 @@ export function Sidebar({
         key={item.id}
         type="button"
         onClick={() => onSelectView(item.id)}
+        onPointerEnter={() => onPreloadView?.(item.id)}
+        onFocus={() => onPreloadView?.(item.id)}
         title={effectiveCollapsed ? item.label : undefined}
         className={`w-full flex items-center gap-2.5 ${nested ? "pl-4" : "px-2.5"} py-2 text-[13px] font-normal transition-colors cursor-pointer ${
           isActive

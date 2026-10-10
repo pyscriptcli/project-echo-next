@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { DeltaReview, DeltaReviewList } from "@/components/DeltaReview";
 import type { SavedDeltaReview } from "@/lib/delta/localStore";
 import { sitesForSubproject } from "@/lib/projectSites";
+import { getBrowserPageCache, readBrowserPageCache, refreshBrowserPageQuery, writeBrowserPageCache } from "@/lib/browserPageCache";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -267,9 +268,10 @@ function routeId(segment: string) {
   return segment.match(/-(\d+)$/)?.[1] || null;
 }
 
-const PROJECT_CLIENT_CACHE_TTL_MS = 30_000;
 const projectClientCache = new Map<string, { data: ProjectData; updatedAt: number }>();
 const galleryClientCache = new Map<string, { data: ProjectCardData[]; updatedAt: number }>();
+const projectCacheId = (ownerId: string | undefined, folderId: string) => `${ownerId || "anonymous"}:${folderId}`;
+const galleryCacheId = (ownerId: string | undefined) => `${ownerId || "anonymous"}:projects`;
 
 function matchRouteSegment<T extends { name: string; id: string }>(items: T[], segment: string) {
   return items.find((item) => segment === routeSlug(item.name) || segment === `${routeSlug(item.name)}-${item.id}`);
@@ -1056,32 +1058,34 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [savingAssigneeListId, setSavingAssigneeListId] = useState<string | null>(null);
   const [assigneeSyncMessage, setAssigneeSyncMessage] = useState("");
-  const galleryRequest = useRef<Promise<ProjectCardData[]> | null>(null);
   const selectionRequestId = useRef(0);
-
-  useEffect(() => {
-    projectClientCache.clear();
-    galleryClientCache.clear();
-    galleryRequest.current = null;
-  }, [userId]);
 
   const loadProjectSelection = useCallback(async () => {
     const requestId = ++selectionRequestId.current;
-    setSelectionLoaded(false);
     setSelectionError(null);
+    const applySelection = (folderIds: string[]) => {
+      setSelectedProjectIds(folderIds);
+      setSelectionLoaded(true);
+    };
+    const memorySelection = getBrowserPageCache<{ folderIds: string[] }>(userId, "projects:selection");
+    if (memorySelection) applySelection(memorySelection.folderIds || []);
+    else setSelectionLoaded(false);
     try {
+      const persistedSelection = memorySelection || (userId ? await readBrowserPageCache<{ folderIds: string[] }>(userId, "projects:selection") : undefined);
+      if (persistedSelection && !memorySelection && requestId === selectionRequestId.current) applySelection(persistedSelection.folderIds || []);
       const response = await fetch("/api/projects/selection", { cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Project selection could not be loaded.");
       if (requestId !== selectionRequestId.current) return;
-      setSelectedProjectIds(Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : []);
+      const folderIds = Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : [];
+      applySelection(folderIds);
+      if (userId) void writeBrowserPageCache(userId, "projects:selection", { folderIds });
     } catch (loadError) {
       if (requestId !== selectionRequestId.current) return;
       setSelectionError(loadError instanceof Error ? loadError.message : "Project selection could not be loaded.");
-    } finally {
-      if (requestId === selectionRequestId.current) setSelectionLoaded(true);
+      if (!memorySelection) setSelectionLoaded(true);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void loadProjectSelection();
@@ -1089,31 +1093,28 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
   }, [loadProjectSelection]);
 
   const fetchGallery = useCallback(async (force = false) => {
-    if (force) galleryRequest.current = null;
-    const cached = galleryClientCache.get("projects");
+    const ownerId = userId || "anonymous";
+    const key = "projects:gallery";
+    const cacheId = galleryCacheId(ownerId);
+    const load = async () => {
+      const response = await fetch(`/api/tasks?action=project-gallery${force ? "&refresh=1" : ""}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw Object.assign(new Error(payload.error || "Unable to load projects."), { status: response.status });
+      return { projects: (Array.isArray(payload.projects) ? payload.projects : []) as ProjectCardData[] };
+    };
+    const cached = galleryClientCache.get(cacheId)?.data ? { projects: galleryClientCache.get(cacheId)!.data } : getBrowserPageCache<{ projects: ProjectCardData[] }>(ownerId, key) || (userId ? await readBrowserPageCache<{ projects: ProjectCardData[] }>(ownerId, key) : undefined);
     if (!force && cached) {
-      setProjects(cached.data);
-      if (Date.now() - cached.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS) return cached.data;
-      galleryRequest.current = null;
+      setProjects(cached.projects);
+      galleryClientCache.set(cacheId, { data: cached.projects, updatedAt: Date.now() });
+      void refreshBrowserPageQuery(ownerId, key, load).then((fresh) => { if (fresh) { setProjects(fresh.projects); galleryClientCache.set(cacheId, { data: fresh.projects, updatedAt: Date.now() }); } }).catch(() => undefined);
+      return cached.projects;
     }
-    if (!galleryRequest.current) {
-      galleryRequest.current = (async () => {
-        const response = await fetch(`/api/tasks?action=project-gallery${force ? "&refresh=1" : ""}`, { cache: "no-store" });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || "Unable to load projects.");
-        return (Array.isArray(payload.projects) ? payload.projects : []) as ProjectCardData[];
-      })();
-    }
-    try {
-      const loadedProjects = await galleryRequest.current;
-      galleryClientCache.set("projects", { data: loadedProjects, updatedAt: Date.now() });
-      setProjects(loadedProjects);
-      return loadedProjects;
-    } catch (loadError) {
-      galleryRequest.current = null;
-      throw loadError;
-    }
-  }, []);
+    const fresh = await refreshBrowserPageQuery(ownerId, key, load);
+    if (!fresh) throw new Error("Unable to load projects.");
+    setProjects(fresh.projects);
+    galleryClientCache.set(cacheId, { data: fresh.projects, updatedAt: Date.now() });
+    return fresh.projects;
+  }, [userId]);
 
   useEffect(() => {
     if (pathname !== "/projects") return;
@@ -1130,15 +1131,33 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
   }, [pathname, fetchGallery]);
 
   const fetchProject = useCallback(async (folderId: string, force = false): Promise<ProjectData> => {
-    const cached = projectClientCache.get(folderId);
-    if (!force && cached && Date.now() - cached.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS) return cached.data;
-    const response = await fetch(`/api/tasks?action=project-workspace&folderId=${encodeURIComponent(folderId)}${force ? "&refresh=1" : ""}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "Unable to load this project.");
-    const projectData = payload as ProjectData;
-    projectClientCache.set(folderId, { data: projectData, updatedAt: Date.now() });
+    const ownerId = userId || "anonymous";
+    const queryKey = `project:${folderId}`;
+    const cacheId = projectCacheId(ownerId, folderId);
+    const load = async () => {
+      const response = await fetch(`/api/tasks?action=project-workspace&folderId=${encodeURIComponent(folderId)}${force ? "&refresh=1" : ""}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw Object.assign(new Error(payload.error || "Unable to load this project."), { status: response.status });
+      return payload as ProjectData;
+    };
+    let cached = projectClientCache.get(cacheId)?.data || getBrowserPageCache<ProjectData>(ownerId, queryKey);
+    if (!cached && userId) cached = await readBrowserPageCache<ProjectData>(ownerId, queryKey);
+    if (!force && cached) {
+      projectClientCache.set(cacheId, { data: cached, updatedAt: Date.now() });
+      void refreshBrowserPageQuery(ownerId, queryKey, load).then((fresh) => {
+        if (!fresh) return;
+        projectClientCache.set(cacheId, { data: fresh, updatedAt: Date.now() });
+        void writeBrowserPageCache(ownerId, queryKey, fresh);
+        setData((current) => current?.folder.id === folderId ? fresh : current);
+      }).catch(() => undefined);
+      return cached;
+    }
+    const projectData = await refreshBrowserPageQuery(ownerId, queryKey, load);
+    if (!projectData) throw new Error("Unable to load this project.");
+    projectClientCache.set(cacheId, { data: projectData, updatedAt: Date.now() });
+    void writeBrowserPageCache(ownerId, queryKey, projectData);
     return projectData;
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     const segments = pathname.split("/").filter(Boolean).slice(1);
@@ -1159,9 +1178,9 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
     setView("overview");
     setError(null);
     const folderFromPath = routeId(segments[0]);
-    const cachedEntry = folderFromPath ? projectClientCache.get(folderFromPath) : null;
+    const cachedEntry = folderFromPath ? projectClientCache.get(projectCacheId(userId, folderFromPath)) : null;
     const cachedData = cachedEntry?.data || null;
-    const cachedIsFresh = Boolean(cachedEntry && Date.now() - cachedEntry.updatedAt < PROJECT_CLIENT_CACHE_TTL_MS);
+    const cachedIsFresh = Boolean(cachedEntry);
     const routeListId = segments.length > 1 ? routeId(segments[1]) : null;
     setTasksLoading(Boolean(segments.length > 1 && (!cachedData?.loadedTaskListIds?.includes(routeListId || "") || !cachedIsFresh)));
     if (cachedData && selectedProjectIds.includes(folderFromPath!)) {
@@ -1198,7 +1217,8 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.error || "Unable to load subproject tasks.");
             projectData = { ...projectData, tasks: [...projectData.tasks.filter((task) => task.listId !== subproject.id), ...(payload.tasks as ProjectTask[])], loadedTaskListIds: [...(projectData.loadedTaskListIds || []), subproject.id] };
-            projectClientCache.set(folderId, { data: projectData, updatedAt: Date.now() });
+            projectClientCache.set(projectCacheId(userId, folderId), { data: projectData, updatedAt: Date.now() });
+            if (userId) void writeBrowserPageCache(userId, `project:${folderId}`, projectData);
           }
           setTasksLoading(false);
         } else {
@@ -1216,7 +1236,7 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
       }
     })();
     return () => { active = false; };
-  }, [pathname, selectionLoaded, selectedProjectIds, fetchGallery, fetchProject]);
+  }, [pathname, selectionLoaded, selectedProjectIds, fetchGallery, fetchProject, userId]);
 
   useEffect(() => {
     if (screen !== "project" || view !== "calendar" || !data || data.lists.length === 0) return;
@@ -1230,15 +1250,19 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
         if (!active) return;
         const nextData = { ...data, tasks: payload.tasks as ProjectTask[], loadedTaskListIds: listIds };
         setData(nextData);
-        projectClientCache.set(data.folder.id, { data: nextData, updatedAt: Date.now() });
+        projectClientCache.set(projectCacheId(userId, data.folder.id), { data: nextData, updatedAt: Date.now() });
+        if (userId) void writeBrowserPageCache(userId, `project:${data.folder.id}`, nextData);
       })
       .catch((loadError: unknown) => { if (active) setError(loadError instanceof Error ? loadError.message : "Unable to load project calendar tasks."); });
     return () => { active = false; };
   }, [screen, view, data]);
 
   useEffect(() => {
-    if (data) projectClientCache.set(data.folder.id, { data, updatedAt: Date.now() });
-  }, [data]);
+    if (data) {
+      projectClientCache.set(projectCacheId(userId, data.folder.id), { data, updatedAt: Date.now() });
+      if (userId) void writeBrowserPageCache(userId, `project:${data.folder.id}`, data);
+    }
+  }, [data, userId]);
 
   const updateProjectTask = (changedTask: ProjectTask) => {
     setData((current) => {
@@ -1268,6 +1292,7 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
       if (!response.ok) throw new Error(payload.error || "Project selection could not be saved.");
       const savedIds = Array.isArray(payload.folderIds) ? payload.folderIds.map(String) : [];
       setSelectedProjectIds(savedIds);
+      if (userId) void writeBrowserPageCache(userId, "projects:selection", { folderIds: savedIds });
       setSelectionError(null);
       setSelectionLoaded(true);
       if (activeFolderId && !savedIds.includes(activeFolderId)) router.replace("/projects");
@@ -1305,7 +1330,7 @@ export function ProjectWorkspace({ userId }: { userId?: string }) {
         }
         return { ...freshData, tasks: freshTasks, loadedTaskListIds: loadedListIds };
       })
-      .then((freshData) => { setData(freshData); projectClientCache.set(activeFolderId, { data: freshData, updatedAt: Date.now() }); })
+      .then((freshData) => { setData(freshData); projectClientCache.set(projectCacheId(userId, activeFolderId), { data: freshData, updatedAt: Date.now() }); if (userId) void writeBrowserPageCache(userId, `project:${activeFolderId}`, freshData); })
       .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load this project."))
       .finally(() => setLoading(false));
   };

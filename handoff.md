@@ -175,6 +175,10 @@ The Demands page reads and writes structured `echoDemand` records in its mapped 
 
 ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Demands and project subproject reads.
 
+### Browser page cache
+
+`frontend/src/lib/browserPageCache.ts` stores signed-in user's page data in IndexedDB without a time-based expiry, keyed by user id and query. Views hydrate that snapshot first, then revalidate in the background; unchanged records retain object identity to avoid needless UI work. Sidebar hover/focus preloads data for allowed destinations. Logout, account change, and 401/403 responses clear that user's browser cache. Never cache OAuth credentials, and keep API permission checks in place: cached data is a display speed-up, not authorization. Data endpoints currently revalidate with their existing response shape; the client avoids replacing unchanged records, but this does not imply row-level delta transfer over the network.
+
 This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The deferred boundary is documented below.
 
 ## Key files
@@ -206,6 +210,15 @@ This is not yet a general workspace-wide ClickUp Docs/comments/MCP search. The d
 - `docs/ASK_ECHO_IMPLEMENTATION_PLAN.md` — original implementation plan and product boundaries.
 
 ## Changelog
+
+### Local 2026-10-10 — persistent page data cache
+
+- Added per-user IndexedDB cache with no TTL, cache-first hydration and background revalidation for meetings, projects, tasks, notebook, demands, and archive views; added allowed-page hover/focus preloading.
+- Preserved unchanged record references and invalidate cached data on authorization failures; no auth tokens are persisted.
+- Verification: `npx tsc --noEmit` and `git diff --check` passed; cache helper ESLint passed. Broader focused lint reports pre-existing component errors; tests not run.
+- Commit: uncommitted on `main`.
+- Risk: backend endpoints still return their current full response; unchanged records are not retransmitted selectively. Cache is browser-local and cannot synchronize edits across devices until refresh.
+- Next: user has not requested a push in this turn.
 
 ### Local 2026-10-10 — shared ClickUp loading and durable snapshots
 

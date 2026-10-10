@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useBrowserPageQuery } from "@/lib/browserPageCache";
 import { 
   DemandRecord, 
   DemandAssetClass, 
@@ -40,9 +41,10 @@ import {
 
 export interface DemandsViewProps {
   sector?: "all" | "retail" | "industrial";
+  userId?: string;
 }
 
-export function DemandsView({ sector = "all" }: DemandsViewProps) {
+export function DemandsView({ sector = "all", userId }: DemandsViewProps) {
   const router = useRouter();
   const activeAssetClass: DemandAssetClass = sector;
 
@@ -51,9 +53,6 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   };
 
   const [viewMode, setViewMode] = useState<DemandViewMode>("dashboard");
-  const [demands, setDemands] = useState<DemandRecord[]>([]);
-  const [isLoadingDemands, setIsLoadingDemands] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [trackingDemand, setTrackingDemand] = useState<DemandRecord | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -78,40 +77,21 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
   const requestDemands = useCallback(async (force = false) => {
     const response = await fetch(`/api/demands${force ? "?refresh=1" : ""}`, { cache: "no-store" });
     const data: { demands?: DemandRecord[]; error?: string } = await response.json();
-    if (!response.ok) throw new Error(data.error || "Unable to load demands.");
+    if (!response.ok) throw Object.assign(new Error(data.error || "Unable to load demands."), { status: response.status });
     return Array.isArray(data.demands) ? data.demands : [];
   }, []);
 
-  const loadDemands = useCallback(async (force = false) => {
-    setIsLoadingDemands(true);
-    setLoadError(null);
-    try {
-      setDemands(await requestDemands(force));
-      return true;
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Unable to load demands.");
-      return false;
-    } finally {
-      setIsLoadingDemands(false);
-    }
-  }, [requestDemands]);
+  const demandQuery = useBrowserPageQuery<{ demands: DemandRecord[] }>(userId, "demands:all", async () => ({ demands: await requestDemands() }), Boolean(userId));
+  const demands = demandQuery.data?.demands || [];
+  const isLoadingDemands = demandQuery.loading;
+  const loadError = demandQuery.data ? null : demandQuery.error || null;
 
-  useEffect(() => {
-    let current = true;
-    requestDemands()
-      .then((records) => {
-        if (current) setDemands(records);
-      })
-      .catch((error: unknown) => {
-        if (current) setLoadError(error instanceof Error ? error.message : "Unable to load demands.");
-      })
-      .finally(() => {
-        if (current) setIsLoadingDemands(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, [requestDemands]);
+  const loadDemands = useCallback(async (force = false) => {
+    if (!force) return (await demandQuery.refresh()) !== undefined;
+    const records = await requestDemands(true);
+    demandQuery.update(() => ({ demands: records }));
+    return true;
+  }, [demandQuery.refresh, demandQuery.update, requestDemands]);
 
   const handleSetPreset = (preset: DatePreset) => {
     let start = "";
@@ -201,7 +181,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to save this demand.");
     if (Array.isArray(data.created) && data.created.length > 0) {
-      setDemands((current) => [...data.created, ...current]);
+      demandQuery.update((current) => ({ demands: [...data.created, ...(current?.demands || [])] }));
     }
   };
 
@@ -214,7 +194,7 @@ export function DemandsView({ sector = "all" }: DemandsViewProps) {
     });
     const data: { demand?: DemandRecord; error?: string } = await response.json();
     if (!response.ok || !data.demand) throw new Error(data.error || "Unable to update this demand.");
-    setDemands((current) => current.map((record) => record.id === demand.id ? data.demand! : record));
+    demandQuery.update((current) => ({ demands: (current?.demands || []).map((record) => record.id === demand.id ? data.demand! : record) }));
   };
 
   const handleRefreshDemands = async () => {

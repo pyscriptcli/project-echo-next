@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { clearBrowserPageCache, readBrowserPageCache, writeBrowserPageCache } from "@/lib/browserPageCache";
 import {
   AlertCircle,
   BarChart3,
@@ -136,7 +137,7 @@ function MemberAvatar({ member }: { member: NotebookMember }) {
   );
 }
 
-export function NotebookView({ currentUserName }: { currentUserName?: string }) {
+export function NotebookView({ currentUserName, userId }: { currentUserName?: string; userId?: string }) {
   const today = localIso(new Date());
   const [activeTab, setActiveTab] = useState<"today" | "week" | "insights">("today");
   const [selectedDate, setSelectedDate] = useState(today);
@@ -164,22 +165,32 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
     setTargetGenMonth(selectedDate.slice(0, 7));
   }, [selectedDate]);
 
-  const loadNotebook = async () => {
-    setLoading(true);
+  const loadNotebook = async (background = Boolean(payload)) => {
+    if (!background) setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/notebook", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || "Unable to load the daily log.");
+      if (!response.ok) throw Object.assign(new Error(body.error || "Unable to load the daily log."), { status: response.status });
       setPayload(body);
+      if (userId) void writeBrowserPageCache(userId, "notebook:current", body as NotebookPayload);
     } catch (loadError) {
+      if (userId && loadError && typeof loadError === "object" && "status" in loadError && [401, 403].includes(Number(loadError.status))) await clearBrowserPageCache(userId);
       setError(loadError instanceof Error ? loadError.message : "Unable to load the daily log.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadNotebook(); }, []);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const cached = userId ? await readBrowserPageCache<NotebookPayload>(userId, "notebook:current") : undefined;
+      if (cached && active) { setPayload(cached); setLoading(false); }
+      if (active) await loadNotebook(Boolean(cached));
+    })();
+    return () => { active = false; };
+  }, [userId]);
 
   useEffect(() => {
     if (!payload?.members.length || selectedMemberId) return;
@@ -456,7 +467,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
         <AlertCircle className="mx-auto text-red-500 mb-3" size={26} />
         <h1 className="text-xl">Notebook unavailable</h1>
         <p className="text-sm text-gray-600 mt-2">{error}</p>
-        <button type="button" onClick={loadNotebook} className="btn-outline mt-5 inline-flex items-center gap-2"><RefreshCw size={14} /> Try again</button>
+        <button type="button" onClick={() => loadNotebook()} className="btn-outline mt-5 inline-flex items-center gap-2"><RefreshCw size={14} /> Try again</button>
       </div>
     );
   }
@@ -483,7 +494,7 @@ export function NotebookView({ currentUserName }: { currentUserName?: string }) 
           )}
           <button
             type="button"
-            onClick={loadNotebook}
+            onClick={() => loadNotebook()}
             disabled={loading}
             className="h-10 px-3 bg-[#FFFCFB] border border-gray-300 text-[#003366] text-sm font-semibold flex items-center gap-2 hover:border-[#C9AB4C] disabled:opacity-50"
           >

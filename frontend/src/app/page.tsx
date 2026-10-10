@@ -56,6 +56,7 @@ import { mergeMeetings } from "@/lib/meetingsData";
 import { formatEchoDate } from "@/lib/dateUtils";
 import type { DiscoveredTopicItem } from "@/app/api/discover-topics/route";
 import { navRouteForView, navViewForPath } from "@/lib/navRoutes";
+import { clearBrowserPageCache, prefetchPageApis, useBrowserPageQuery } from "@/lib/browserPageCache";
 import { 
   Upload, 
   X, 
@@ -104,6 +105,11 @@ const VENUE_OPTIONS = [
   "Online Meeting",
   "Other / Custom..."
 ];
+
+type SignedInUser = { id: number | string; username: string; email: string; color?: string; profilePicture?: string | null; initials?: string };
+type GovernanceSnapshot = { allowedPages: NavView[]; sidebarOrder: NavView[]; isAdmin: boolean; askEchoEnabled: boolean; allowedFeatures: string[] };
+let activeBrowserUser: SignedInUser | null = null;
+const governanceByUser = new Map<string, GovernanceSnapshot>();
 
 function formatMeetingDate(value?: string) {
   if (!value) return "Automatic";
@@ -227,15 +233,8 @@ export default function Home() {
   const pathname = usePathname();
   const router = useRouter();
   // ClickUp OAuth Authentication State
-  const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
-  const [authUser, setAuthUser] = useState<{
-    id: number | string;
-    username: string;
-    email: string;
-    color?: string;
-    profilePicture?: string | null;
-    initials?: string;
-  } | null>(null);
+  const [authStatus, setAuthStatus] = useState<"loading" | "authenticated" | "unauthenticated">(activeBrowserUser ? "authenticated" : "loading");
+  const [authUser, setAuthUser] = useState<SignedInUser | null>(activeBrowserUser);
 
   const checkAuth = async () => {
     try {
@@ -243,6 +242,12 @@ export default function Home() {
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.user) {
+          const nextUser = data.user as SignedInUser;
+          if (activeBrowserUser && String(activeBrowserUser.id) !== String(nextUser.id)) {
+            void clearBrowserPageCache(String(activeBrowserUser.id));
+            governanceByUser.delete(String(activeBrowserUser.id));
+          }
+          activeBrowserUser = nextUser;
           setAuthUser(data.user);
           setAuthStatus("authenticated");
           return;
@@ -251,11 +256,17 @@ export default function Home() {
     } catch (err) {
       console.error("[Auth] Check failed:", err);
     }
+    if (activeBrowserUser) {
+      void clearBrowserPageCache(String(activeBrowserUser.id));
+      governanceByUser.delete(String(activeBrowserUser.id));
+    }
+    activeBrowserUser = null;
+    setAuthUser(null);
     setAuthStatus("unauthenticated");
   };
 
   useEffect(() => {
-    checkAuth();
+    if (!activeBrowserUser) void checkAuth();
   }, []);
 
   const studioRecorder = useStudioRecorder();
@@ -269,6 +280,11 @@ export default function Home() {
     } catch (err) {
       console.error("[Auth] Logout failed:", err);
     }
+    if (activeBrowserUser) {
+      void clearBrowserPageCache(String(activeBrowserUser.id));
+      governanceByUser.delete(String(activeBrowserUser.id));
+    }
+    activeBrowserUser = null;
     setAuthUser(null);
     setAuthStatus("unauthenticated");
     window.location.href = "/";
@@ -399,7 +415,7 @@ export default function Home() {
   const [recordedDurationSeconds, setRecordedDurationSeconds] = useState<number | null>(null);
 
   // Navigation Shell & View State
-  const [currentView, setCurrentView] = useState<NavView>("dashboard");
+  const [currentView, setCurrentView] = useState<NavView>(() => navViewForPath(pathname || "") || "dashboard");
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsNotetakerFullscreen(document.fullscreenElement === notetakerRef.current);
@@ -418,14 +434,34 @@ export default function Home() {
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
   // Page Access Governance state
-  const [allowedPages, setAllowedPages] = useState<NavView[]>([]);
-  const [governanceStatus, setGovernanceStatus] = useState<"loading" | "ready" | "error">("loading");
+  const warmGovernance = authUser ? governanceByUser.get(String(authUser.id)) : undefined;
+  const [allowedPages, setAllowedPages] = useState<NavView[]>(warmGovernance?.allowedPages || []);
+  const [governanceStatus, setGovernanceStatus] = useState<"loading" | "ready" | "error">(warmGovernance ? "ready" : "loading");
   const [sidebarOrder, setSidebarOrder] = useState<NavView[]>([
     "dashboard", "project", "tasks", "notebook", "market-insights", "demands", "meetings", "minutes", "forms", "delta",
   ]);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [askEchoEnabled, setAskEchoEnabled] = useState(false);
-  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
+  const [isAdminUser, setIsAdminUser] = useState(warmGovernance?.isAdmin || false);
+  const [askEchoEnabled, setAskEchoEnabled] = useState(warmGovernance?.askEchoEnabled || false);
+  const [allowedFeatures, setAllowedFeatures] = useState<string[]>(warmGovernance?.allowedFeatures || []);
+
+  const canReadMeetings = isAdminUser || authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com" || allowedPages.includes("meetings") || allowedPages.includes("dashboard");
+  const meetingsQuery = useBrowserPageQuery<{ meetings: ArchivedMeeting[] }>(
+    authUser?.id ? String(authUser.id) : undefined,
+    "meetings:all",
+    async () => {
+      const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+      const result = await fetchMeetings(undefined, personalListId);
+      return { meetings: Array.isArray(result.meetings) ? result.meetings : [] };
+    },
+    governanceStatus === "ready" && canReadMeetings && (currentView === "dashboard" || currentView === "meetings" || currentView === "minutes"),
+  );
+
+  useEffect(() => {
+    const nextMeetings = meetingsQuery.data?.meetings;
+    if (!nextMeetings) return;
+    setArchivedMeetings(nextMeetings);
+    if (nextMeetings.length > 0) setSelectedMeetingId((current) => current || nextMeetings[0].id);
+  }, [meetingsQuery.data]);
 
   useEffect(() => {
     if (!pathname) return;
@@ -451,10 +487,20 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     const refreshGovernance = async () => {
-      setGovernanceStatus("loading");
+      const cached = authUser ? governanceByUser.get(String(authUser.id)) : undefined;
+      if (!cached) setGovernanceStatus("loading");
       try {
         const response = await fetch("/api/forms/config", { cache: "no-store" });
-        if (!response.ok) throw new Error("Page access could not be loaded.");
+        if (!response.ok) {
+          if (response.status === 401 && authUser) {
+            void clearBrowserPageCache(String(authUser.id));
+            governanceByUser.delete(String(authUser.id));
+            activeBrowserUser = null;
+            setAuthUser(null);
+            setAuthStatus("unauthenticated");
+          }
+          throw new Error("Page access could not be loaded.");
+        }
         const data = await response.json();
         if (!Array.isArray(data.allowedPages)) throw new Error("Page access data is incomplete.");
         if (!active) return;
@@ -462,6 +508,17 @@ export default function Home() {
         const pages = data.allowedPages as NavView[];
         const isOwner = authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com";
         const hasFullPageAccess = Boolean(data.isAdmin) || isOwner;
+        const nextSnapshot: GovernanceSnapshot = {
+          allowedPages: pages,
+          sidebarOrder: Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0 ? data.config.sidebarOrder as NavView[] : [],
+          isAdmin: Boolean(data.isAdmin),
+          askEchoEnabled: data.config?.features?.askEchoEnabled === true,
+          allowedFeatures: Array.isArray(data.allowedFeatures) ? data.allowedFeatures : [],
+        };
+        if (cached && (JSON.stringify(cached.allowedPages) !== JSON.stringify(nextSnapshot.allowedPages) || cached.isAdmin !== nextSnapshot.isAdmin)) {
+          void clearBrowserPageCache(String(authUser?.id));
+        }
+        if (authUser) governanceByUser.set(String(authUser.id), nextSnapshot);
         setIsAdminUser(Boolean(data.isAdmin));
         setAskEchoEnabled(data.config?.features?.askEchoEnabled === true);
         setAllowedFeatures(Array.isArray(data.allowedFeatures) ? data.allowedFeatures : []);
@@ -473,12 +530,11 @@ export default function Home() {
           if (!pages.includes(prev)) return pages[0] || "forms";
           return prev;
         });
-        if (Array.isArray(data.config?.sidebarOrder) && data.config.sidebarOrder.length > 0) {
-          setSidebarOrder(data.config.sidebarOrder as NavView[]);
-        }
+        if (nextSnapshot.sidebarOrder.length > 0) setSidebarOrder(nextSnapshot.sidebarOrder);
         setGovernanceStatus("ready");
       } catch {
-        if (active) setGovernanceStatus("error");
+        if (!active) return;
+        if (!cached) setGovernanceStatus("error");
       }
     };
 
@@ -514,25 +570,12 @@ export default function Home() {
       return;
     }
     if (isPageAllowed(view)) {
+      if (authUser) prefetchPageApis(String(authUser.id), view);
       setCurrentView(view);
       const route = navRouteForView(view);
       if (route && route !== pathname) router.push(route);
     }
   };
-
-  const meetingsLoaded = useRef(false);
-  useEffect(() => {
-    const hasPageAccess = isAdminUser || authUser?.email?.toLowerCase().trim() === "admin@primephilippines.com" || allowedPages.includes(currentView);
-    if (governanceStatus !== "ready" || !hasPageAccess || (currentView !== "dashboard" && currentView !== "meetings") || meetingsLoaded.current) return;
-    meetingsLoaded.current = true;
-    const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
-    fetchMeetings(undefined, personalListId).then((data) => {
-      if (data.meetings && Array.isArray(data.meetings)) {
-        setArchivedMeetings(data.meetings);
-        if (data.meetings.length && !selectedMeetingId) setSelectedMeetingId(data.meetings[0].id);
-      }
-    }).catch((err) => { meetingsLoaded.current = false; console.warn("Meeting archive could not be refreshed:", err); });
-  }, [currentView, selectedMeetingId, governanceStatus, allowedPages, isAdminUser, authUser]);
 
   // Ensure scroll position resets to top when entering or switching notetaker views
   useEffect(() => {
@@ -1194,6 +1237,7 @@ export default function Home() {
       <Sidebar
         currentView={currentView}
         onSelectView={(view) => handleSelectView(view)}
+        onPreloadView={(view) => { if (authUser && isPageAllowed(view)) prefetchPageApis(String(authUser.id), view); }}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         user={authUser}
@@ -1344,6 +1388,7 @@ export default function Home() {
             {/* VIEW: TASKS (CLICKUP PORTAL) */}
             {currentView === "tasks" && (
               <TasksView
+                userId={authUser?.id ? String(authUser.id) : undefined}
                 onNavigateToMeetings={() => setCurrentView("meetings")}
                 onSelectMeeting={(meetingTitle) => {
                   const match = archivedMeetings.find((m) =>
@@ -1359,11 +1404,11 @@ export default function Home() {
 
             {/* VIEW: CLICKUP DAILY LOG NOTEBOOK */}
             {currentView === "notebook" && (
-              <NotebookView currentUserName={authUser?.username} />
+              <NotebookView currentUserName={authUser?.username} userId={authUser?.id ? String(authUser.id) : undefined} />
             )}
 
-            {currentView === "market-insights" && <MarketInsightsView />}
-            {currentView === "demands" && <DemandsView sector={pathname?.startsWith("/demands/retail") ? "retail" : pathname?.startsWith("/demands/industrial") ? "industrial" : "all"} />}
+            {currentView === "market-insights" && <MarketInsightsView userId={authUser?.id ? String(authUser.id) : undefined} />}
+            {currentView === "demands" && <DemandsView userId={authUser?.id ? String(authUser.id) : undefined} sector={pathname?.startsWith("/demands/retail") ? "retail" : pathname?.startsWith("/demands/industrial") ? "industrial" : "all"} />}
 
             {/* VIEW 2: MEETINGS ARCHIVES */}
             {currentView === "meetings" && (
