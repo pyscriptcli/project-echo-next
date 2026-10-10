@@ -63,6 +63,7 @@ This preserves today's handoff through tomorrow. It is replaced only after two n
 - Notetaker import loads saved records through the existing `/api/meetings` path. Story generation uses the configured Ask Echo model policy. Excel RTM, Word documents, and browser print are available; external stakeholder links are deferred.
 - Cards are the default RTM view. User stories, acceptance criteria, and test cases support bold, bulleted, and numbered Markdown formatting; generated content stays concise.
 - Requirements support multiple local tasks. Each task can also be saved to a user-accessible ClickUp list, with the local task retained and linked to its ClickUp copy; ClickUp access uses the signed-in user's OAuth token.
+- Business requirements can be generated from their row details or refined through a one-question-at-a-time Grill me session; the user reviews the draft before applying it.
 
 ### Authentication and user connections
 

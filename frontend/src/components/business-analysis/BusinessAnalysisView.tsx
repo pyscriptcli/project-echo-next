@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MessageSquareMore, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
 import { BA_MIN_COLUMN_WIDTHS, createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/lib/business-analysis";
 import type { ArchivedMeeting } from "@/types/meeting";
 import type { BAProject, BARequirement, BARequirementTask, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/types/business-analysis";
@@ -19,6 +19,8 @@ const PRIORITIES: MoscowPriority[] = ["Must Have", "Should Have", "Could Have", 
 const STATUSES: VerificationStatus[] = ["Passed", "In Dev", "Not Tested", "Blocked"];
 type ClickUpTaskList = { id: string; name: string; teamName: string; spaceName: string; folderName: string };
 type ClickUpSaveTarget = { projectId: string; requirementId: string; taskId: string; taskName: string; requirement: string };
+type GrillTurn = { question: string; answer: string };
+type GrillSession = { requirementId: string; statement: string; turns: GrillTurn[]; question: string; answerDraft: string; refinedStatement: string; loading: boolean; error: string; errorStage: "question" | "refine" | "" };
 const PRE_DOC_TEMPLATES = ["Project Charter", "Business Case", "Business Requirements Document", "Functional Requirements Document", "UAT Test Plan"];
 const POST_DOC_TEMPLATES = ["Stakeholder Sign-Off Certificate", "Production Release Notes", "Post-Implementation Review"];
 const DOC_TEMPLATES = [...PRE_DOC_TEMPLATES, ...POST_DOC_TEMPLATES];
@@ -149,6 +151,8 @@ function RequirementTaskRow({ requirementId, task, onUpdate, onRemove, onSaveToC
 type RequirementCardProps = {
   requirement: BARequirement;
   onUpdate: (id: string, changes: Partial<BARequirement>) => void;
+  onGenerateRequirement: (requirement: BARequirement, customPrompt?: string) => void;
+  onGrillRequirement: (requirement: BARequirement) => void;
   onGenerateStory: (requirement: BARequirement, customPrompt?: string) => void;
   onGenerateTestCase: (requirement: BARequirement, customPrompt?: string) => void;
   onGenerateAcceptanceCriteria: (requirement: BARequirement, customPrompt?: string) => void;
@@ -157,12 +161,13 @@ type RequirementCardProps = {
   onRemoveTask: (requirementId: string, taskId: string) => void;
   onSaveTaskToClickUp: (requirement: BARequirement, task: BARequirementTask) => void;
   savingTaskId: string;
+  generatingRequirement: boolean;
   generatingStory: boolean;
   generatingTestCase: boolean;
   generatingAcceptanceCriteria: boolean;
 };
 
-function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, onAddTask, onUpdateTask, onRemoveTask, onSaveTaskToClickUp, savingTaskId, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
+function RequirementCard({ requirement, onUpdate, onGenerateRequirement, onGrillRequirement, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, onAddTask, onUpdateTask, onRemoveTask, onSaveTaskToClickUp, savingTaskId, generatingRequirement, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
   return <article className="min-w-0 border border-slate-200 bg-white p-3 sm:p-4">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
       <div className="flex min-w-0 items-baseline gap-2">
@@ -175,7 +180,7 @@ function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTes
         <select aria-label={`${requirement.id} verification status`} className={`${cardSelectClass} w-32 ${verificationColor[requirement.verification]}`} value={requirement.verification} onChange={(event) => onUpdate(requirement.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select>
       </div>
     </header>
-    <textarea data-ba-req-id={requirement.id} aria-label={`${requirement.id} business requirement`} rows={1} className="ba-rtm-cell-editor mt-2 block min-h-9 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 border-l-2 border-l-[#C9A84C] bg-white/70 px-2 py-1 text-base font-semibold leading-6 text-[#003366] focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the business need" value={requirement.statement} onChange={(event) => onUpdate(requirement.id, { statement: event.target.value })} />
+    <section className="mt-2 min-w-0 border-l-2 border-l-[#C9A84C] bg-white/70 px-2 py-1"><div className="mb-1 flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business requirement</span><div className="inline-flex shrink-0 items-center gap-1"><RequirementGenerationActions label="Business requirement" generating={generatingRequirement} onGenerate={(customPrompt) => onGenerateRequirement(requirement, customPrompt)} /><button type="button" title="Grill me about this requirement" aria-label={`Grill me about ${requirement.id}`} className="inline-flex h-6 items-center gap-1 border border-slate-200 px-1.5 text-[10px] font-semibold text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:opacity-50" disabled={!requirement.statement.trim()} onClick={() => onGrillRequirement(requirement)}><MessageSquareMore aria-hidden="true" size={12} />Grill me</button></div></div><textarea data-ba-req-id={requirement.id} aria-label={`${requirement.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-8 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-slate-300/70 bg-white px-2 py-1 text-base font-semibold leading-6 text-[#003366] focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" placeholder="Describe the business need" value={requirement.statement} onChange={(event) => onUpdate(requirement.id, { statement: event.target.value })} /></section>
     <div className="mt-2 grid min-w-0 gap-3 lg:grid-cols-3">
       <section className="min-w-0 border-t border-slate-100 pt-2">
         <div className="flex min-h-6 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</span><RequirementGenerationActions label="User story" generating={generatingStory} onGenerate={(customPrompt) => onGenerateStory(requirement, customPrompt)} /></div>
@@ -283,6 +288,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [meetingLoading, setMeetingLoading] = useState(false);
   const [meetingError, setMeetingError] = useState("");
   const [generatingId, setGeneratingId] = useState("");
+  const [generatingRequirementId, setGeneratingRequirementId] = useState("");
   const [generatingTestCaseId, setGeneratingTestCaseId] = useState("");
   const [generatingAcceptanceCriteriaId, setGeneratingAcceptanceCriteriaId] = useState("");
   const [savingTaskId, setSavingTaskId] = useState("");
@@ -292,6 +298,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [clickUpListsLoaded, setClickUpListsLoaded] = useState(false);
   const [clickUpListId, setClickUpListId] = useState("");
   const [clickUpSaveError, setClickUpSaveError] = useState("");
+  const [grillSession, setGrillSession] = useState<GrillSession | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState(DOC_TEMPLATES[0]);
   const [documentTitle, setDocumentTitle] = useState("");
   const resizeStart = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
@@ -358,6 +365,13 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [detailRequirement]);
+
+  useEffect(() => {
+    if (!grillSession) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && !grillSession.loading) setGrillSession(null); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [grillSession]);
 
   const saveNow = async () => {
     setSaveState("saving");
@@ -489,6 +503,98 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     finally { setGeneratingId(""); }
   };
 
+  const generateRequirement = async (requirement: BARequirement, customPrompt?: string) => {
+    if (!project) return;
+    setGeneratingRequirementId(requirement.id);
+    try {
+      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        type: "requirement", id: requirement.id, statement: requirement.statement, context: project.description,
+        category: requirement.category, priority: requirement.priority, userStory: requirement.userStory,
+        acceptanceCriteria: requirement.acceptanceCriteria, testCase: requirement.testCase, verification: requirement.verification,
+        tasks: requirement.tasks.map(({ title, done }) => ({ title, done })), customPrompt,
+      }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Requirement generation failed.");
+      if (typeof body.statement !== "string" || !body.statement.trim()) throw new Error("The generated requirement was empty.");
+      updateRequirement(requirement.id, { statement: body.statement.trim() });
+    } catch (error) { window.alert(error instanceof Error ? error.message : "Requirement generation failed."); }
+    finally { setGeneratingRequirementId(""); }
+  };
+
+  const grillRequest = async (type: "grill-question" | "grill-refine", requirementId: string, statement: string, turns: GrillTurn[]) => {
+    if (!project) throw new Error("Open a project before using Grill me.");
+    const requirement = project.requirements.find((item) => item.id === requirementId);
+    if (!requirement) throw new Error("This requirement is no longer available.");
+    const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      type, id: requirement.id, statement, context: project.description, category: requirement.category, priority: requirement.priority,
+      userStory: requirement.userStory, acceptanceCriteria: requirement.acceptanceCriteria, testCase: requirement.testCase,
+      verification: requirement.verification, tasks: requirement.tasks.map(({ title, done }) => ({ title, done })), turns,
+    }) });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Grill me is unavailable right now.");
+    const output = type === "grill-question" ? body.question : body.statement;
+    if (typeof output !== "string" || !output.trim()) throw new Error("Echo returned an empty response. Try again.");
+    return output.trim();
+  };
+
+  const startRequirementGrill = async (requirement: BARequirement) => {
+    const session: GrillSession = { requirementId: requirement.id, statement: requirement.statement, turns: [], question: "", answerDraft: "", refinedStatement: "", loading: true, error: "", errorStage: "" };
+    setGrillSession(session);
+    try {
+      const question = await grillRequest("grill-question", requirement.id, requirement.statement, []);
+      setGrillSession((current) => current?.requirementId === requirement.id ? { ...current, question, loading: false, errorStage: "" } : current);
+    } catch (error) {
+      setGrillSession((current) => current?.requirementId === requirement.id ? { ...current, loading: false, error: error instanceof Error ? error.message : "Grill me is unavailable right now.", errorStage: "question" } : current);
+    }
+  };
+
+  const askNextGrillQuestion = async () => {
+    if (!grillSession || !grillSession.answerDraft.trim() || grillSession.turns.length >= 8) return;
+    const { requirementId, statement } = grillSession;
+    const turns = [...grillSession.turns, { question: grillSession.question, answer: grillSession.answerDraft.trim() }];
+    setGrillSession({ ...grillSession, turns, question: "", answerDraft: "", refinedStatement: "", loading: true, error: "", errorStage: "" });
+    try {
+      const question = await grillRequest("grill-question", requirementId, statement, turns);
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, question, loading: false, errorStage: "" } : current);
+    } catch (error) {
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, loading: false, error: error instanceof Error ? error.message : "Grill me is unavailable right now.", errorStage: "question" } : current);
+    }
+  };
+
+  const refineGrilledRequirement = async () => {
+    if (!grillSession) return;
+    const { requirementId, statement } = grillSession;
+    const turns = grillSession.answerDraft.trim() && grillSession.question
+      ? [...grillSession.turns, { question: grillSession.question, answer: grillSession.answerDraft.trim() }]
+      : grillSession.turns;
+    if (!turns.length) return;
+    setGrillSession({ ...grillSession, turns, question: "", answerDraft: "", refinedStatement: "", loading: true, error: "", errorStage: "" });
+    try {
+      const refinedStatement = await grillRequest("grill-refine", requirementId, statement, turns);
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, refinedStatement, loading: false, errorStage: "" } : current);
+    } catch (error) {
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, loading: false, error: error instanceof Error ? error.message : "Could not refine this requirement.", errorStage: "refine" } : current);
+    }
+  };
+
+  const continueRequirementGrill = async () => {
+    if (!grillSession) return;
+    const { requirementId, statement, turns } = grillSession;
+    setGrillSession({ ...grillSession, question: "", answerDraft: "", refinedStatement: "", loading: true, error: "", errorStage: "" });
+    try {
+      const question = await grillRequest("grill-question", requirementId, statement, turns);
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, question, loading: false, errorStage: "" } : current);
+    } catch (error) {
+      setGrillSession((current) => current?.requirementId === requirementId ? { ...current, loading: false, error: error instanceof Error ? error.message : "Grill me is unavailable right now.", errorStage: "question" } : current);
+    }
+  };
+
+  const applyGrilledRequirement = () => {
+    if (!grillSession?.refinedStatement.trim()) return;
+    updateRequirement(grillSession.requirementId, { statement: grillSession.refinedStatement.trim() });
+    setGrillSession(null);
+  };
+
   const generateTestCase = async (requirement: BARequirement, customPrompt?: string) => {
     setGeneratingTestCaseId(requirement.id);
     try {
@@ -593,7 +699,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button type="button" aria-label={`View ${item.tasks.length} tasks for ${item.id}`} onClick={() => setDetailRequirementId(item.id)} className="min-h-7 w-full text-left text-xs text-slate-700 hover:text-[#003366]">{item.tasks.length ? `${item.tasks.filter((task) => task.done).length}/${item.tasks.length} complete` : <span className="text-slate-400">Add tasks in card view</span>}</button></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><RichTextEditor className="mt-1" value={item.acceptanceCriteria} onChange={(acceptanceCriteria) => updateRequirement(item.id, { acceptanceCriteria })} label={`${item.id} acceptance criteria`} placeholder="Add concise acceptance criteria" /></details></td>
           </tr>)}</tbody></table></div>
-        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateStory={(item, prompt) => void generateStory(item, prompt)} onGenerateTestCase={(item, prompt) => void generateTestCase(item, prompt)} onGenerateAcceptanceCriteria={(item, prompt) => void generateAcceptanceCriteria(item, prompt)} onAddTask={addRequirementTask} onUpdateTask={updateRequirementTask} onRemoveTask={removeRequirementTask} onSaveTaskToClickUp={(item, task) => void openClickUpTaskSave(item, task)} savingTaskId={savingTaskId} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
+        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateRequirement={(item, prompt) => void generateRequirement(item, prompt)} onGrillRequirement={(item) => void startRequirementGrill(item)} onGenerateStory={(item, prompt) => void generateStory(item, prompt)} onGenerateTestCase={(item, prompt) => void generateTestCase(item, prompt)} onGenerateAcceptanceCriteria={(item, prompt) => void generateAcceptanceCriteria(item, prompt)} onAddTask={addRequirementTask} onUpdateTask={updateRequirementTask} onRemoveTask={removeRequirementTask} onSaveTaskToClickUp={(item, task) => void openClickUpTaskSave(item, task)} savingTaskId={savingTaskId} generatingRequirement={generatingRequirementId === requirement.id} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
       </section>}
 
       {tab === "elicitation" && <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -630,6 +736,19 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         {clickUpListsLoading ? <p className="text-sm text-slate-600">Loading available lists…</p> : clickUpLists.length ? <label className="block text-xs font-semibold text-slate-700">Task list<select className={`${inputClass} mt-1`} value={clickUpListId} onChange={(event) => setClickUpListId(event.target.value)}><option value="">Choose a list</option>{clickUpLists.map((list) => <option key={list.id} value={list.id}>{[list.teamName, list.spaceName, list.folderName, list.name].filter(Boolean).join(" / ")}</option>)}</select></label> : <p className="text-sm text-slate-600">No task lists are available for your connected account.</p>}
         {clickUpSaveError && <p role="alert" className="text-sm text-[#B42318]">{clickUpSaveError}</p>}
         <div className="flex justify-end gap-2"><button type="button" className={secondaryClass} onClick={() => setClickUpSaveTarget(null)}>Cancel</button><button type="button" className={buttonClass} disabled={!clickUpListId || clickUpListsLoading || Boolean(savingTaskId)} onClick={() => void saveRequirementTaskToClickUp()}>{savingTaskId ? <LoaderCircle size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}Save linked copy</button></div>
+      </div>
+    </section></div>}
+    {grillSession && <div className="ba-no-print fixed inset-0 z-[70] flex items-center justify-center bg-[#001A33]/40 p-3 sm:p-6" onClick={() => { if (!grillSession.loading) setGrillSession(null); }}><section role="dialog" aria-modal="true" aria-labelledby="ba-grill-title" className="max-h-[min(760px,calc(100dvh-1.5rem))] w-full max-w-xl overflow-y-auto border border-slate-300 bg-[#FFFCFB] shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3"><div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#31577D]">{project?.name || "Business Analysis"} · {grillSession.requirementId}</p><h2 id="ba-grill-title" className="mt-1 font-serif text-xl font-bold italic text-[#003366]">Grill me</h2><p className="mt-0.5 text-xs text-slate-600">Answer a few focused questions, then review the refined requirement.</p></div><button type="button" aria-label="Close Grill me" disabled={grillSession.loading} className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 text-[#003366] disabled:opacity-50" onClick={() => setGrillSession(null)}><X aria-hidden="true" size={14} /></button></header>
+      <div className="space-y-3 p-4"><div className="border-l-2 border-l-[#C9A84C] bg-white px-3 py-2"><p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Current requirement</p><p className="mt-1 text-sm font-medium leading-5 text-[#003366]">{grillSession.statement}</p></div>
+        {grillSession.turns.length > 0 && <div className="max-h-52 space-y-2 overflow-y-auto">{grillSession.turns.map((turn, index) => <div key={`${index}-${turn.question}`} className="border border-slate-200 bg-white px-3 py-2 text-xs"><p className="font-semibold text-[#003366]">Q{index + 1}. {turn.question}</p><p className="mt-1 whitespace-pre-wrap text-slate-700">{turn.answer}</p></div>)}</div>}
+        {grillSession.loading && <p role="status" className="flex items-center gap-2 text-sm text-slate-600"><LoaderCircle size={14} className="animate-spin text-[#31577D]" />Thinking of the next question…</p>}
+        {grillSession.error && <p role="alert" className="text-sm text-[#B42318]">{grillSession.error}</p>}
+        {grillSession.refinedStatement ? <label className="block text-xs font-semibold text-slate-700">Refined requirement<textarea rows={3} value={grillSession.refinedStatement} onChange={(event) => setGrillSession((current) => current ? { ...current, refinedStatement: event.target.value } : current)} className={`${inputClass} mt-1 resize-y leading-5`} /></label> : grillSession.question ? <div className="space-y-1.5"><p className="text-sm font-semibold leading-5 text-[#003366]">{grillSession.question}</p><label htmlFor="ba-grill-answer" className="sr-only">Your answer</label><textarea id="ba-grill-answer" rows={3} autoFocus value={grillSession.answerDraft} onChange={(event) => setGrillSession((current) => current ? { ...current, answerDraft: event.target.value } : current)} placeholder="Add a short answer" className={`${inputClass} resize-y leading-5`} /></div> : null}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3"><p className="text-[10px] text-slate-500">{grillSession.turns.length} {grillSession.turns.length === 1 ? "answer" : "answers"}{grillSession.turns.length >= 8 ? " · question limit reached" : ""}</p><div className="flex flex-wrap justify-end gap-2"><button type="button" className={secondaryClass} disabled={grillSession.loading} onClick={() => setGrillSession(null)}>Cancel</button>
+          {grillSession.refinedStatement ? <><button type="button" className={secondaryClass} disabled={grillSession.loading || grillSession.turns.length >= 8} onClick={() => void continueRequirementGrill()}>Ask another</button><button type="button" className={buttonClass} disabled={grillSession.loading || !grillSession.refinedStatement.trim()} onClick={applyGrilledRequirement}><Check size={14} />Use requirement</button></> : <><button type="button" className={secondaryClass} disabled={grillSession.loading || !(grillSession.turns.length || grillSession.answerDraft.trim())} onClick={() => void refineGrilledRequirement()}>Finish and refine</button><button type="button" className={buttonClass} disabled={grillSession.loading || !grillSession.answerDraft.trim() || grillSession.turns.length >= 8} onClick={() => void askNextGrillQuestion()}>Next question <ArrowUpRight size={13} /></button></>}
+          {grillSession.error && !grillSession.question && !grillSession.refinedStatement && <button type="button" className={buttonClass} disabled={grillSession.loading} onClick={() => void (grillSession.errorStage === "refine" ? refineGrilledRequirement() : continueRequirementGrill())}>{grillSession.errorStage === "refine" ? "Retry refinement" : "Retry question"}</button>}
+        </div></div>
       </div>
     </section></div>}
     <footer className="ba-no-print mt-8 flex items-center gap-2 border-t border-slate-200 pt-3 text-xs text-slate-600"><Check size={14} className={saveState === "error" ? "text-[#B42318]" : "text-[#003366]"} aria-hidden="true" />{saveState === "error" ? "Changes are not saved. Use Save to retry." : "Changes save to your Business Analysis workspace."}</footer>
