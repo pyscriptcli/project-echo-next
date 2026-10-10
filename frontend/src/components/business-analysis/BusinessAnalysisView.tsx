@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, ArrowLeft, ArrowUpRight, BookOpen, Check, Download, FilePlus2, FileText, FolderKanban, LoaderCircle, Plus, Printer, RefreshCw, Save, Table2 } from "lucide-react";
-import { createBAProject, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/lib/business-analysis";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Archive, ArrowLeft, ArrowUpRight, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LoaderCircle, Plus, Printer, RefreshCw, Save, Sparkles, Table2, X } from "lucide-react";
+import { createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/lib/business-analysis";
 import type { ArchivedMeeting } from "@/types/meeting";
 import type { BAProject, BARequirement, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/types/business-analysis";
 
@@ -20,6 +20,23 @@ const STATUSES: VerificationStatus[] = ["Passed", "In Dev", "Not Tested", "Block
 const PRE_DOC_TEMPLATES = ["Project Charter", "Business Case", "Business Requirements Document", "Functional Requirements Document", "UAT Test Plan"];
 const POST_DOC_TEMPLATES = ["Stakeholder Sign-Off Certificate", "Production Release Notes", "Post-Implementation Review"];
 const DOC_TEMPLATES = [...PRE_DOC_TEMPLATES, ...POST_DOC_TEMPLATES];
+const categoryColor: Record<RequirementCategory, string> = {
+  Functional: "bg-[#EEF4FA] text-[#003366]", "Non-Functional": "bg-[#F3F0F8] text-[#5B3A7A]",
+  Technical: "bg-[#EAF5F7] text-[#176B78]", Compliance: "bg-[#FBF4E6] text-[#855A08]", Business: "bg-[#EDF5EF] text-[#356B43]",
+};
+const priorityColor: Record<MoscowPriority | "", string> = {
+  "Must Have": "bg-[#FCECEC] text-[#9B3030]", "Should Have": "bg-[#FBF4E6] text-[#855A08]",
+  "Could Have": "bg-[#EEF4FA] text-[#31577D]", "Won't Have": "bg-slate-100 text-slate-600", "": "bg-white text-slate-500",
+};
+const verificationColor: Record<VerificationStatus, string> = {
+  Passed: "bg-[#EDF5EF] text-[#287442]", "In Dev": "bg-[#FBF4E6] text-[#855A08]",
+  "Not Tested": "bg-slate-100 text-slate-600", Blocked: "bg-[#FCECEC] text-[#9B3030]",
+};
+const cellSelectClass = "h-7 w-full border border-transparent px-1 text-xs hover:border-slate-200/70 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]";
+const timestampText = (value: string) => {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Not recorded";
+};
 const inputClass = "w-full min-w-0 border border-[#CBD5E1] bg-white px-2 py-1.5 text-sm text-[#1B1D1E] outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]";
 const filterSelectClass = "h-9 min-w-0 border border-[#CBD5E1] bg-white px-2 text-sm text-[#1B1D1E] outline-none focus:border-[#003366] focus:ring-1 focus:ring-[#003366]";
 const buttonClass = "inline-flex min-h-9 items-center justify-center gap-2 border border-[#003366] bg-[#003366] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#174778] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C] disabled:cursor-not-allowed disabled:opacity-50";
@@ -102,18 +119,19 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [loadError, setLoadError] = useState("");
   const [filterCategory, setFilterCategory] = useState("All categories");
   const [filterPriority, setFilterPriority] = useState("All priorities");
-  const [showNewRequirement, setShowNewRequirement] = useState(false);
-  const [newStatement, setNewStatement] = useState("");
-  const [newCategory, setNewCategory] = useState<RequirementCategory>("Functional");
-  const [newPriority, setNewPriority] = useState<MoscowPriority | "">("");
+  const [newRequirementFocusId, setNewRequirementFocusId] = useState("");
+  const [detailRequirementId, setDetailRequirementId] = useState("");
   const [meetingRows, setMeetingRows] = useState<ArchivedMeeting[]>(initialMeetings);
   const [meetingLoading, setMeetingLoading] = useState(false);
   const [meetingError, setMeetingError] = useState("");
   const [generatingId, setGeneratingId] = useState("");
+  const [generatingTestCaseId, setGeneratingTestCaseId] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(DOC_TEMPLATES[0]);
   const [documentTitle, setDocumentTitle] = useState("");
+  const resizeStart = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
 
   const project = useMemo(() => state.projects.find((item) => item.id === activeId) || null, [state.projects, activeId]);
+  const detailRequirement = project?.requirements.find((item) => item.id === detailRequirementId) || null;
   const updateProject = useCallback((updater: (current: BAProject) => BAProject) => {
     if (!project) return;
     const updatedAt = new Date().toISOString();
@@ -160,9 +178,20 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
         textarea.style.height = "auto";
         textarea.style.height = `${Math.max(textarea.scrollHeight, 28)}px`;
       });
+      if (newRequirementFocusId) {
+        document.querySelector<HTMLTextAreaElement>(`[data-ba-req-id="${newRequirementFocusId}"]`)?.focus();
+        setNewRequirementFocusId("");
+      }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [filteredRequirements]);
+  }, [filteredRequirements, newRequirementFocusId]);
+
+  useEffect(() => {
+    if (!detailRequirement) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setDetailRequirementId(""); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [detailRequirement]);
 
   const saveNow = async () => {
     setSaveState("saving");
@@ -183,14 +212,32 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   };
 
   const addRequirement = () => {
-    if (!project || !newStatement.trim()) return;
-    const requirement: BARequirement = { id: nextRequirementId(project.requirements), statement: newStatement.trim(), category: newCategory, priority: newPriority, userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" };
+    if (!project) return;
+    const now = new Date().toISOString();
+    const requirement: BARequirement = { id: nextRequirementId(project.requirements), createdAt: now, updatedAt: now, statement: "", category: "Functional", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" };
     updateProject((current) => ({ ...current, requirements: [...current.requirements, requirement] }));
-    setNewStatement("");
-    setShowNewRequirement(false);
+    setFilterCategory("All categories");
+    setFilterPriority("All priorities");
+    setNewRequirementFocusId(requirement.id);
   };
 
-  const updateRequirement = (id: string, changes: Partial<BARequirement>) => updateProject((current) => ({ ...current, requirements: current.requirements.map((item) => item.id === id ? { ...item, ...changes } : item) }));
+  const updateRequirement = (id: string, changes: Partial<BARequirement>) => {
+    const updatedAt = new Date().toISOString();
+    updateProject((current) => ({ ...current, requirements: current.requirements.map((item) => item.id === id ? { ...item, ...changes, updatedAt } : item) }));
+  };
+
+  const resizeColumn = (index: number, width: number) => setState((current) => ({
+    ...current, tableColumnWidths: current.tableColumnWidths.map((value, columnIndex) => columnIndex === index ? Math.max(72, Math.min(720, width)) : value),
+  }));
+  const startColumnResize = (event: React.PointerEvent<HTMLButtonElement>, index: number) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeStart.current = { index, startX: event.clientX, startWidth: state.tableColumnWidths[index] || DEFAULT_BA_COLUMN_WIDTHS[index] };
+  };
+  const moveColumnResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (resizeStart.current) resizeColumn(resizeStart.current.index, resizeStart.current.startWidth + event.clientX - resizeStart.current.startX);
+  };
+  const stopColumnResize = () => { resizeStart.current = null; };
 
   const importMinutes = async (meeting: ArchivedMeeting) => {
     const text = meetingNotes(meeting);
@@ -222,6 +269,21 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       updateRequirement(requirement.id, { userStory: body.userStory, acceptanceCriteria: body.acceptanceCriteria });
     } catch (error) { window.alert(error instanceof Error ? error.message : "Story generation failed."); }
     finally { setGeneratingId(""); }
+  };
+
+  const generateTestCase = async (requirement: BARequirement) => {
+    setGeneratingTestCaseId(requirement.id);
+    try {
+      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        type: "test-case", id: requirement.id, statement: requirement.statement, category: requirement.category,
+        priority: requirement.priority, userStory: requirement.userStory, acceptanceCriteria: requirement.acceptanceCriteria,
+        verification: requirement.verification, milestone: requirement.milestone,
+      }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Test case generation failed.");
+      updateRequirement(requirement.id, { testCase: body.testCase });
+    } catch (error) { window.alert(error instanceof Error ? error.message : "Test case generation failed."); }
+    finally { setGeneratingTestCaseId(""); }
   };
 
   const addDocument = () => {
@@ -278,24 +340,18 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
           <h2 className="mr-auto font-serif text-lg font-bold italic text-[#003366]">Requirements traceability matrix</h2>
           <label className="sr-only" htmlFor="ba-category-filter">Filter category</label><select id="ba-category-filter" className={`${filterSelectClass} w-[165px]`} value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)}><option>All categories</option>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select>
           <label className="sr-only" htmlFor="ba-priority-filter">Filter MoSCoW priority</label><select id="ba-priority-filter" className={`${filterSelectClass} w-[180px]`} value={filterPriority} onChange={(event) => setFilterPriority(event.target.value)}><option>All priorities</option><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select>
-          <button className={buttonClass} onClick={() => setShowNewRequirement((value) => !value)}><Plus size={15} />Add requirement</button>
+          <button className={buttonClass} onClick={addRequirement}><Plus size={15} />Add requirement</button>
         </div>
-        {showNewRequirement && <form className="mb-4 grid grid-cols-1 gap-3 border border-[#CBD5E1] bg-[#FFFCFB] p-4 sm:grid-cols-[1fr_180px_180px_auto]" onSubmit={(event) => { event.preventDefault(); addRequirement(); }}>
-          <label className="text-xs font-semibold text-slate-700">Business requirement<input autoFocus className={`${inputClass} mt-1`} value={newStatement} onChange={(event) => setNewStatement(event.target.value)} placeholder="Describe the business need" /></label>
-          <label className="text-xs font-semibold text-slate-700">Category<select className={`${inputClass} mt-1`} value={newCategory} onChange={(event) => setNewCategory(event.target.value as RequirementCategory)}>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="text-xs font-semibold text-slate-700">MoSCoW priority<select className={`${inputClass} mt-1`} value={newPriority} onChange={(event) => setNewPriority(event.target.value as MoscowPriority | "")}><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <div className="flex items-end"><button className={buttonClass} type="submit" disabled={!newStatement.trim()}>Add</button></div>
-        </form>}
         {project.requirements.length > 0 && <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-700" aria-label="Requirement category breakdown">{CATEGORIES.map((category) => <span key={category}>{category}: {filteredRequirements.filter((item) => item.category === category).length}</span>)}</div>}
         {project.requirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements yet. Add one here or tag a line in Elicitation with <code className="font-mono text-[#003366]">@REQ-001: requirement</code>.</div> : filteredRequirements.length === 0 ? <div className="border border-[#CBD5E1] bg-[#FFFCFB] p-4 text-sm text-slate-700">No requirements match these filters.</div> : <>
-          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="w-full min-w-[1320px] table-fixed border-collapse text-left text-xs"><colgroup><col style={{ width: 76 }}/><col style={{ width: 260 }}/><col style={{ width: 110 }}/><col style={{ width: 120 }}/><col style={{ width: 220 }}/><col style={{ width: 140 }}/><col style={{ width: 115 }}/><col style={{ width: 140 }}/><col style={{ width: 170 }}/></colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Milestone", "Story / criteria"].map((heading) => <th key={heading} scope="col" className="border border-slate-200/70 px-3 py-2.5">{heading}</th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
-            <td className="whitespace-nowrap border border-slate-200/60 px-3 py-2.5 font-medium tabular-nums text-[#003366]">{item.id}</td>
-            <td className="border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.statement} onChange={(event) => updateRequirement(item.id, { statement: event.target.value })} /></td>
-            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} category`} className="h-7 w-full border border-transparent bg-transparent px-1 text-xs text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.category} onChange={(event) => updateRequirement(item.id, { category: event.target.value as RequirementCategory })}>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></td>
-            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} priority`} className="h-7 w-full border border-transparent bg-transparent px-1 text-xs text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.priority} onChange={(event) => updateRequirement(item.id, { priority: event.target.value as MoscowPriority | "" })}><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select></td>
+          <div className="overflow-x-auto border border-slate-200 bg-white"><table className="table-fixed border-collapse text-left text-xs" style={{ width: `${state.tableColumnWidths.reduce((total, width) => total + width, 0)}px`, minWidth: "100%" }}><colgroup>{state.tableColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="bg-slate-50 text-[10px] font-semibold text-slate-600"><tr>{["Req ID", "Business requirement", "Category", "MoSCoW", "User story", "Test case", "Verification", "Milestone", "Story / criteria"].map((heading, index) => <th key={heading} scope="col" className="relative border border-slate-200/70 px-3 py-2.5">{heading}<button type="button" role="separator" aria-orientation="vertical" aria-label={`Resize ${heading} column`} aria-valuenow={state.tableColumnWidths[index]} aria-valuemin={72} aria-valuemax={720} tabIndex={0} className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none border-0 bg-transparent p-0 hover:bg-[#C9A84C]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onPointerDown={(event) => startColumnResize(event, index)} onPointerMove={moveColumnResize} onPointerUp={stopColumnResize} onPointerCancel={stopColumnResize} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resizeColumn(index, state.tableColumnWidths[index] + (event.key === "ArrowRight" ? 12 : -12)); } }} /></th>)}</tr></thead><tbody>{filteredRequirements.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}>
+            <td className="border border-slate-200/60 px-2 py-2 font-medium tabular-nums text-[#003366]"><div className="flex items-center justify-between gap-1"><span className="whitespace-nowrap">{item.id}</span><button type="button" aria-label={`View details for ${item.id}`} title="View requirement details" className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[#31577D] hover:bg-[#FBF7E9] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId(item.id)}><Eye aria-hidden="true" size={14} /></button></div></td>
+            <td className="border border-slate-200/60 px-2 py-1.5"><textarea data-ba-req-id={item.id} aria-label={`${item.id} business requirement`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.statement} onChange={(event) => updateRequirement(item.id, { statement: event.target.value })} /></td>
+            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} category`} className={`${cellSelectClass} ${categoryColor[item.category]}`} value={item.category} onChange={(event) => updateRequirement(item.id, { category: event.target.value as RequirementCategory })}>{CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select></td>
+            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} priority`} className={`${cellSelectClass} ${priorityColor[item.priority]}`} value={item.priority} onChange={(event) => updateRequirement(item.id, { priority: event.target.value as MoscowPriority | "" })}><option value="">Unprioritized</option>{PRIORITIES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} user story`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.userStory} onChange={(event) => updateRequirement(item.id, { userStory: event.target.value })} /></td>
-            <td className="border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} test case`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.testCase} onChange={(event) => updateRequirement(item.id, { testCase: event.target.value })} /></td>
-            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} verification status`} className="h-7 w-full border border-transparent bg-transparent px-1 text-xs text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.verification} onChange={(event) => updateRequirement(item.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></td>
+            <td className="border border-slate-200/60 px-2 py-1.5"><div className="relative"><textarea aria-label={`${item.id} test case`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 pr-8 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.testCase} onChange={(event) => updateRequirement(item.id, { testCase: event.target.value })} /><button type="button" title="Generate test case from this row" aria-label={`Generate test case for ${item.id}`} className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center border border-transparent bg-white text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingTestCaseId === item.id} onClick={() => void generateTestCase(item)}>{generatingTestCaseId === item.id ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button></div></td>
+            <td className="border border-slate-200/60 px-2 py-1.5"><select aria-label={`${item.id} verification status`} className={`${cellSelectClass} ${verificationColor[item.verification]}`} value={item.verification} onChange={(event) => updateRequirement(item.id, { verification: event.target.value as VerificationStatus })}>{STATUSES.map((value) => <option key={value}>{value}</option>)}</select></td>
             <td className="border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} milestone`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.milestone} onChange={(event) => updateRequirement(item.id, { milestone: event.target.value })} /></td>
             <td className="border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><textarea aria-label={`${item.id} acceptance criteria`} className={`${inputClass} mt-1`} rows={3} placeholder="Given / When / Then" value={item.acceptanceCriteria} onChange={(event) => updateRequirement(item.id, { acceptanceCriteria: event.target.value })} /></details></td>
           </tr>)}</tbody></table></div>
@@ -315,6 +371,21 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
 
       {tab === "export" && <section><div className="mb-3"><h2 className="font-serif text-xl font-bold italic text-[#003366]">Export and review</h2><p className="mt-1 text-sm text-slate-700">Create files from the current project data.</p></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"><button className={`${secondaryClass} justify-start p-4`} onClick={async () => downloadBlob(await renderXlsx(project), `${fileName(project.name)}-rtm.xlsx`)}><Table2 size={18} /><span className="text-left"><strong className="block">Export RTM workbook</strong><span className="mt-1 block text-xs font-normal text-slate-700">Requirements, links, and verification statuses</span></span><Download className="ml-auto" size={15} /></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => window.print()}><Printer size={18} /><span className="text-left"><strong className="block">Print project summary</strong><span className="mt-1 block text-xs font-normal text-slate-700">Open the browser print dialog for a PDF copy</span></span></button><button className={`${secondaryClass} justify-start p-4`} onClick={() => setTab("documents")}><FileText size={18} /><span className="text-left"><strong className="block">Project documents</strong><span className="mt-1 block text-xs font-normal text-slate-700">Edit and download a Word draft</span></span></button></div><div className="mt-5 border border-[#CBD5E1] bg-[#FFFCFB] p-4"><h3 className="font-semibold text-[#003366]">Traceability summary</h3><dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3"><div><dt className="text-slate-700">Coverage</dt><dd className="font-semibold">{coverage}%</dd></div><div><dt className="text-slate-700">Passed verification</dt><dd className="font-semibold">{project.requirements.filter((item) => item.verification === "Passed").length} of {project.requirements.length}</dd></div><div><dt className="text-slate-700">Requirements without a story, test, or milestone</dt><dd className="font-semibold">{project.requirements.filter((item) => !item.userStory && !item.testCase && !item.milestone).length}</dd></div></dl></div></section>}
     </>}
+    {detailRequirement && <div className="ba-no-print fixed inset-0 z-50 flex items-center justify-center bg-[#001A33]/40 p-3 sm:p-6" onClick={() => setDetailRequirementId("")}><section role="dialog" aria-modal="true" aria-labelledby="ba-requirement-detail-title" className="max-h-[min(760px,calc(100dvh-1.5rem))] w-full max-w-3xl overflow-y-auto border border-slate-300 bg-[#FFFCFB] shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5"><div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#31577D]">{project?.name || "Business Analysis"}</p><h2 id="ba-requirement-detail-title" className="mt-1 font-serif text-xl font-bold italic text-[#003366]">{detailRequirement.id}</h2></div><button type="button" aria-label="Close requirement details" className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setDetailRequirementId("")}><X aria-hidden="true" size={15} /></button></header>
+      <dl className="grid grid-cols-1 gap-px bg-slate-200 sm:grid-cols-2">
+        <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business requirement</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.statement || "—"}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Category</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.category}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">MoSCoW priority</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.priority || "Unprioritized"}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Verification</dt><dd className="mt-1 text-sm font-medium text-[#003366]">{detailRequirement.verification}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Milestone</dt><dd className="mt-1 text-sm text-slate-800">{detailRequirement.milestone || "—"}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">User story</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.userStory || "—"}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Test case</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.testCase || "—"}</dd></div>
+        <div className="bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detailRequirement.acceptanceCriteria || "—"}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Created</dt><dd className="mt-1 text-xs text-slate-700">{timestampText(detailRequirement.createdAt)}</dd></div>
+        <div className="bg-white p-3"><dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last updated</dt><dd className="mt-1 text-xs text-slate-700">{timestampText(detailRequirement.updatedAt)}</dd></div>
+      </dl>
+    </section></div>}
     <footer className="ba-no-print mt-8 flex items-center gap-2 border-t border-slate-200 pt-3 text-xs text-slate-600"><Check size={14} className={saveState === "error" ? "text-[#B42318]" : "text-[#003366]"} aria-hidden="true" />{saveState === "error" ? "Changes are not saved. Use Save to retry." : "Changes save to your Business Analysis workspace."}</footer>
   </div>;
 }

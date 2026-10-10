@@ -9,7 +9,8 @@ export const BA_PHASES: Array<{ name: string; deliverables: string[] }> = [
   { name: "Post-Go-Live & Hypercare", deliverables: ["PIR retrospective", "BAU handover"] },
 ];
 
-export const EMPTY_BA_STATE: BAWorkspaceState = { projects: [] };
+export const DEFAULT_BA_COLUMN_WIDTHS = [110, 260, 110, 120, 220, 140, 115, 140, 170];
+export const EMPTY_BA_STATE: BAWorkspaceState = { projects: [], tableColumnWidths: DEFAULT_BA_COLUMN_WIDTHS };
 
 export function createBAProject(name = "New BA Project"): BAProject {
   const now = new Date().toISOString();
@@ -27,11 +28,17 @@ export function createBAProject(name = "New BA Project"): BAProject {
 
 export function normalizeBAState(value: unknown): BAWorkspaceState {
   if (!value || typeof value !== "object" || !Array.isArray((value as { projects?: unknown }).projects)) return EMPTY_BA_STATE;
-  const source = (value as { projects: unknown[] }).projects.slice(0, 50);
+  const rawState = value as { projects: unknown[]; tableColumnWidths?: unknown };
+  const source = rawState.projects.slice(0, 50);
+  const rawWidths = Array.isArray(rawState.tableColumnWidths) ? rawState.tableColumnWidths : null;
+  const tableColumnWidths = rawWidths
+    ? DEFAULT_BA_COLUMN_WIDTHS.map((fallback, index) => Math.max(72, Math.min(720, Number.isFinite(Number(rawWidths[index])) ? Number(rawWidths[index]) : fallback)))
+    : [...DEFAULT_BA_COLUMN_WIDTHS];
   const text = (value: unknown, limit = 500) => typeof value === "string" ? value.slice(0, limit) : "";
   const categories = ["Functional", "Non-Functional", "Technical", "Compliance", "Business"];
   const priorities = ["Must Have", "Should Have", "Could Have", "Won't Have"];
   const statuses = ["Passed", "In Dev", "Not Tested", "Blocked"];
+    const normalizedAt = new Date().toISOString();
   const projects = source.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const item = raw as Record<string, unknown>;
@@ -41,8 +48,9 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
       if (!rawRequirement || typeof rawRequirement !== "object") return [];
       const req = rawRequirement as Record<string, unknown>;
       if (typeof req.id !== "string") return [];
+      const createdAt = text(req.createdAt, 40) || normalizedAt;
       return [{
-        id: text(req.id, 40), statement: text(req.statement, 5000),
+        id: text(req.id, 40), createdAt, updatedAt: text(req.updatedAt, 40) || createdAt, statement: text(req.statement, 5000),
         category: categories.includes(String(req.category)) ? req.category as BAProject["requirements"][number]["category"] : "Business",
         priority: req.priority === "" ? "" : priorities.includes(String(req.priority)) ? req.priority as BAProject["requirements"][number]["priority"] : "Must Have",
         userStory: text(req.userStory, 5000), acceptanceCriteria: text(req.acceptanceCriteria, 10000),
@@ -74,7 +82,7 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
       createdAt: text(item.createdAt, 40), updatedAt: text(item.updatedAt, 40),
     }];
   });
-  return { projects };
+  return { projects, tableColumnWidths };
 }
 
 export function nextRequirementId(requirements: Array<{ id: string }>) {
@@ -87,14 +95,15 @@ export function nextRequirementId(requirements: Array<{ id: string }>) {
 
 export function requirementsFromNotes(notes: string, existing: BAProject["requirements"]): BAProject["requirements"] {
   const next = [...existing];
+  const now = new Date().toISOString();
   for (const line of notes.split(/\r?\n/)) {
     const match = line.match(/^\s*@((?:REQ|NFR)-\d+)\s*(?::|-)?\s+(.+?)\s*$/i);
     if (!match) continue;
     const id = match[1].toUpperCase();
     const statement = match[2].trim();
     const index = next.findIndex((requirement) => requirement.id.toUpperCase() === id);
-    if (index >= 0) next[index] = { ...next[index], statement };
-    else next.push({ id, statement, category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" });
+    if (index >= 0) next[index] = { ...next[index], statement, updatedAt: now };
+    else next.push({ id, createdAt: now, updatedAt: now, statement, category: "Business", priority: "", userStory: "", acceptanceCriteria: "", testCase: "", verification: "Not Tested", milestone: "" });
   }
   return next;
 }

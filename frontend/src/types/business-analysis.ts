@@ -4,6 +4,8 @@ export type VerificationStatus = "Passed" | "In Dev" | "Not Tested" | "Blocked";
 
 export interface BARequirement {
   id: string;
+  createdAt: string;
+  updatedAt: string;
   statement: string;
   category: RequirementCategory;
   priority: MoscowPriority | "";
@@ -43,4 +45,5 @@ export interface BAProject {
 
 export interface BAWorkspaceState {
   projects: BAProject[];
+  tableColumnWidths: number[];
 }
