@@ -229,11 +229,11 @@ export function ContractsWorkspace() {
   if (loading) return <section className="mx-auto w-full max-w-[1440px] space-y-5 pb-8"><ContractsHeader title="Contracts" subtitle="Opening your contract folder." /><div role="status" className="flex items-center gap-2 border border-slate-200 bg-white p-4 text-xs text-slate-600"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-[#003366]" />Loading contracts</div></section>;
 
   if (!folder.connected || !folder.accessible) return <section className="mx-auto w-full max-w-[1440px] space-y-5 pb-8">
-    <ContractsHeader title="Contracts" subtitle="Choose where Mosaic saves contract files. OneDrive can sync this folder as it does your other files." />
+    <ContractsHeader title="Contracts" subtitle="Choose where Mosaic saves your contract files." />
     <section className="max-w-2xl border border-slate-200 bg-white p-6 md:p-8">
       <span className="flex h-10 w-10 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderOpen aria-hidden="true" className="h-5 w-5" /></span>
-      <h2 className="mt-4 text-base font-semibold text-[#003366]">{folder.connected ? "Reconnect your contract folder" : "Choose your contract folder"}</h2>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Choose your OneDrive folder. Mosaic will set up a Contracts folder there and keep your files organized. OneDrive will sync them in the background.</p>
+      <h2 className="mt-4 text-base font-semibold text-[#003366]">{folder.connected ? "Reconnect your contract folder" : "Choose where to save contracts"}</h2>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Choose any local folder. Mosaic will create its contract folder there and organize your files. If that location is already synced by OneDrive, OneDrive will sync the files as usual.</p>
       <p className="mt-2 text-xs text-slate-500">Choose it once on each computer. If Mosaic asks again later, choose the same folder.</p>
       {!pickerStatus.available && <div role="status" className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
         {pickerStatus.reason === "insecure" && <>{secureContractsUrl ? <><span>Open Mosaic from a secure address to choose a folder. </span><a href={secureContractsUrl} className="font-semibold underline">Open Contracts securely</a></> : "Open Mosaic using its secure HTTPS address to choose a folder."}</>}
