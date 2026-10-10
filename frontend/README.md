@@ -56,7 +56,7 @@ Vercel runs the configured daily cron in production. Daily frequency supports Ho
 
 ### Contract files
 
-Contracts are stored as ordinary files in a local `Mosaic Contracts` folder, not as ClickUp records or browser-only file blobs. On each computer, choose any local folder in Contracts; Mosaic creates its contract folder there and moves any existing browser-stored contract files into it. Mosaic does not search for or require OneDrive. If the chosen location is already synced by OneDrive, its installed sync app will sync the files normally. The browser must be open to manage and compare contracts; OneDrive can continue its own file sync independently. Folder selection requires a browser that supports the File System Access API.
+Contracts currently supports comparing Word documents in the browser. The Contracts page does not create workspaces or save review history. Existing files and saved review data are left untouched. Project contract reviews continue to keep their own history.
 
 The read tables use service-role access only, OAuth tokens and webhook secrets are encrypted with AES-256-GCM, and snapshot reads require a fresh ClickUp list-access check. Snapshots older than five minutes are not served. Connections and task records unused for 90 days are removed by reconciliation.
 

@@ -122,7 +122,7 @@ function createRegisterDocument(review: SavedDeltaReview) {
   ] }] });
 }
 
-export function DeltaReview({ contextName, contextId, initialReview, onBack, renderContractGallery }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void; renderContractGallery?: (actions: { compareFiles: (original: File, revised: File) => void }) => ReactNode }) {
+export function DeltaReview({ contextName, contextId, initialReview, onBack, renderContractGallery, persistenceEnabled = true }: { contextName?: string; contextId?: string; initialReview?: SavedDeltaReview; onBack?: () => void; renderContractGallery?: (actions: { compareFiles: (original: File, revised: File) => void }) => ReactNode; persistenceEnabled?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const isStandaloneWorkspace = !contextId;
@@ -179,8 +179,9 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack, ren
   };
 
   useEffect(() => {
+    if (!persistenceEnabled) return;
     getReviewStorageMode().then((mode) => { setStorageMode(mode); setFolderReady(Boolean(mode)); }).catch(() => undefined);
-  }, []);
+  }, [persistenceEnabled]);
 
   const chooseFolder = async () => {
     setBusy(true); setError(""); setNotice(""); setBusyLabel(supportsDocumentsFolderSaving() ? "Opening Documents" : "Setting up local saving");
@@ -329,9 +330,9 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack, ren
             <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">{contextId ? "Add contract drafts, review saved comparisons, and record decisions against each change." : "Add contract drafts, review the differences by section, and record decisions against each change."}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {persistenceEnabled && <div className="flex flex-wrap gap-2">
           <button type="button" className={controlClass} onClick={chooseFolder} disabled={busy}><FolderOpen aria-hidden="true" className="h-4 w-4" />Set up local saving</button>
-        </div>
+        </div>}
       </header>
 
       {error && <div role="alert" className="flex items-start gap-2 border border-red-300 bg-white p-3 text-sm text-red-900"><AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /><p>{error}</p></div>}
@@ -342,7 +343,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack, ren
         {(contextId ? [{ id: "contracts", label: "Contract gallery" }, { id: "history", label: "Contract history" }, { id: "review", label: "Contract review" }] as const : [{ id: "contracts", label: "Contracts" }, { id: "review", label: "Review" }] as const).map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={workspaceTab === tab.id} onClick={() => selectWorkspaceTab(tab.id)} className={`min-h-11 border-b-2 px-5 text-xs font-semibold ${workspaceTab === tab.id ? "border-[#C9A84C] text-[#003366]" : "border-transparent text-slate-500 hover:text-[#003366]"}`}>{tab.label}{tab.id === "review" && entries.length > 0 ? <span className="ml-2 text-slate-400">{entries.length}</span> : null}</button>)}
       </div>
 
-      {workspaceTab === "contracts" && contextId && renderContractGallery ? renderContractGallery({ compareFiles: (original, revised) => { void runComparison(original, revised); } }) : workspaceTab === "contracts" && <div className={contextId ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(290px,0.65fr)]"}>
+      {workspaceTab === "contracts" && contextId && renderContractGallery ? renderContractGallery({ compareFiles: (original, revised) => { void runComparison(original, revised); } }) : workspaceTab === "contracts" && <div className="grid gap-5">
         <section className="border border-slate-200 bg-[#FFFCFB]">
           <div className="border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Add contract documents</h2><p className="mt-1 text-xs text-slate-600">Select the original and revised Word files. They are read in this browser and are not uploaded.</p></div>
           <div className="grid gap-4 p-4 md:grid-cols-2">
@@ -355,7 +356,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack, ren
           </div>
         </section>
 
-        {!contextId && <aside className="border border-[#C9A84C]/60 bg-[#FFFCFB]">
+        {persistenceEnabled && !contextId && <aside className="border border-[#C9A84C]/60 bg-[#FFFCFB]">
           <div className="border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-semibold text-[#003366]">Saved on this device</h2><p className="mt-1 text-xs leading-5 text-slate-600">{storageMode === "browser" ? <>DELTA saves in a private browser folder. The register and both Word files stay on this device.</> : storageMode === "indexeddb" ? <>DELTA saves in local browser storage on this device.</> : <>Choose Documents once. DELTA creates a <strong>DELTA Reviews</strong> folder there and stores the register with both Word files.</>}</p></div>
           <div className="p-4">
             <div className="mb-3 flex justify-end"><button type="button" className={controlClass} onClick={refreshSavedReviews} disabled={busy}><RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />Refresh list</button></div>
@@ -368,7 +369,7 @@ export function DeltaReview({ contextName, contextId, initialReview, onBack, ren
       {workspaceTab === "history" && contextId && <DeltaReviewList contextName={contextName || "Project"} contextId={contextId} onStart={() => selectWorkspaceTab("contracts")} onOpen={openReview} />}
 
       {workspaceTab === "review" && entries.length > 0 && <section className="border border-slate-200 bg-[#FFFCFB]">
-        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center"><div><h2 className="text-sm font-semibold text-[#003366]">Change register <span className="ml-1 font-normal text-slate-500">{entries.length} entries</span></h2><p className="mt-1 text-xs text-slate-600">Review aid only. Verify each entry against the source documents.</p></div><div className="flex flex-wrap gap-2"><button type="button" className={controlClass} onClick={exportRegister} disabled={busy}><Download aria-hidden="true" className="h-4 w-4" />Export Word</button><button type="button" className={controlClass} onClick={saveCurrentReview} disabled={busy || !originalFile || !revisedFile}><Save aria-hidden="true" className="h-4 w-4" />Save locally</button></div></div>
+        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center"><div><h2 className="text-sm font-semibold text-[#003366]">Change register <span className="ml-1 font-normal text-slate-500">{entries.length} entries</span></h2><p className="mt-1 text-xs text-slate-600">Review aid only. Verify each entry against the source documents.</p></div>{persistenceEnabled && <div className="flex flex-wrap gap-2"><button type="button" className={controlClass} onClick={exportRegister} disabled={busy}><Download aria-hidden="true" className="h-4 w-4" />Export Word</button><button type="button" className={controlClass} onClick={saveCurrentReview} disabled={busy || !originalFile || !revisedFile}><Save aria-hidden="true" className="h-4 w-4" />Save locally</button></div>}</div>
         <div className="border-b border-slate-100 px-4 py-3 text-xs text-slate-600">{commentsFound ? "Word comments were found and are attached to relevant entries below." : "No Word comments found in either document."}</div>
         <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-100 bg-white px-4 py-2 text-[10px] text-slate-500"><span><span className="mr-1 inline-block h-2.5 w-2.5 bg-rose-100 ring-1 ring-rose-300" />Removed from original wording</span><span><span className="mr-1 inline-block h-2.5 w-2.5 bg-emerald-100 ring-1 ring-emerald-300" />Added to reviewed wording</span></div>
         <ol className="divide-y divide-slate-200">{entries.map((entry, index) => <li key={entry.id} className="p-4 md:p-5">
