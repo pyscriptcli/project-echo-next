@@ -6,10 +6,10 @@ import { ArrowLeft, Download, FileText, FolderOpen, LoaderCircle, Pencil, Plus, 
 import { DeltaReview } from "@/components/DeltaReview";
 import {
   chooseContractsFolder,
-  contractsFolderSelectionAvailable,
   deleteContract,
   deleteLocalWorkspace,
   getContractsFolderStatus,
+  getContractsFolderPickerStatus,
   listContracts,
   listLocalWorkspaces,
   reconnectContractsFolder,
@@ -129,6 +129,10 @@ export function ContractsWorkspace() {
   const workspaceId = workspaceMatch?.[1] ? decodeURIComponent(workspaceMatch[1]) : "";
   const folderId = workspaceId ? `local-${workspaceId}` : "";
   const isLegacyReviewRoute = pathname === "/contracts/review";
+  const pickerStatus = getContractsFolderPickerStatus();
+  const secureContractsUrl = typeof window !== "undefined" && window.location.protocol === "http:"
+    ? `https://${window.location.host}/contracts`
+    : "";
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -227,10 +231,14 @@ export function ContractsWorkspace() {
       <h2 className="mt-4 text-base font-semibold text-[#003366]">{folder.connected ? "Reconnect your contract folder" : "Choose your contract folder"}</h2>
       <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Choose your OneDrive folder. Mosaic will set up a Contracts folder there and keep your files organized. OneDrive will sync them in the background.</p>
       <p className="mt-2 text-xs text-slate-500">Choose it once on each computer. If Mosaic asks again later, choose the same folder. Use Chrome or Edge on a computer.</p>
-      {!contractsFolderSelectionAvailable() && <p role="status" className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Open Contracts in Chrome or Edge on a computer to choose a folder.</p>}
+      {!pickerStatus.available && <div role="status" className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+        {pickerStatus.reason === "insecure" && <>{secureContractsUrl ? <><span>Open the secure version of Mosaic to choose a folder. </span><a href={secureContractsUrl} className="font-semibold underline">Open secure Contracts</a></> : "Open Mosaic using its secure HTTPS address to choose a folder."}</>}
+        {pickerStatus.reason === "embedded" && <><span>Open Mosaic in its own browser tab to choose a folder. </span><a href="/contracts" target="_blank" rel="noreferrer" className="font-semibold underline">Open Contracts in a new tab</a></>}
+        {pickerStatus.reason === "unsupported" && "Choose a folder from desktop Chrome or Edge. Other browsers don’t allow Mosaic to save directly into a folder."}
+      </div>}
       {error && <p role="alert" className="mt-4 border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</p>}
-      {folder.connected ? <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => void reconnectFolder()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] disabled:opacity-50">{busy && <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />}Reconnect folder</button><button type="button" onClick={() => void setupFolder()} disabled={busy || !contractsFolderSelectionAvailable()} className="min-h-10 border border-slate-300 bg-white px-4 text-xs font-semibold text-[#003366] disabled:opacity-50">Choose the same folder again</button></div>
-        : <button type="button" onClick={() => void setupFolder()} disabled={busy || !contractsFolderSelectionAvailable()} className="mt-5 inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] disabled:opacity-50">{busy && <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />}Choose folder</button>}
+      {folder.connected ? <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => void reconnectFolder()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] disabled:opacity-50">{busy && <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />}Reconnect folder</button><button type="button" onClick={() => void setupFolder()} disabled={busy || !pickerStatus.available} className="min-h-10 border border-slate-300 bg-white px-4 text-xs font-semibold text-[#003366] disabled:opacity-50">Choose the same folder again</button></div>
+        : <button type="button" onClick={() => void setupFolder()} disabled={busy || !pickerStatus.available} className="mt-5 inline-flex min-h-10 items-center gap-2 border border-[#003366] bg-[#003366] px-4 text-xs font-semibold text-white hover:bg-[#174778] disabled:opacity-50">{busy && <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />}Choose folder</button>}
     </section>
   </section>;
 

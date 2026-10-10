@@ -26,8 +26,12 @@ interface ContractIndex {
 }
 
 type DirectoryWindow = Window & {
-  showDirectoryPicker?: (options?: { id?: string; mode?: "read" | "readwrite"; startIn?: "documents" | "desktop" | "downloads" }) => Promise<FileSystemDirectoryHandle>;
+  showDirectoryPicker?: (this: Window, options?: { id?: string; mode?: "read" | "readwrite"; startIn?: "documents" | "desktop" | "downloads" }) => Promise<FileSystemDirectoryHandle>;
 };
+
+export type FolderPickerStatus =
+  | { available: true }
+  | { available: false; reason: "insecure" | "embedded" | "unsupported" };
 
 type PermissionDirectory = FileSystemDirectoryHandle & {
   queryPermission?: (options: { mode: "readwrite" }) => Promise<PermissionState>;
@@ -78,12 +82,12 @@ async function saveDirectory(handle: FileSystemDirectoryHandle) {
   db.close();
 }
 
-function supportsFolderSelection() {
-  return typeof window !== "undefined" && typeof (window as DirectoryWindow).showDirectoryPicker === "function";
-}
-
-export function contractsFolderSelectionAvailable() {
-  return supportsFolderSelection();
+export function getContractsFolderPickerStatus(): FolderPickerStatus {
+  if (typeof window === "undefined") return { available: false, reason: "unsupported" };
+  if (!window.isSecureContext) return { available: false, reason: "insecure" };
+  if (window.top !== window.self) return { available: false, reason: "embedded" };
+  if (typeof (window as DirectoryWindow).showDirectoryPicker !== "function") return { available: false, reason: "unsupported" };
+  return { available: true };
 }
 
 async function folderPermission(handle: FileSystemDirectoryHandle, request: boolean) {
@@ -232,9 +236,18 @@ export async function deleteContract(id: string) {
 }
 
 export async function chooseContractsFolder() {
+  const pickerStatus = getContractsFolderPickerStatus();
+  if (!pickerStatus.available) {
+    const message = pickerStatus.reason === "insecure"
+      ? "Open Mosaic using its secure HTTPS address to choose the contract folder."
+      : pickerStatus.reason === "embedded"
+        ? "Open Mosaic in its own browser tab to choose the contract folder."
+        : "Use desktop Chrome or Edge to choose the contract folder.";
+    throw new Error(message);
+  }
   const picker = (window as DirectoryWindow).showDirectoryPicker;
-  if (!picker) throw new Error("Open Mosaic in Chrome or Edge on a computer to choose the contract folder.");
-  const selected = await picker({ id: "mosaic-contract-storage", mode: "readwrite", startIn: "documents" });
+  if (!picker) throw new Error("Use desktop Chrome or Edge to choose the contract folder.");
+  const selected = await picker.call(window, { id: "mosaic-contract-storage", mode: "readwrite", startIn: "documents" });
   const root = await contractsDirectory(selected);
   await ensureFilesDirectory(root);
   await saveDirectory(selected.name.toLowerCase() === "mosaic contracts" ? selected : root);
