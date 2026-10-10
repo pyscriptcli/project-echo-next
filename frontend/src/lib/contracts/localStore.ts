@@ -112,7 +112,7 @@ async function contractsDirectory(parent: FileSystemDirectoryHandle, create = tr
 
 export async function getContractsFolderStatus() {
   const handle = await savedDirectory();
-  if (!handle) return { connected: false, name: "", accessible: false };
+  if (!handle) return { connected: true, name: "This browser", accessible: true };
   return { connected: true, name: handle.name, accessible: await folderPermission(handle, false) };
 }
 
@@ -170,11 +170,27 @@ export async function legacyContractCount() {
 }
 
 export async function listLocalWorkspaces() {
+  const directory = await savedDirectory();
+  if (!directory) {
+    const { workspaces } = await legacyRecords();
+    return workspaces.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
   const root = await requireDirectory();
   return (await readIndex(await contractsDirectory(root))).workspaces.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
 export async function saveLocalWorkspace(workspace: LocalContractWorkspace) {
+  if (!await savedDirectory()) {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(WORKSPACES_STORE, "readwrite");
+      transaction.objectStore(WORKSPACES_STORE).put(workspace);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("The workspace could not be saved in this browser."));
+    });
+    db.close();
+    return;
+  }
   const root = await contractsDirectory(await requireDirectory(true));
   const index = await readIndex(root);
   index.workspaces = [workspace, ...index.workspaces.filter((item) => item.id !== workspace.id)];
@@ -182,6 +198,24 @@ export async function saveLocalWorkspace(workspace: LocalContractWorkspace) {
 }
 
 export async function deleteLocalWorkspace(id: string) {
+  if (!await savedDirectory()) {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME, WORKSPACES_STORE], "readwrite");
+      const contracts = transaction.objectStore(STORE_NAME);
+      const request = contracts.getAll();
+      request.onsuccess = () => {
+        for (const contract of request.result as LocalContract[]) {
+          if (contract.folderId === `local-${id}`) contracts.delete(contract.id);
+        }
+        transaction.objectStore(WORKSPACES_STORE).delete(id);
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("The workspace could not be deleted from this browser."));
+    });
+    db.close();
+    return;
+  }
   const root = await contractsDirectory(await requireDirectory(true));
   const index = await readIndex(root);
   const removed = index.contracts.filter((contract) => contract.folderId === `local-${id}`);
@@ -193,6 +227,16 @@ export async function deleteLocalWorkspace(id: string) {
 }
 
 export async function listContracts(folderId: string) {
+  if (!await savedDirectory()) {
+    const db = await openDb();
+    const contracts = await new Promise<LocalContract[]>((resolve, reject) => {
+      const request = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+      request.onsuccess = () => resolve((request.result as LocalContract[]).filter((contract) => contract.folderId === folderId));
+      request.onerror = () => reject(request.error || new Error("Contracts could not be loaded from this browser."));
+    });
+    db.close();
+    return contracts.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
   const root = await contractsDirectory(await requireDirectory());
   const index = await readIndex(root);
   const files = await ensureFilesDirectory(root);
@@ -204,6 +248,25 @@ export async function listContracts(folderId: string) {
 }
 
 export async function saveContract(contract: LocalContract) {
+  if (!await savedDirectory()) {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME, WORKSPACES_STORE], "readwrite");
+      transaction.objectStore(STORE_NAME).put(contract);
+      const workspaces = transaction.objectStore(WORKSPACES_STORE);
+      const request = workspaces.getAll();
+      request.onsuccess = () => {
+        if (!(request.result as LocalContractWorkspace[]).some((workspace) => `local-${workspace.id}` === contract.folderId)) {
+          const id = contract.folderId.replace(/^local-/, "");
+          workspaces.put({ id, name: contract.folderName, createdAt: contract.updatedAt, updatedAt: contract.updatedAt } satisfies LocalContractWorkspace);
+        }
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("The contract could not be saved in this browser."));
+    });
+    db.close();
+    return;
+  }
   const root = await contractsDirectory(await requireDirectory(true));
   const files = await ensureFilesDirectory(root);
   const storedFile = `${contract.id}.docx`;
@@ -227,6 +290,17 @@ export async function saveContract(contract: LocalContract) {
 }
 
 export async function deleteContract(id: string) {
+  if (!await savedDirectory()) {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      transaction.objectStore(STORE_NAME).delete(id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("The contract could not be deleted from this browser."));
+    });
+    db.close();
+    return;
+  }
   const root = await contractsDirectory(await requireDirectory(true));
   const index = await readIndex(root);
   const current = index.contracts.find((contract) => contract.id === id);
