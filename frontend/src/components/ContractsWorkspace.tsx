@@ -130,9 +130,13 @@ export function ContractsWorkspace() {
   const folderId = workspaceId ? `local-${workspaceId}` : "";
   const isLegacyReviewRoute = pathname === "/contracts/review";
   const pickerStatus = getContractsFolderPickerStatus();
-  const secureContractsUrl = typeof window !== "undefined" && window.location.protocol === "http:"
-    ? `https://${window.location.host}/contracts`
-    : "";
+  const secureContractsUrl = (() => {
+    if (typeof window === "undefined" || window.location.protocol !== "http:") return "";
+    const { hostname, port } = window.location;
+    const localHosts = new Set(["localhost", "0.0.0.0", "127.0.0.1", "::1", "[::1]"]);
+    if (localHosts.has(hostname)) return `http://localhost${port ? `:${port}` : ""}/contracts`;
+    return `https://${window.location.host}/contracts`;
+  })();
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -232,7 +236,7 @@ export function ContractsWorkspace() {
       <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Choose your OneDrive folder. Mosaic will set up a Contracts folder there and keep your files organized. OneDrive will sync them in the background.</p>
       <p className="mt-2 text-xs text-slate-500">Choose it once on each computer. If Mosaic asks again later, choose the same folder.</p>
       {!pickerStatus.available && <div role="status" className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
-        {pickerStatus.reason === "insecure" && <>{secureContractsUrl ? <><span>Open the secure version of Mosaic to choose a folder. </span><a href={secureContractsUrl} className="font-semibold underline">Open secure Contracts</a></> : "Open Mosaic using its secure HTTPS address to choose a folder."}</>}
+        {pickerStatus.reason === "insecure" && <>{secureContractsUrl ? <><span>Open Mosaic from a secure address to choose a folder. </span><a href={secureContractsUrl} className="font-semibold underline">Open Contracts securely</a></> : "Open Mosaic using its secure HTTPS address to choose a folder."}</>}
         {pickerStatus.reason === "embedded" && <><span>Open Mosaic in its own browser tab to choose a folder. </span><a href="/contracts" target="_blank" rel="noreferrer" className="font-semibold underline">Open Contracts in a new tab</a></>}
         {pickerStatus.reason === "unsupported" && "This browser doesn’t support choosing a folder for Mosaic to save files directly. Use a desktop browser with local folder access, or contact your Mosaic administrator."}
       </div>}
