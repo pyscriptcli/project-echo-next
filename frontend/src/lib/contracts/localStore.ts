@@ -288,7 +288,7 @@ export async function chooseContractsFolder() {
       ? "Open Mosaic using its secure HTTPS address to choose the contract folder."
       : pickerStatus.reason === "embedded"
         ? "Open Mosaic in its own browser tab to choose the contract folder."
-        : "This browser does not support choosing a local contract folder.";
+        : "Local folder access is unavailable. Follow the browser setup instructions, then try Select path again.";
     throw new Error(message);
   }
   const picker = (window as DirectoryWindow).showDirectoryPicker;
