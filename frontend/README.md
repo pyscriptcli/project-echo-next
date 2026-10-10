@@ -50,6 +50,10 @@ To enable durable task snapshots and change notifications:
 
 Vercel runs the configured daily cron in production. Daily frequency supports Hobby deployments; faster scheduled reconciliation requires a plan that permits more frequent jobs. Webhooks and page-triggered sync handle changes between scheduled runs.
 
+### Contract files
+
+Contracts are stored as ordinary files in a local `Mosaic Contracts` folder, not as ClickUp records or browser-only file blobs. On first use of each computer, open Mosaic in Chrome or Edge, choose the local OneDrive folder in Contracts, and Mosaic creates its contract folder and moves any existing browser-stored contract files there. OneDrive's installed sync app then syncs those files normally. On another computer, wait for OneDrive to finish syncing, open Contracts, and choose the same folder once. Mosaic does not verify that the selected folder is managed by OneDrive; choose a OneDrive-synced location if you want those files synced. The browser must be open to manage and compare contracts; OneDrive can continue its own file sync independently.
+
 The read tables use service-role access only, OAuth tokens and webhook secrets are encrypted with AES-256-GCM, and snapshot reads require a fresh ClickUp list-access check. Snapshots older than five minutes are not served. Connections and task records unused for 90 days are removed by reconciliation.
 
 ### Echo.ai meeting bot

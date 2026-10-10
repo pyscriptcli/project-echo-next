@@ -173,6 +173,8 @@ The current fixed mappings are in `frontend/src/lib/ask-echo/clickup.ts`:
 
 The Demands page reads and writes structured `echoDemand` records in its mapped list using the signed-in user's OAuth token. Status and Action Taken are free-text fields. Do not add workspace-token fallbacks. Candidate-property scouting, geolocation photos, and scouting reports remain future scope.
 
+Contracts no longer uses ClickUp folders or stores contract files in browser IndexedDB. Users choose a local folder (ideally their OneDrive-synced folder); Mosaic creates `Mosaic Contracts`, stores `.docx` files and a portable index there, and migrates legacy browser-stored contract files during setup. The browser remembers the directory handle per device. OneDrive sync is performed by its normal desktop client, not by Mosaic; choose the same synced folder on each device after its files finish syncing. Folder access uses the browser File System Access API and currently requires desktop Chrome or Edge.
+
 ClickUp reads route through `frontend/src/lib/clickupCalendarApi.ts` for per-token cache, bounded concurrency, rate-limit handling, and performance logs. Apply `supabase/clickup_read_model.sql` and set the ClickUp sync variables documented in `frontend/README.md` before relying on multi-instance cache sharing, periodic reconciliation, encrypted connections, or task snapshots. Only recent snapshots with a fresh per-user list access check may be served. ClickUp list webhooks are registered after authorized Tasks, Demands, and project subproject reads. Tasks list discovery is on demand and caches its result per signed-in browser user.
 
 ### Browser page cache
