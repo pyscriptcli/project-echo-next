@@ -119,11 +119,13 @@ type RequirementCardProps = {
   onUpdate: (id: string, changes: Partial<BARequirement>) => void;
   onGenerateStory: (requirement: BARequirement) => void;
   onGenerateTestCase: (requirement: BARequirement) => void;
+  onGenerateAcceptanceCriteria: (requirement: BARequirement) => void;
   generatingStory: boolean;
   generatingTestCase: boolean;
+  generatingAcceptanceCriteria: boolean;
 };
 
-function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTestCase, generatingStory, generatingTestCase }: RequirementCardProps) {
+function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTestCase, onGenerateAcceptanceCriteria, generatingStory, generatingTestCase, generatingAcceptanceCriteria }: RequirementCardProps) {
   return <article className="min-w-0 border border-slate-200 bg-white p-3 sm:p-4">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
       <div className="flex min-w-0 items-baseline gap-2">
@@ -147,11 +149,11 @@ function RequirementCard({ requirement, onUpdate, onGenerateStory, onGenerateTes
         <RichTextEditor value={requirement.testCase} onChange={(testCase) => onUpdate(requirement.id, { testCase })} label={`${requirement.id} test case`} placeholder="Add a concise test case" />
       </section>
       <section className="min-w-0 border-t border-slate-100 pt-2">
-        <span className="flex min-h-7 items-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</span>
+        <div className="flex min-h-7 items-center justify-between gap-2"><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acceptance criteria</span><button type="button" title="Generate acceptance criteria from this row" aria-label={`Generate acceptance criteria for ${requirement.id}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-200 text-[#31577D] hover:border-[#C9A84C] hover:text-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] disabled:cursor-wait disabled:opacity-50" disabled={generatingAcceptanceCriteria} onClick={() => onGenerateAcceptanceCriteria(requirement)}>{generatingAcceptanceCriteria ? <LoaderCircle aria-hidden="true" size={13} className="animate-spin" /> : <Sparkles aria-hidden="true" size={13} />}</button></div>
         <RichTextEditor value={requirement.acceptanceCriteria} onChange={(acceptanceCriteria) => onUpdate(requirement.id, { acceptanceCriteria })} label={`${requirement.id} acceptance criteria`} placeholder="Add concise acceptance criteria" />
       </section>
     </div>
-    <label className="block max-w-sm text-[10px] font-semibold uppercase tracking-wide text-slate-500">Target milestone<input aria-label={`${requirement.id} milestone`} className="mt-1 h-8 w-full border border-slate-200 bg-white px-2 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={requirement.milestone} onChange={(event) => onUpdate(requirement.id, { milestone: event.target.value })} placeholder="Add milestone" /></label>
+    <label className="mt-3 block w-full text-[10px] font-semibold uppercase tracking-wide text-slate-500">Target milestone<input aria-label={`${requirement.id} milestone`} className="mt-1 h-8 w-full border border-slate-200 bg-white px-2 text-xs font-normal normal-case tracking-normal text-slate-700 focus:border-[#C9A33B] focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={requirement.milestone} onChange={(event) => onUpdate(requirement.id, { milestone: event.target.value })} placeholder="Add milestone" /></label>
     <footer className="mt-3 border-t border-slate-100 pt-2 text-[10px] text-slate-600">Created {timestampText(requirement.createdAt)} <span aria-hidden="true">·</span> Updated {timestampText(requirement.updatedAt)}</footer>
   </article>;
 }
@@ -245,6 +247,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   const [meetingError, setMeetingError] = useState("");
   const [generatingId, setGeneratingId] = useState("");
   const [generatingTestCaseId, setGeneratingTestCaseId] = useState("");
+  const [generatingAcceptanceCriteriaId, setGeneratingAcceptanceCriteriaId] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(DOC_TEMPLATES[0]);
   const [documentTitle, setDocumentTitle] = useState("");
   const resizeStart = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
@@ -405,6 +408,22 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
     finally { setGeneratingTestCaseId(""); }
   };
 
+  const generateAcceptanceCriteria = async (requirement: BARequirement) => {
+    if (!project) return;
+    setGeneratingAcceptanceCriteriaId(requirement.id);
+    try {
+      const response = await fetch("/api/business-analysis/story", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        type: "acceptance-criteria", id: requirement.id, statement: requirement.statement, context: project.description,
+        category: requirement.category, priority: requirement.priority, userStory: requirement.userStory,
+        testCase: requirement.testCase, verification: requirement.verification, milestone: requirement.milestone,
+      }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Acceptance criteria generation failed.");
+      updateRequirement(requirement.id, { acceptanceCriteria: body.acceptanceCriteria });
+    } catch (error) { window.alert(error instanceof Error ? error.message : "Acceptance criteria generation failed."); }
+    finally { setGeneratingAcceptanceCriteriaId(""); }
+  };
+
   const addDocument = () => {
     if (!project) return;
     const now = new Date().toISOString();
@@ -478,7 +497,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><textarea aria-label={`${item.id} milestone`} rows={1} className="ba-rtm-cell-editor block min-h-7 w-full resize-none overflow-hidden whitespace-pre-wrap break-words [overflow-wrap:anywhere] border border-transparent bg-transparent px-1.5 py-1 text-xs leading-5 text-slate-700 hover:border-slate-200/70 focus:border-[#C9A33B] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A33B]" value={item.milestone} onChange={(event) => updateRequirement(item.id, { milestone: event.target.value })} /></td>
             <td className="align-top border border-slate-200/60 px-2 py-1.5"><button title="Generate user story and acceptance criteria" className="inline-flex min-h-8 w-full items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 text-[11px] font-semibold text-[#003366] hover:border-[#003366] disabled:opacity-50" disabled={generatingId === item.id} onClick={() => void generateStory(item)}>{generatingId === item.id ? <LoaderCircle size={13} className="animate-spin" /> : <BookOpen size={13} />}Generate</button><details className="mt-1"><summary className="cursor-pointer text-[10px] text-[#31577D]">Acceptance criteria</summary><RichTextEditor className="mt-1" value={item.acceptanceCriteria} onChange={(acceptanceCriteria) => updateRequirement(item.id, { acceptanceCriteria })} label={`${item.id} acceptance criteria`} placeholder="Add concise acceptance criteria" /></details></td>
           </tr>)}</tbody></table></div>
-        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateStory={(item) => void generateStory(item)} onGenerateTestCase={(item) => void generateTestCase(item)} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} />)}</div>}
+        </> : <div className="grid min-w-0 gap-3">{filteredRequirements.map((requirement) => <RequirementCard key={requirement.id} requirement={requirement} onUpdate={updateRequirement} onGenerateStory={(item) => void generateStory(item)} onGenerateTestCase={(item) => void generateTestCase(item)} onGenerateAcceptanceCriteria={(item) => void generateAcceptanceCriteria(item)} generatingStory={generatingId === requirement.id} generatingTestCase={generatingTestCaseId === requirement.id} generatingAcceptanceCriteria={generatingAcceptanceCriteriaId === requirement.id} />)}</div>}
       </section>}
 
       {tab === "elicitation" && <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
