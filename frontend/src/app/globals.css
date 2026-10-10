@@ -61,6 +61,12 @@
 }
 
 @layer components {
+  .ba-rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: rgb(148 163 184);
+    pointer-events: none;
+  }
+
   .panel {
     @apply bg-panel-bg rounded-none border border-brand-blue-light p-6 mb-4 shadow-[0_4px_20px_rgba(0,51,102,0.06)];
   }
